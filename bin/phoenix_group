@@ -2,6 +2,7 @@
 """Phoenix group to node mapping utility"""
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
+import sys
 import argparse
 import phoenix
 from phoenix.System import System
@@ -9,7 +10,7 @@ from phoenix.System import System
 def get_parser():
 	parser = argparse.ArgumentParser(prog="phoenix_nodemap", description="Map between groups and nodes")
 	#parser.add_argument('--map', dest='map', default=None, type=str)
-	#parser.add_argument('--list', dest='list', default=None, type=str)
+	parser.add_argument('--list', dest='list', default=None, action='store_true', help='List all known groups')
 	parser.add_argument('group', nargs='?', default=None, type=str, help='Group to list')
 	parser.add_argument('-v', '--verbose', action='count', default=0)
 	return parser
@@ -20,5 +21,11 @@ if __name__ == '__main__':
 
 	phoenix.setup_logging(args.verbose)
 
-	if args.group is not None:
-		print System.find_group(args.group)
+	if args.list:
+		print '\n'.join([ '@%s' % x for x in System.list_groups() ])
+
+	if args.group is None:
+		parser.print_usage(sys.stderr)
+		sys.exit(2)
+
+	print System.find_group(args.group)

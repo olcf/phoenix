@@ -75,3 +75,9 @@ class System(object):
 		if not cls.loaded_groups:
 			cls.load_groups()
 		return cls.groups[group]
+
+	@classmethod
+	def list_groups(cls):
+		if not cls.loaded_groups:
+			cls.load_groups()
+		return sorted(cls.groups.keys())
