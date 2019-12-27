@@ -60,7 +60,12 @@ class System(object):
 		return cls.config['networks'][net]['ipobj']
 
 	@classmethod
-	def load_groups(cls, filename='conf/groups.yaml'):
+	def load_groups(cls, filename=None):
+		""" Reads and processes the groups.yaml file """
+		if filename is None:
+			filename = "%s/groups.yaml" % phoenix.conf_path
+
+		# Read the yaml file
 		logging.info("Loading group file '%s'", filename)
 		with open(filename) as nodefd:
 			cls.groups.update(load(nodefd, Loader=Loader))
