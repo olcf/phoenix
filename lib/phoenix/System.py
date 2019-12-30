@@ -74,6 +74,8 @@ class System(object):
 	def find_group(cls, group):
 		if not cls.loaded_groups:
 			cls.load_groups()
+		if group[0] == '@':
+			group = group[1:]
 		return cls.groups[group]
 
 	@classmethod
