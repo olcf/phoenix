@@ -5,7 +5,8 @@
 import logging
 import re
 
-shasta_regex = re.compile(r'x(?P<racknum>\d+)c(?P<chassis>\d+)([rs](?P<slot>\d+)b(?P<board>\d+)(n(?P<nodenum>\d+))?)?')
+shasta_regex = re.compile(r'x(?P<racknum>\d+)[ce](?P<chassis>\d+)([rs](?P<slot>\d+)b(?P<board>\d+)(n(?P<nodenum>\d+))?)?')
+ipprefix = 'fc00:0:100:60'
 
 # colorado_map[slot][node]
 colorado_map = {
@@ -70,6 +71,11 @@ def set_node_attrs(node):
 		node['bmc'] = "x{racknum}c{chassis}".format(**node.attr)
 		node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0)
 		node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0)
+
+	elif node['type'] == 'cec':
+		node['ip'] = "%s:0:a%d:%x:0" % (ipprefix, node['chassis'], node['racknum'])
+		# The CECs live in a chassis, but remove this for now
+		del node['chassis']
 
 def _mgmtalgomac(rack, chassis, slot, idx, prefix=2):
 	""" Returns the string representation of an algorithmic mac address """

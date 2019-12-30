@@ -64,6 +64,9 @@ class Node(object):
 		#del self.rawattr[key]
 		return self.attr[key]
 
+	def __delitem__(self, key):
+		del self.attr[key]
+
 	def __contains__(self, key):
 		if key in self.attr or key in self.rawattr:
 			return True
