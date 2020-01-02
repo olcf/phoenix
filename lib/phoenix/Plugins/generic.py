@@ -15,4 +15,5 @@ def set_node_attrs(node):
     m = num_regex.findall(node['name'])
     if m is not None:
 		node['nodeindex'] = int(m[-1])
-		node['nodenums'] = [ int(x) for x in m ]
+		if len(m) > 1:
+			node['nodenums'] = [ int(x) for x in m ]
