@@ -117,3 +117,21 @@ This is used to inspect the configuration of a node.
 	  nodeindex: 128
 	  type: compute
 
+### clush
+This is a `ClusterShell` utility
+
+	# clush -w mycluster[1-5] hostname
+	mycluster4: mycluster4.my.org
+	mycluster1: mycluster1.my.org
+	mycluster2: mycluster2.my.org
+	mycluster5: mycluster5.my.org
+	mycluster3: mycluster3.my.org
+
+It supports "collecting" the results:
+
+	# clush -w mycluster[1-5] -b uname
+	---------------
+	mycluster[1-5] (5)
+	---------------
+	Linux
+
