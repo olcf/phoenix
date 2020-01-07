@@ -2,6 +2,7 @@
 """Node manager"""
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
+import logging
 from yaml import load, dump
 try:
 	from yaml import CLoader as Loader, CDumper as Dumper
@@ -9,7 +10,6 @@ except ImportError:
 	logging.warning("Unable to load CLoader and/or CSafeDumper")
 	from yaml import Loader, Dumper
 
-import logging
 from ClusterShell.NodeSet import NodeSet
 from jinja2 import Template
 from jinja2 import Environment
