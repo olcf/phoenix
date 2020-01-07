@@ -13,8 +13,6 @@ from distutils.core import setup
 from distutils.command.sdist import sdist
 from distutils.command.bdist_rpm import bdist_rpm
 
-sys.dont_write_bytecode = True
-
 class GenerateMan(Command):
     """Custom command to generate man pages"""
     description = 'Generate man pages'
@@ -33,8 +31,10 @@ class GenerateMan(Command):
     def run(self):
         for script in self.scripts:
             scriptname = script.split('/')[-1]
+            sys.dont_write_bytecode = True
             module = imp.load_source(scriptname, script)
             parser = module.get_parser()
+            sys.dont_write_bytecode = False
             print "Running generate man for ", script
             if not os.path.exists('man/man1'):
                 os.makedirs('man/man1')
@@ -78,6 +78,12 @@ class bdist_rpm_custom(bdist_rpm):
         if self.requires is None:
             self.requires = requires
         bdist_rpm.finalize_package_data(self)
+
+# Add the phoenix lib to the python path
+basedir = os.path.dirname(__file__)
+if basedir == "":
+    basedir = os.getcwd()
+sys.path.insert(0,"%s/lib" % basedir)
 
 scripts = [x for x in os.listdir('bin') if os.path.isfile('bin/%s' % x)]
 requires = [ 'clustershell' ]
