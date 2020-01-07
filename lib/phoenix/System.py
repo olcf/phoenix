@@ -7,7 +7,7 @@ from yaml import load, dump
 try:
 	from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
-	logging.warning("Unable to load CLoader and/or CDumper")
+	logging.info("Unable to load CLoader and/or CDumper")
 	from yaml import Loader, Dumper
 
 from ClusterShell.NodeSet import NodeSet
