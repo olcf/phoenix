@@ -172,7 +172,7 @@ if __name__ == '__main__':
     print "We are the hierarchy caller"
     #we are being called to orchestrate a clustershell call
     #args_list = args.state
-    run_clustershell_command("/home/muzyncj/phoenix/bin/phoenix_power", args.state, args.nodes)
+    run_clustershell_command("/usr/bin/phoenix_power", args.state, args.nodes)
   elif args.worker == 1:
     print "We are the worker"
     #we are being called to do real work
