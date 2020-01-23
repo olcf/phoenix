@@ -111,7 +111,8 @@ setup(name = 'phoenix',
     scripts = ['bin/%s' % x for x in scripts],
     cmdclass = { 'bdist_rpm': bdist_rpm_custom, 'sdist': CustomSdist, 'generate_man': GenerateMan },
     data_files = [ ('/usr/share/man/man1', ['man/man1/%s.1.gz' % x for x in scripts]),
-                   ('/etc/phoenix', [])
+                   ('/etc/phoenix', []),
+                   ('/etc/clustershell/groups.conf.d', ['contrib/clustershell/phoenix.conf'])
                  ]
     #install_requires= [ 'clustershell' ]
     )
