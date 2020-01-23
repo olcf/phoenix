@@ -181,13 +181,13 @@ if __name__ == '__main__':
   cs_nodelist = args.nodes.split(",")
 
   if args.worker == 0:
-    print "We are the hierarchy caller"
+    #print "We are the hierarchy caller"
     #we are being called to orchestrate a clustershell call
     #args_list = args.state
     #run_clustershell_command("/home/muzyncj/phoenix/bin/phoenix_power", cs_nodelist, arguments)
     run_clustershell_command("phoenix_power", cs_nodelist, arguments)
   elif args.worker == 1:
-    print "We are the worker"
+    #print "We are the worker"
     #we are being called to do real work
     #TODO: change to power, _do_req will become generic
     run_local_threaded_command(power, cs_nodelist, arguments)
