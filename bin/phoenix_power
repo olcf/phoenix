@@ -37,16 +37,21 @@ def phoenix_clustershell_cleanup(signal, frame):
 
   sys.exit(-1)
 
+
+#this needs called by anything that is using clustershell
+#otherwise, we risk hanging the shell
 def phoenix_int_handler():
   signal.signal(signal.SIGINT, phoenix_clustershell_cleanup)
 
+
 def get_parser():
   parser = argparse.ArgumentParser(prog="phoenix_power", description="Control the power of Phoenix nodes")
-  parser.add_argument('nodes', help='Nodes to control')
-  parser.add_argument('state', help='Desired state')
+  parser.add_argument('nodes', help='Nodes to control', type=str)
+  parser.add_argument('state', help='Desired state', type=str)
   parser.add_argument('-v', '--verbose', action='count', default=0)
   parser.add_argument('-w', '--worker', action='count', default=0)
   return parser
+
 
 def _do_req(node, state):
   try:
@@ -62,6 +67,8 @@ def _do_req(node, state):
 
   # XXX TODO Pull this from Phoenix
   auth = ('root', 'initial0')
+
+  #have requests operate on whether or not you have certain fields
 
   if state in ['stat', 'state', 'status']:
     response = requests.get(redfishbaseurl, verify=False, auth=auth)
@@ -81,25 +88,24 @@ def _do_req(node, state):
     else:
       return "%s: Failed - status %d" % (node, response.status_code)
 
-#clustershell does this on its own "in a dshbak way" whatever that means
-#def summarize_output:
 
 #there is nothing power specific in the following def
-def run_clustershell_command(command, arguments, cs_hostlist, output="summarize"):
+def run_clustershell_command(command, cs_hostlist=[], arguments=[]):
   #output of other commands will be passed up to you, you must pass it along
 
   #TODO: How do we tell whether we need to call the worker or if we have another layer of hierarchy to go through?
   #I think clustershell will take care of this for us, so we will just blindly assume we are popping out on the other side as a worker
-  arguments = " ".join([arguments, cs_hostlist, " --worker"])
+  arguments = " ".join([",".join(cs_hostlist), ",".join(arguments), " --worker"])
+  #print "My poor arguments: " + arguments
 
-  ns_obj = NodeSet(cs_hostlist)
+  ns_obj = NodeSet(",".join(cs_hostlist))
 
   task = Task()
   task.set_info("connect_timeout", 10)
   task.set_info("command_timeout", 10)
   ##TODO: acquire fanout from settings or args
   #task.set_info("fanout", 128)
-  print "Command + Arguments: " + command + " " + arguments
+  #print "Command + Arguments: " + command + " " + arguments
   shell_line = "%s %s" % (command, arguments)
   task.shell(shell_line, nodes=ns_obj, remote=False)
   task.run()
@@ -112,13 +118,30 @@ def run_clustershell_command(command, arguments, cs_hostlist, output="summarize"
   #It's probably safest to abort only after we've acquired all output from above
   task.abort()
 
+
+#a function that gets called by run_threaded_command must accept a list of args and a list of nodes
+#TODO: have power call _do_req, and have _do_req be generic for all redfish requests
+def power(node, arglist=[]):
+  """
+  POWWWAAAAAHH
+  https://media0.giphy.com/media/Ixx5oJTLtmrgQ/giphy.gif
+  """
+  #print arglist
+  state = arglist[0] #the only arg is state
+  #print state
+  rc = _do_req(node, state)
+
+  return rc
+
+
 #runs threaded commands on a service node
-def run_local_threaded_command(function, cs_nodelist, arglist=[]):
+def run_local_threaded_command(function, cs_nodelist=[], arglist=[]):
   """
   Function is the function that we will parallelize.
   arglist is a list of arguments for the function.
   cs_hostlist is a hostlist of all nodes that we will run the function against.
   """
+
   rc = 0
   #mynodes = NodeSet.fromlist([cs_nodelist])
   #Node.load_nodes(nodeset=mynodes)
@@ -147,37 +170,27 @@ def run_local_threaded_command(function, cs_nodelist, arglist=[]):
   return rc
 
 
-
-#a function that gets called by run_threaded_command must accept a list of args and a list of nodes
-#TODO: have power call _do_req, and have _do_req be generic for all redfish requests
-def power(node, arglist=[]):
-  """
-  POWWWAAAAAHH
-  https://media0.giphy.com/media/Ixx5oJTLtmrgQ/giphy.gif
-  """
-  state = arglist[0] #the only arg is state
-  return _do_req(node, state)
-
-
-
 if __name__ == '__main__':
-
   phoenix_int_handler()
   set_std_group_resolver_config('/etc/clustershell/groups.conf.d/phoenix.conf')
   parser = get_parser()
   args = parser.parse_args()
   phoenix.setup_logging(args.verbose)
 
+  arguments = [args.state]
+  cs_nodelist = args.nodes.split(",")
+
   if args.worker == 0:
     print "We are the hierarchy caller"
     #we are being called to orchestrate a clustershell call
     #args_list = args.state
-    run_clustershell_command("/usr/bin/phoenix_power", args.state, args.nodes)
+    #run_clustershell_command("/home/muzyncj/phoenix/bin/phoenix_power", cs_nodelist, arguments)
+    run_clustershell_command("phoenix_power", cs_nodelist, arguments)
   elif args.worker == 1:
     print "We are the worker"
     #we are being called to do real work
     #TODO: change to power, _do_req will become generic
-    run_local_threaded_command(_do_req, [args.state], args.nodes)
+    run_local_threaded_command(power, cs_nodelist, arguments)
 
   rc = 0
 
