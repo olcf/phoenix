@@ -16,19 +16,22 @@ from phoenix.Node import Node
 
 import concurrent.futures
 import requests
-#only need os and inspect for debugging
+#only need os and inspect for debugging, and time
 import os
 import inspect
+import time
 
 # This is needed to turn off SSL warnings
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+
 #when we sigint a phoenix command, find all clustershell tasks and abort them
 #We might only be able to abort tasks in the local frame, unfortunately
-def phoenix_clustershell_cleanup(signal, frame):
+def phoenix_clustershell_cleanup(signal_int, frame):
   print 'sigint caught, starting cleanup!'
 
+  #print inspect.getmembers(frame)
   #this is potentially expensive, but I can't think of a better way atm
   for object_name, local_object in frame.f_locals.items():
     if isinstance(local_object, Task):
@@ -43,6 +46,21 @@ def phoenix_clustershell_cleanup(signal, frame):
 def phoenix_int_handler():
   signal.signal(signal.SIGINT, phoenix_clustershell_cleanup)
 
+#psutil is not easy to get for suse 12 without internet...
+##kill all futures then sigint to clean up clustershell threads with phoenix_clustershell_cleanup, if there are any
+#def phoenix_terminate_all(pid, future_executor):
+#
+#  future_executor.shutdown(wait=False)
+#
+#  try:
+#    parent = psutil.Process(pid)
+#  except psutil.NoSuchProcess:
+#    print "We should never be here."
+#    return
+#  children = parent.children(recursive=True) #just in case threads called threads
+#  for process in children:
+#    process.send_signal(signal.SIGINT)
+
 
 def get_parser():
   parser = argparse.ArgumentParser(prog="phoenix_power", description="Control the power of Phoenix nodes")
@@ -54,6 +72,7 @@ def get_parser():
 
 
 def _do_req(node, state):
+  #print "we at least got here"
   try:
     nodeobj = Node.find_node(node)
   except KeyError:
@@ -71,15 +90,19 @@ def _do_req(node, state):
   #have requests operate on whether or not you have certain fields
 
   if state in ['stat', 'state', 'status']:
-    response = requests.get(redfishbaseurl, verify=False, auth=auth)
-    rjson = response.json()
-    return "%s: %s" % (node, rjson['PowerState'])
+    #print redfishbaseurl
+    try:
+      response = requests.get(redfishbaseurl, verify=False, auth=auth, timeout=10)
+      rjson = response.json()
+      return "%s: %s" % (node, rjson['PowerState'])
+    except:
+      return "{0}: Unknown,Timeout".format(node)
   elif state in ['on']:
     data = { 'ResetType': 'On' }
     headers = { 'Content-Type': 'application/json' }
 
     url = "%s/%s" % (redfishbaseurl, 'Actions/ComputerSystem.Reset')
-    response = requests.post(url, verify=False, auth=auth, headers=headers, json=data)
+    response = requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=10)
 
     # Current NCs are returning a 204 - need to test if this makes sense
     # Also figure out what an error response looks like and return it
@@ -90,30 +113,29 @@ def _do_req(node, state):
 
 
 #there is nothing power specific in the following def
-def run_clustershell_command(command, cs_hostlist=[], arguments=[]):
+def run_clustershell_command(command, cs_ns, arguments=[]):
   #output of other commands will be passed up to you, you must pass it along
 
   #TODO: How do we tell whether we need to call the worker or if we have another layer of hierarchy to go through?
   #I think clustershell will take care of this for us, so we will just blindly assume we are popping out on the other side as a worker
-  arguments = " ".join([",".join(cs_hostlist), ",".join(arguments), " --worker"])
-  #print "My poor arguments: " + arguments
-
-  ns_obj = NodeSet(",".join(cs_hostlist))
+  arguments = " ".join([",".join(cs_ns), ",".join(arguments), " --worker"])
+  #print "arguments: " + arguments
 
   task = Task()
-  task.set_info("connect_timeout", 10)
-  task.set_info("command_timeout", 10)
+  #task.set_info("connect_timeout", 10)
+  #task.set_info("command_timeout", 10)
   ##TODO: acquire fanout from settings or args
   #task.set_info("fanout", 128)
   #print "Command + Arguments: " + command + " " + arguments
   shell_line = "%s %s" % (command, arguments)
-  task.shell(shell_line, nodes=ns_obj, remote=False)
-  task.run()
+  task.shell(shell_line, nodes=cs_ns, remote=False, autoclose=True, timeout=65)
+  #task.run(shell_line, nodes=cs_ns, timeout=30, remote=False, autoclose=True) #we never needed to run
+  #task.run(shell_line, nodes=cs_ns, timeout=10)
   task.join()
 
   #get output
-  for output, cs_hostlist in task.iter_buffers():
-    print '%s: %s' % (ns_obj, output)
+  for output, cs_ns in task.iter_buffers():
+    print '%s: %s' % (cs_ns, output)
 
   #It's probably safest to abort only after we've acquired all output from above
   task.abort()
@@ -126,7 +148,6 @@ def power(node, arglist=[]):
   POWWWAAAAAHH
   https://media0.giphy.com/media/Ixx5oJTLtmrgQ/giphy.gif
   """
-  #print arglist
   state = arglist[0] #the only arg is state
   #print state
   rc = _do_req(node, state)
@@ -135,24 +156,24 @@ def power(node, arglist=[]):
 
 
 #runs threaded commands on a service node
-def run_local_threaded_command(function, cs_nodelist=[], arglist=[]):
+def run_local_threaded_command(function, cs_ns, arglist=[]):
   """
   Function is the function that we will parallelize.
   arglist is a list of arguments for the function.
-  cs_hostlist is a hostlist of all nodes that we will run the function against.
+  cs_ns is a hostlist of all nodes that we will run the function against.
   """
 
+  #print "1futures?"
   rc = 0
-  #mynodes = NodeSet.fromlist([cs_nodelist])
-  #Node.load_nodes(nodeset=mynodes)
+  #mynodes = NodeSet.fromlist(cs_ns)
+  Node.load_nodes(nodeset=cs_ns)
 
-  timeout = 10
-  threads = len(cs_nodelist)
-
+  timeout = 60 #this is the futures timeout. We want requests to timeout first, than futures, then clustershell.
+  threads = len(cs_ns)
   executor = concurrent.futures.ThreadPoolExecutor(max_workers = threads, thread_name_prefix='clustershell_phoenix_worker')
 
   futurelist = []
-  for node in cs_nodelist:
+  for node in cs_ns:
     futurelist.append(executor.submit(function, node, arglist))
 
   try:
@@ -164,9 +185,11 @@ def run_local_threaded_command(function, cs_nodelist=[], arglist=[]):
       else:
         print data
   except concurrent.futures.TimeoutError:
-    print "Timeout"
+    print "Timeout on a node.".format(node)
     rc = rc + 1
-
+    #we can't kill these things without waiting for them :(
+    ##catching the exception will end the loop anyway, so let's end it all
+    #phoenix_terminate_all(os.getpid(), executor)
   return rc
 
 
@@ -178,19 +201,26 @@ if __name__ == '__main__':
   phoenix.setup_logging(args.verbose)
 
   arguments = [args.state]
-  cs_nodelist = args.nodes.split(",")
+  nodelist = args.nodes.split(",")
+  cs_ns = NodeSet.fromlist(nodelist)
+
+  for i in cs_ns:
+    print i
 
   if args.worker == 0:
     #print "We are the hierarchy caller"
     #we are being called to orchestrate a clustershell call
     #args_list = args.state
-    #run_clustershell_command("/home/muzyncj/phoenix/bin/phoenix_power", cs_nodelist, arguments)
-    run_clustershell_command("phoenix_power", cs_nodelist, arguments)
+    #run_clustershell_command("/home/muzyncj/phoenix/bin/phoenix_power", cs_ns, arguments)
+    run_clustershell_command("phoenix_power", cs_ns, arguments)
   elif args.worker == 1:
     #print "We are the worker"
     #we are being called to do real work
     #TODO: change to power, _do_req will become generic
-    run_local_threaded_command(power, cs_nodelist, arguments)
+    rc = run_local_threaded_command(power, cs_ns, arguments)
+    if rc > 0:
+      print "We timed out on {0} node(s).".format(rc)
+  #    os.kill(os.getpid(), signal.SIGINT)
 
   rc = 0
 
