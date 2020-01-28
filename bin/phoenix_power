@@ -66,6 +66,7 @@ def get_parser():
   parser = argparse.ArgumentParser(prog="phoenix_power", description="Control the power of Phoenix nodes")
   parser.add_argument('nodes', help='Nodes to control', type=str)
   parser.add_argument('state', help='Desired state', type=str)
+  parser.add_argument('--cs', '--clustershell_arg', help='Optional Clustershell args.', type=str)
   parser.add_argument('-v', '--verbose', action='count', default=0)
   parser.add_argument('-w', '--worker', action='count', default=0)
   return parser
@@ -103,13 +104,21 @@ def _do_req(node, state):
 
     url = "%s/%s" % (redfishbaseurl, 'Actions/ComputerSystem.Reset')
     response = requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=10)
+  elif state in ['off']:
+    data = { 'ResetType': 'ForceOff' }
+    headers = { 'Content-Type': 'application/json' }
+
+    url = "%s/%s" % (redfishbaseurl, 'Actions/ComputerSystem.Reset')
+    response = requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=10)
+  else:
+    return "%s Invalid Node State, ie. On, Off, Status" % (node)
 
     # Current NCs are returning a 204 - need to test if this makes sense
     # Also figure out what an error response looks like and return it
-    if response.status_code == 200 or response.status_code == 204:
-      return "%s: Ok" % node
-    else:
-      return "%s: Failed - status %d" % (node, response.status_code)
+  if response.status_code == 200 or response.status_code == 204:
+    return "%s: Ok" % node
+  else:
+    return "%s: Failed - status %d" % (node, response.status_code)
 
 
 #there is nothing power specific in the following def
@@ -118,19 +127,24 @@ def run_clustershell_command(command, cs_ns, arguments=[]):
 
   #TODO: How do we tell whether we need to call the worker or if we have another layer of hierarchy to go through?
   #I think clustershell will take care of this for us, so we will just blindly assume we are popping out on the other side as a worker
-  arguments = " ".join([",".join(cs_ns), ",".join(arguments), " --worker"])
+
+  #"%hosts" is that magic thing that makes clustershell not spawn a thread/process for every node
+  arguments = " ".join([",".join(cs_ns), ",".join(arguments), " --worker --cs %hosts"])
   #print "arguments: " + arguments
 
   task = Task()
-  #task.set_info("connect_timeout", 10)
-  #task.set_info("command_timeout", 10)
+  task.set_info("connect_timeout", 65) #I'm not sure this works
+  task.set_info("command_timeout", 65) #I'm not sure this works
   ##TODO: acquire fanout from settings or args
   #task.set_info("fanout", 128)
   #print "Command + Arguments: " + command + " " + arguments
   shell_line = "%s %s" % (command, arguments)
-  task.shell(shell_line, nodes=cs_ns, remote=False, autoclose=True, timeout=65)
-  #task.run(shell_line, nodes=cs_ns, timeout=30, remote=False, autoclose=True) #we never needed to run
+  #task.shell(shell_line, nodes=cs_ns, remote=False, autoclose=True, timeout=65)
+  task.shell(shell_line, nodes=cs_ns, remote=False, autoclose="enable_autoclose")
+  #task.shell(shell_line, nodes=cs_ns, remote=False, autoclose=True, timeout=65)
+  #task.run(shell_line, nodes=cs_ns, timeout=65, remote=False, autoclose=True)
   #task.run(shell_line, nodes=cs_ns, timeout=10)
+  task.run()
   task.join()
 
   #get output
@@ -201,16 +215,17 @@ if __name__ == '__main__':
   phoenix.setup_logging(args.verbose)
 
   arguments = [args.state]
+  #print arguments
+
   nodelist = args.nodes.split(",")
   cs_ns = NodeSet.fromlist(nodelist)
 
-  for i in cs_ns:
-    print i
+  #for i in cs_ns:
+  #  print i
 
   if args.worker == 0:
     #print "We are the hierarchy caller"
     #we are being called to orchestrate a clustershell call
-    #args_list = args.state
     #run_clustershell_command("/home/muzyncj/phoenix/bin/phoenix_power", cs_ns, arguments)
     run_clustershell_command("phoenix_power", cs_ns, arguments)
   elif args.worker == 1:
@@ -220,7 +235,6 @@ if __name__ == '__main__':
     rc = run_local_threaded_command(power, cs_ns, arguments)
     if rc > 0:
       print "We timed out on {0} node(s).".format(rc)
-  #    os.kill(os.getpid(), signal.SIGINT)
 
   rc = 0
 
