@@ -72,67 +72,40 @@ def get_parser():
   parser.add_argument('-w', '--worker', action='count', default=0)
   return parser
 
+#generic redfish request function
+#this seemed to be a good idea at first, I'm not sure this implementation met my expectations
+def _do_redfish_req(node, request_type, path="", data={}, header={}):
 
-def _do_req(node, state):
   try:
     nodeobj = Node.find_node(node)
   except KeyError:
     logging.error("Could not find node '%s'", node)
     return "%s: %s" % (node, 'UnknownNode')
 
-  # Normalize the requested state
-  state = state.lower()
-
-  redfishbaseurl = "https://%s/redfish/v1/Systems/%s" % (nodeobj['bmc'], nodeobj['redfishpath'])
-
   # XXX TODO Pull this from Phoenix
   auth = ('root', 'initial0')
 
-  #have requests operate on whether or not you have certain fields
+  url = "https://%s/redfish/v1/Systems/%s%s" % (nodeobj['bmc'], nodeobj['redfishpath'], path)
+  logging.debug("url: {0}".format(url))
 
-  if state in ['stat', 'state', 'status']:
-    logging.debug("redfishbaseurl: {0}".format(redfishbaseurl))
-    try:
-      response = requests.get(redfishbaseurl, verify=False, auth=auth, timeout=10)
-      rjson = response.json()
-      return "%s: %s" % (node, rjson['PowerState'])
-    except:
-      return "{0}: Unknown,Timeout".format(node)
-  elif state in ['on']:
-    data = { 'ResetType': 'On' }
-    headers = { 'Content-Type': 'application/json' }
-
-    url = "%s/%s" % (redfishbaseurl, 'Actions/ComputerSystem.Reset')
-    response = requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=10)
-  elif state in ['off']:
-    data = { 'ResetType': 'ForceOff' }
-    headers = { 'Content-Type': 'application/json' }
-
-    url = "%s/%s" % (redfishbaseurl, 'Actions/ComputerSystem.Reset')
-    response = requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=10)
-  elif state in ['reset', 'restart']:
-    #Since this isn't implemented in some bmcs, do we want to force off then force on?
-    data = { 'ResetType': 'ForceRestart' }
-    headers = { 'Content-Type': 'application/json' }
-
-    url = "%s/%s" % (redfishbaseurl, 'Actions/ComputerSystem.Reset')
-    response = requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=10)
-  else:
-    return "%s Invalid Node State, ie. On, Off, Restart, Status" % (node)
-
-    # Current NCs are returning a 204 - need to test if this makes sense
-    # Also figure out what an error response looks like and return it
-  if response.status_code == 200 or response.status_code == 204:
-    return "%s: Ok" % node
-  else:
-    return "%s: Failed - status %d" % (node, response.status_code)
+  try:
+    if request_type == "get":
+      response = requests.get(url, verify=False, auth=auth, timeout=10)
+    elif request_type == "post":
+      response = requests.post(url, verify=False, auth=auth, headers=header, json=data, timeout=10)
+    elif request_type == "put":
+      response = requests.put(url, verify=False, auth=auth, headers=header, json=data, timeout=10)
+    return response
+    #TODO: do more robust error checking of response in do_redfish_req
+  except:
+    return -1
 
 
 #there is nothing power specific in the following def
 def run_clustershell_command(command, cs_ns, arguments=[]):
   #output of other commands will be passed up to you, you must pass it along
 
-  #TODO: How do we tell whether we need to call the worker or if we have another layer of hierarchy to go through?
+  #How do we tell whether we need to call the worker or if we have another layer of hierarchy to go through?
   #I think clustershell will take care of this for us, so we will just blindly assume we are popping out on the other side as a worker
 
   #"%hosts" is that magic thing that makes clustershell not spawn a thread/process for every node
@@ -162,16 +135,47 @@ def run_clustershell_command(command, cs_ns, arguments=[]):
 
 #a function that gets called by run_threaded_command must accept a list of args and a list of nodes
 #TODO: have power call _do_req, and have _do_req be generic for all redfish requests
+#def _do_redfish_req(node, request_type, path="", data={}, header={}):
 def power(node, arglist=[]):
   """
   POWWWAAAAAHH
   https://media0.giphy.com/media/Ixx5oJTLtmrgQ/giphy.gif
   """
-  state = arglist[0] #the only arg is state
+  # Normalize the requested state
+  state = arglist[0].lower() #the only arg is state
   logging.debug("state: {0}".format(state))
-  rc = _do_req(node, state)
+  headers = { 'Content-Type': 'application/json' }
 
-  return rc
+  #TODO: have requests operate on whether or not you have certain fields
+  if state in ['stat', 'state', 'status']:
+    response = _do_redfish_req(node, "get")
+    rjson = response.json()
+    return "%s: %s" % (node, rjson['PowerState'])
+
+  elif state in ['on']:
+    data = { 'ResetType': 'On' }
+    path = '/Actions/ComputerSystem.Reset'
+    response = _do_redfish_req(node, "post", path, data, headers)
+  elif state in ['off']:
+    data = { 'ResetType': 'ForceOff' }
+    path = '/Actions/ComputerSystem.Reset'
+    response = _do_redfish_req(node, "post", path, data, headers)
+  #elif state in ['reset', 'restart']:
+  #  data = { 'ResetType': 'ForceRestart' }
+  #  path = 'Actions/ComputerSystem.Reset'
+  #  response = _do_redfish_req(node, "post", path, data, headers)
+  else:
+    return "%s Invalid Node State, ie. On, Off, Restart, Status" % (node)
+
+  # Current NCs are returning a 204 - need to test if this makes sense
+  # Also figure out what an error response looks like and return it
+  if response == -1:
+    return "%s: Failed - status -1 (this is a phoenix error)" % (node)
+  elif response.status_code == 200 or response.status_code == 204:
+    #TODO: this should probably be more specific
+    return "%s: Ok" % node
+  else:
+    return "%s: Failed - status %d" % (node, response.status_code)
 
 
 #runs threaded commands on a service node
