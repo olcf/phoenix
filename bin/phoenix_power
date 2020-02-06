@@ -91,7 +91,7 @@ def _do_req(node, state):
   #have requests operate on whether or not you have certain fields
 
   if state in ['stat', 'state', 'status']:
-      logging.debug("redfishbaseurl: {0}".format(redfishbaseurl))
+    logging.debug("redfishbaseurl: {0}".format(redfishbaseurl))
     try:
       response = requests.get(redfishbaseurl, verify=False, auth=auth, timeout=10)
       rjson = response.json()
