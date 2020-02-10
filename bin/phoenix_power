@@ -149,8 +149,7 @@ if __name__ == '__main__':
   #print display.line_mode
   #exit(1)
 
-  nodelist = args.nodes.split(",")
-  cs_ns = NodeSet.fromlist(nodelist)
+  cs_ns = NodeSet(args.nodes)
 
   #for i in cs_ns:
   #  print i

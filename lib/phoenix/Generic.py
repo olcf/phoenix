@@ -66,6 +66,7 @@ def run_clustershell_command(command, cs_ns, arguments=[]):
   #I think clustershell will take care of this for us, so we will just blindly assume we are popping out on the other side as a worker
 
   #"%hosts" is that magic thing that makes clustershell not spawn a thread/process for every node
+  #"%hosts" will be replaced inline with the hosts a task needs to operate on
   arguments = " ".join([",".join(cs_ns), ",".join(arguments), " --worker --cs %hosts"])
   #print "arguments: " + arguments
 
