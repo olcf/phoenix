@@ -6,6 +6,7 @@ import requests
 import phoenix
 from phoenix.Node import Node
 from ClusterShell.NodeSet import NodeSet, set_std_group_resolver_config
+from ClusterShell.Task import task_self, Task
 
 
 #when we sigint a phoenix command, find all clustershell tasks and abort them
@@ -36,14 +37,14 @@ def _do_redfish_req(node, request_type, path="", data={}, header={}):
   try:
     nodeobj = Node.find_node(node)
   except KeyError:
-    logging.error("Could not find node '%s'", node)
+    logging.error("Could not find node {0}".format(node))
     return "%s: %s" % (node, 'UnknownNode')
-
-  # XXX TODO Pull this from Phoenix
-  auth = ('root', 'initial0')
 
   url = "https://%s/redfish/v1/Systems/%s%s" % (nodeobj['bmc'], nodeobj['redfishpath'], path)
   logging.debug("url: {0}".format(url))
+
+  # XXX TODO Pull this from Phoenix
+  auth = ('root', 'initial0')
 
   try:
     if request_type == "get":
@@ -55,6 +56,7 @@ def _do_redfish_req(node, request_type, path="", data={}, header={}):
     return response
     #TODO: do more robust error checking of response in do_redfish_req
   except:
+    print "ERROR: Redfish request failed!"
     return -1
 
 
@@ -67,8 +69,8 @@ def run_clustershell_command(command, cs_ns, arguments=[]):
 
   #"%hosts" is that magic thing that makes clustershell not spawn a thread/process for every node
   #"%hosts" will be replaced inline with the hosts a task needs to operate on
-  arguments = " ".join([",".join(cs_ns), ",".join(arguments), " --worker --cs %hosts"])
-  #print "arguments: " + arguments
+  arguments = " ".join(["%hosts", ",".join(arguments), " --worker"])
+  logging.debug("arguments: {0}".format(arguments))
 
   task = Task()
   task.set_info("connect_timeout", 65) #I'm not sure this works
@@ -78,7 +80,9 @@ def run_clustershell_command(command, cs_ns, arguments=[]):
   #task.set_default("stdout_msgtree", False) #this just turns off output?
 
   logging.debug("Command + Arguments: {0} {0}".format(command, arguments))
+  print "arguments: {0}".format(arguments)
   shell_line = "%s %s" % (command, arguments)
+  logging.debug("shell_line: {0}".format(shell_line))
   task.shell(shell_line, nodes=cs_ns, remote=False, autoclose="enable_autoclose")
   task.run()
   task.join()
