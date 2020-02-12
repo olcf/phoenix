@@ -141,7 +141,8 @@ if __name__ == '__main__':
   args = parser.parse_args()
   phoenix.setup_logging(args.verbose)
 
-  arguments = [args.state]
+  verbose= "-" * (args.verbose > 0) + "v" * args.verbose 
+  arguments = [args.state, verbose]
   #print arguments
 
   #TODO: We need to create a display so we can undo that nasty summarizing stuff.

@@ -40,7 +40,7 @@ def _do_redfish_req(node, request_type, path="", data={}, header={}):
     logging.error("Could not find node {0}".format(node))
     return "%s: %s" % (node, 'UnknownNode')
 
-  url = "https://%s/redfish/v1/Systems/%s%s" % (nodeobj['bmc'], nodeobj['redfishpath'], path)
+  url = "https://{0}/redfish/v1/Systems/{1}{2}".format(nodeobj['bmc'], nodeobj['redfishpath'], path)
   logging.debug("url: {0}".format(url))
 
   # XXX TODO Pull this from Phoenix
@@ -69,7 +69,7 @@ def run_clustershell_command(command, cs_ns, arguments=[]):
 
   #"%hosts" is that magic thing that makes clustershell not spawn a thread/process for every node
   #"%hosts" will be replaced inline with the hosts a task needs to operate on
-  arguments = " ".join(["%hosts", ",".join(arguments), " --worker"])
+  arguments = " ".join(["%hosts", " ".join(arguments), " --worker"])
   logging.debug("arguments: {0}".format(arguments))
 
   task = Task()
@@ -79,8 +79,7 @@ def run_clustershell_command(command, cs_ns, arguments=[]):
   #task.set_info("fanout", 128)
   #task.set_default("stdout_msgtree", False) #this just turns off output?
 
-  logging.debug("Command + Arguments: {0} {0}".format(command, arguments))
-  print "arguments: {0}".format(arguments)
+  logging.debug("Command + Arguments: {0} {1}".format(command, arguments))
   shell_line = "%s %s" % (command, arguments)
   logging.debug("shell_line: {0}".format(shell_line))
   task.shell(shell_line, nodes=cs_ns, remote=False, autoclose="enable_autoclose")
