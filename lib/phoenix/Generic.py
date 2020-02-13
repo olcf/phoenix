@@ -86,9 +86,11 @@ def run_clustershell_command(command, cs_ns, arguments=[]):
   task.run()
   task.join()
 
-  #get output
-  for output, cs_ns in task.iter_buffers():
-    print '%s: %s' % (cs_ns, output)
+  #Our functions must append their nodename to their line.  We can not do it for them with cs
+  #cs stores one buffer per cs task, so individual nodes outputs will be mixed. (although you could do something stupid like set fanout to 1)
+  #TODO: control the output based on input flags, like sort, or group.
+  for output, returned_nodelist in task.iter_buffers():
+    print "{0}".format(output)
 
   #It's probably safest to abort only after we've acquired all output from above
   task.abort()
