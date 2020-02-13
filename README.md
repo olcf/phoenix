@@ -135,3 +135,21 @@ It supports "collecting" the results:
 	---------------
 	Linux
 
+### phoenix_power
+This utility controls and queries power status for nodes defined in phoenix.
+
+    # phoenix_power @compute status
+    nid000003-nmn: On
+    nid000004-nmn: On
+    nid000001-nmn: On
+    nid000002-nmn: Off
+
+    # phoenix_power nid000003-nmn off
+    nid000003-nmn: Ok
+
+    # phoenix_power @compute on
+    nid000003-nmn: Ok
+    nid000004-nmn: Ok
+    nid000001-nmn: Ok
+    nid000002-nmn: Ok
+
