@@ -98,42 +98,6 @@ def power(node, arglist=[]):
     return "%s: Failed - status %d" % (node, response.status_code)
 
 
-#runs threaded commands on a service node
-def run_local_threaded_command(function, cs_ns, arglist=[]):
-  """
-  Function is the function that we will parallelize.
-  arglist is a list of arguments for the function.
-  cs_ns is a hostlist of all nodes that we will run the function against.
-  """
-
-  rc = 0
-  Node.load_nodes(nodeset=cs_ns)
-
-  timeout = 60 #this is the futures timeout. We want requests to timeout first, than futures, then clustershell.
-  threads = len(cs_ns)
-  executor = concurrent.futures.ThreadPoolExecutor(max_workers = threads, thread_name_prefix='clustershell_phoenix_worker')
-
-  futurelist = []
-  for node in cs_ns:
-    futurelist.append(executor.submit(function, node, arglist))
-
-  try:
-    for future in concurrent.futures.as_completed(futurelist, timeout=timeout):
-      try:
-        data = future.result()
-      except Exception as exc:
-        print "Error: %s" % exc
-      else:
-        print data
-  except concurrent.futures.TimeoutError:
-    print "Timeout on a node.".format(node)
-    rc = rc + 1
-    #we can't kill these things without waiting for them :(
-    ##catching the exception will end the loop anyway, so let's end it all
-    #phoenix_terminate_all(os.getpid(), executor)
-  return rc
-
-
 if __name__ == '__main__':
   phoenix_int_handler()
   set_std_group_resolver_config('/etc/clustershell/groups.conf.d/phoenix.conf')
@@ -141,7 +105,7 @@ if __name__ == '__main__':
   args = parser.parse_args()
   phoenix.setup_logging(args.verbose)
 
-  verbose= "-" * (args.verbose > 0) + "v" * args.verbose 
+  verbose= "-" * (args.verbose > 0) + "v" * args.verbose
   arguments = [args.state, verbose]
   #print arguments
 

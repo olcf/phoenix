@@ -9,6 +9,22 @@ from ClusterShell.NodeSet import NodeSet, set_std_group_resolver_config
 from ClusterShell.Task import task_self, Task
 
 
+#psutil is not easy to get for suse 12 without internet...
+##kill all futures then sigint to clean up clustershell threads with phoenix_clustershell_cleanup, if there are any
+#def phoenix_terminate_all(pid, future_executor):
+#
+#  future_executor.shutdown(wait=False)
+#
+#  try:
+#    parent = psutil.Process(pid)
+#  except psutil.NoSuchProcess:
+#    print "We should never be here."
+#    return
+#  children = parent.children(recursive=True) #just in case threads called threads
+#  for process in children:
+#    process.send_signal(signal.SIGINT)
+
+
 #when we sigint a phoenix command, find all clustershell tasks and abort them
 #We might only be able to abort tasks in the local frame, unfortunately
 def phoenix_clustershell_cleanup(signal_int, frame):
