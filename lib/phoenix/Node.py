@@ -213,7 +213,8 @@ class Node(object):
 				bmc.power(self, client, args)
 			client.mark_command_complete(rc=0)
 		except Exception as e:
-			print("Got exception: %s" % e)
+                    client.output("Got exception: %s" % e, stderr=True)
+                    client.mark_command_complete(rc=1)
 
 def _load_bmc_class(bmctype):
 	classname = bmctype.lower().capitalize()

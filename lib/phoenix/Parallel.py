@@ -13,15 +13,18 @@ Calls out to Phoenix functions
 ################################################################################
 
 import random
+import sys
 import os
 import time
 import logging
 import concurrent.futures
 import threading
+import signal
 
 import phoenix
 from phoenix.Node import Node
 
+from ClusterShell.Task import Task, task_self
 from ClusterShell.NodeSet import NodeSet
 from ClusterShell.Worker.EngineClient import EngineClient
 from ClusterShell.Worker.Worker import WorkerError, DistantWorker
@@ -30,6 +33,31 @@ from ClusterShell.Event import EventHandler
 
 def getThread():
     return threading.current_thread().ident
+
+def parallel_exit(status, task=None):
+    if task:
+        task.abort()
+        task.join()
+        sys.exit(status)
+    else:
+        for stream in [sys.stdout, sys.stderr]:
+            try:
+                stream.flush()
+            except IOError:
+                pass
+        os._exit(status)
+
+def excepthook(exception_type, exception_value, traceback):
+    try:
+        raise exception_value
+    except KeyboardInterrupt as kbe:
+        print "Keyboard interrupt."
+        parallel_exit(128 + signal.SIGINT)
+    except GENERIC_ERRORS as exc:
+        parallel_exit(handle_generic_error(exc))
+
+    # Error not handled
+    task_self().default_excepthook(exception_type, exception_value, traceback)
 
 class NodeHandler(EventHandler):
 
