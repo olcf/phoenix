@@ -74,7 +74,7 @@ class PhoenixClient(EngineClient):
             self.mark_command_complete(rc=1)
         else:
             logging.info("Phoenix client starting for node %s in thread %d", self.key, getThread() )
-            self.worker.executor.submit(self.dosomething)
+            self.worker.executor.submit(self.node.run_command, self)
         finally:
             return self
 

@@ -2,6 +2,7 @@
 """Node manager"""
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
+import sys
 import logging
 from yaml import load, dump
 try:
@@ -200,3 +201,28 @@ class Node(object):
 			# Just interpolate one key in the dict
 			dest[key] = self.interpolatevalue(source[key])
 			del source[key]
+
+	def run_command(self, client):
+		try:
+			#client.output("Running command %s for node %s" % (client.command, self.attr['name']))
+			command = client.command[0]
+			args = client.command[1:]
+			if command is "power":
+				bmc = _load_bmc_class(self['bmctype'])
+				#client.output("Running command %s for node %s" % (client.command, self.attr['name']))
+				bmc.power(self, client, args)
+			client.mark_command_complete(rc=0)
+		except Exception as e:
+			print("Got exception: %s" % e)
+
+def _load_bmc_class(bmctype):
+	classname = bmctype.lower().capitalize()
+	modname = "phoenix.BMC.%s" % classname
+
+	# Iterate over a copy of sys.modules' keys to avoid RuntimeError
+	if modname.lower() not in [mod.lower() for mod in list(sys.modules)]:
+                # Import module if not yet loaded
+                __import__(modname)
+
+	# Get the class pointer
+	return getattr(sys.modules[modname], classname)
