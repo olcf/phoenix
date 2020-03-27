@@ -12,7 +12,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 class Redfish(object):
     @classmethod
     def _do_redfish_req(cls, node, request_type, path="", data={}, header={}):
-        url = "https://{0}/redfish/v1/Systems/{1}{2}".format(node['bmc'], node['redfishpath'], path)
+        url = "https://%s/redfish/v1/%s" % (node['bmc'], path)
         logging.debug("url: {0}".format(url))
 
         # XXX TODO Pull this from Phoenix
@@ -34,16 +34,17 @@ class Redfish(object):
 
         try:
             if state in ['stat', 'state', 'status']:
-                response = cls._do_redfish_req(node, "get")
+                path = 'Systems/%s' % node['redfishpath']
+                response = cls._do_redfish_req(node, "get", path)
                 rjson = response.json()
                 client.output("%s" % rjson['PowerState'])
             elif state in ['on']:
                 data = { 'ResetType': 'On' }
-                path = '/Actions/ComputerSystem.Reset'
+                path = 'Systems/%s/Actions/ComputerSystem.Reset' % node['redfishpath']
                 response = cls._do_redfish_req(node, "post", path, data, headers)
             elif state in ['off']:
                 data = { 'ResetType': 'ForceOff' }
-                path = '/Actions/ComputerSystem.Reset'
+                path = 'Systems/%s/Actions/ComputerSystem.Reset' % node['redfishpath']
                 response = cls._do_redfish_req(node, "post", path, data, headers)
             #elif state in ['reset', 'restart']:
             #  data = { 'ResetType': 'ForceRestart' }
@@ -66,3 +67,24 @@ class Redfish(object):
         else:
             return "%s: Failed - status %d" % (node, response.status_code)
 
+    @classmethod
+    def firmware(cls, node, client, args):
+        # Normalize the requested command
+        command = args[0].lower()
+
+        try:
+            if command in ['ver', 'version']:
+                # This is definitely Olympus specific - move there!
+                path = 'UpdateService/FirmwareInventory/Node%d.BIOS' % node['nodenum']
+                response = cls._do_redfish_req(node, "get", path)
+                rjson = response.json()
+                client.output(rjson['Version'])
+            elif command in ['stat', 'state', 'status']:
+                # This is definitely Olympus specific - move there!
+                path = 'UpdateService/FirmwareInventory/Node%d.BIOS' % node['nodenum']
+                response = cls._do_redfish_req(node, "get", path)
+                rjson = response.json()
+                client.output(rjson['Status']['State'])
+        except Exception as e:
+            client.output("Redfish request failed: %s" % e, stderr=True)
+            return -1

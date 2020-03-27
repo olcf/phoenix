@@ -211,6 +211,11 @@ class Node(object):
                 bmc = _load_bmc_class(self['bmctype'])
                 #client.output("Running command %s for node %s" % (client.command, self.attr['name']))
                 bmc.power(self, client, args)
+            elif command is "firmware":
+                bmc = _load_bmc_class(self['bmctype'])
+                bmc.firmware(self, client, args)
+            else:
+                client.output("Unknown command %s" % command, stderr=True)
             client.mark_command_complete(rc=0)
         except Exception as e:
                     client.output("Got exception: %s" % e, stderr=True)
