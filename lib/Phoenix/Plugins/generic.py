@@ -4,7 +4,7 @@
 
 import logging
 import re
-from phoenix.System import System
+from Phoenix.System import System
 num_regex = re.compile(r'\d+')
 logging.debug("Generic plugin compiled the num_regex")
 

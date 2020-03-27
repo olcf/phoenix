@@ -11,7 +11,7 @@ except ImportError:
     from yaml import Loader, Dumper
 
 from ClusterShell.NodeSet import NodeSet
-import phoenix
+import Phoenix
 import re
 import copy
 import ipaddress
@@ -30,7 +30,7 @@ class System(object):
     def load_config(cls, filename=None):
         """ Reads and processes the system.yaml file """
         if filename is None:
-            filename = "%s/system.yaml" % phoenix.conf_path
+            filename = "%s/system.yaml" % Phoenix.conf_path
 
         # Read the yaml file
         logging.info("Loading system file '%s'", filename)
@@ -63,7 +63,7 @@ class System(object):
     def load_groups(cls, filename=None):
         """ Reads and processes the groups.yaml file """
         if filename is None:
-            filename = "%s/groups.yaml" % phoenix.conf_path
+            filename = "%s/groups.yaml" % Phoenix.conf_path
 
         # Read the yaml file
         logging.info("Loading group file '%s'", filename)

@@ -18,8 +18,8 @@ import re
 import copy
 import importlib
 import ipaddress
-import phoenix
-from phoenix.System import System
+import Phoenix
+from Phoenix.System import System
 
 class Node(object):
     tpl_regex = re.compile(r'{{')
@@ -87,7 +87,7 @@ class Node(object):
             cls.nodes = dict()
 
         if filename is None:
-            filename = "%s/nodes.yaml" % phoenix.conf_path
+            filename = "%s/nodes.yaml" % Phoenix.conf_path
 
         # Read the yaml file
         logging.info("Loading node file '%s'", filename)
@@ -135,7 +135,7 @@ class Node(object):
     @classmethod
     def find_plugin(cls, name):
         if name not in cls.plugins:
-            cls.plugins['name'] = importlib.import_module("phoenix.Plugins.%s" % name)
+            cls.plugins['name'] = importlib.import_module("Phoenix.Plugins.%s" % name)
         return cls.plugins['name']
 
     def run_plugins(self):
@@ -218,7 +218,7 @@ class Node(object):
 
 def _load_bmc_class(bmctype):
     classname = bmctype.lower().capitalize()
-    modname = "phoenix.BMC.%s" % classname
+    modname = "Phoenix.BMC.%s" % classname
 
     # Iterate over a copy of sys.modules' keys to avoid RuntimeError
     if modname.lower() not in [mod.lower() for mod in list(sys.modules)]:

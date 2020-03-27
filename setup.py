@@ -98,7 +98,7 @@ try:
 except IndexError:
     release = '0'
 
-setup(name = 'phoenix',
+setup(name = 'Phoenix',
     version = ver[0].strip('v'),
     description = 'Phoenix provisioning tool',
     long_description = 'A set of utilities to configure, boot, and manage a cluster',
@@ -106,7 +106,7 @@ setup(name = 'phoenix',
     author_email = 'ezellma@ornl.gov',
     url = 'https://gitlab.ccs.ornl.gov/hpc-admins/phoenix',
     package_dir={'': 'lib'},
-    packages = [ 'phoenix', 'phoenix.Plugins' ],
+    packages = [ 'Phoenix', 'Phoenix.Plugins' ],
     #packages=find_packages('lib'),
     scripts = ['bin/%s' % x for x in scripts],
     cmdclass = { 'bdist_rpm': bdist_rpm_custom, 'sdist': CustomSdist, 'generate_man': GenerateMan },

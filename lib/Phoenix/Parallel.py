@@ -21,8 +21,8 @@ import concurrent.futures
 import threading
 import signal
 
-import phoenix
-from phoenix.Node import Node
+import Phoenix
+from Phoenix.Node import Node
 
 from ClusterShell.Task import Task, task_self
 from ClusterShell.NodeSet import NodeSet
