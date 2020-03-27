@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Generic Plugin run on systems/nodes without an explicit plugin defined"""
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
 import logging
 import re
@@ -14,6 +14,6 @@ def set_node_attrs(node):
     # Extract node index number from the name
     m = num_regex.findall(node['name'])
     if m is not None:
-		node['nodeindex'] = int(m[-1])
-		if len(m) > 1:
-			node['nodenums'] = [ int(x) for x in m ]
+        node['nodeindex'] = int(m[-1])
+        if len(m) > 1:
+            node['nodenums'] = [ int(x) for x in m ]
