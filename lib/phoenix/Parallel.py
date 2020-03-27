@@ -30,6 +30,9 @@ from ClusterShell.Worker.EngineClient import EngineClient
 from ClusterShell.Worker.Worker import WorkerError, DistantWorker
 from ClusterShell.Engine.Engine import E_READ, E_WRITE
 from ClusterShell.Event import EventHandler
+from ClusterShell.CLI.Display import Display
+from ClusterShell.CLI.Error import GENERIC_ERRORS, handle_generic_error
+from ClusterShell.CLI.Clush import DirectOutputHandler, DirectProgressOutputHandler, GatherOutputHandler
 
 def getThread():
     return threading.current_thread().ident
@@ -58,6 +61,46 @@ def excepthook(exception_type, exception_value, traceback):
 
     # Error not handled
     task_self().default_excepthook(exception_type, exception_value, traceback)
+
+class DisplayOptions(object):
+    def __init__(self):
+        self.diff=False
+        self.gatherall=False
+        self.gather=False
+        self.line_mode=False
+        self.label=True
+        self.regroup=False
+        self.groupsource=None
+        self.groupbase=None
+
+def setup(nodes, args):
+    sys.excepthook = excepthook
+
+    if type(nodes) is not NodeSet:
+        nodes=NodeSet(nodes)
+    task = task_self()
+
+    # Figure out the best way to pull in ExecWorker and SshWorker
+    #from ClusterShell.Worker.Exec import ExecWorker
+    #task.set_default('distant_worker', ExecWorker)
+
+    task.set_default('distant_worker', PhoenixWorker)
+    #task.set_default('fanout', 4)
+    task.set_info('fanout', args.fanout)
+    task.set_default("stderr", True)
+
+    options=DisplayOptions()
+    color = sys.stdout.isatty()
+
+    display = Display(options, None, color)
+
+    # TODO: Figure out the best way to pick a handler
+    if len(nodes) > 10:
+        handler=GatherOutputHandler(display)
+    else:
+        handler=DirectProgressOutputHandler(display)
+    handler.runtimer_init(task, len(nodes))
+    return (task, handler)
 
 class NodeHandler(EventHandler):
 
