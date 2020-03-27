@@ -9,66 +9,73 @@ import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-class Redfish(object):
+from Phoenix.BMC import BMC
+
+class RedfishError(Exception):
+    pass
+
+class Redfish(BMC):
     @classmethod
-    def _do_redfish_req(cls, node, request_type, path="", data={}, header={}):
-        url = "https://%s/redfish/v1/%s" % (node['bmc'], path)
+    def _do_redfish_req(cls, bmc, path, request_type, auth=('admin', 'password'), data={}, headers={}, timeout=(5,30)):
+        url = "https://%s/redfish/v1/%s" % (bmc, path)
         logging.debug("url: {0}".format(url))
 
-        # XXX TODO Pull this from Phoenix
-        auth = ('root', 'initial0')
-
         if request_type == "get":
-            return requests.get(url, verify=False, auth=auth, timeout=10)
+            return requests.get(url, verify=False, auth=auth, timeout=timeout)
         elif request_type == "post":
-            return requests.post(url, verify=False, auth=auth, headers=header, json=data, timeout=10)
+            return requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
         elif request_type == "put":
-            return requests.put(url, verify=False, auth=auth, headers=header, json=data, timeout=10)
-
-    @classmethod
-    def power(cls, node, client, args):
-        # Normalize the requested state
-        state = args[0].lower() #the only arg is state
-        logging.debug("state: {0}".format(state))
-        headers = { 'Content-Type': 'application/json' }
-
-        try:
-            if state in ['stat', 'state', 'status']:
-                path = 'Systems/%s' % node['redfishpath']
-                response = cls._do_redfish_req(node, "get", path)
-                rjson = response.json()
-                client.output("%s" % rjson['PowerState'])
-            elif state in ['on']:
-                data = { 'ResetType': 'On' }
-                path = 'Systems/%s/Actions/ComputerSystem.Reset' % node['redfishpath']
-                response = cls._do_redfish_req(node, "post", path, data, headers)
-            elif state in ['off']:
-                data = { 'ResetType': 'ForceOff' }
-                path = 'Systems/%s/Actions/ComputerSystem.Reset' % node['redfishpath']
-                response = cls._do_redfish_req(node, "post", path, data, headers)
-            #elif state in ['reset', 'restart']:
-            #  data = { 'ResetType': 'ForceRestart' }
-            #  path = 'Actions/ComputerSystem.Reset'
-            #  response = _do_redfish_req(node, "post", path, data, headers)
-            else:
-                client.output("Invalid requested node state (%s)" % state, stderr=True)
-                return -1
-        except Exception as e:
-            client.output("Redfish request failed: %s" % e, stderr=True)
-            return -1
-
-        # Current NCs are returning a 204 - need to test if this makes sense
-        # Also figure out what an error response looks like and return it
-        if response == -1:
-            return "%s: Failed - status -1 (this is a phoenix error)" % (node)
-        elif response.status_code == 200 or response.status_code == 204:
-            #TODO: this should probably be more specific
-            return "%s: Ok" % node
+            return requests.put(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
         else:
-            return "%s: Failed - status %d" % (node, response.status_code)
+            raise NotImplementedError("HTTP request type %s not understood" % request_type)
 
     @classmethod
-    def firmware(cls, node, client, args):
+    def _get_redfish_entity(cls, node):
+        try:
+            return node['redfishpath']
+        except KeyError:
+            return 'Self'
+
+    @classmethod
+    def _power_state(cls, node, auth=None):
+        if auth is None:
+            auth = cls._get_auth(node)
+        redfishpath = cls._get_redfish_entity(node)
+        path = 'Systems/%s' % redfishpath
+        response = cls._do_redfish_req(node['bmc'], path, "get", auth)
+        if response.status_code != 200:
+            return (False, "Redfish response returned status %d" % response.status_code)
+        rjson = response.json()
+        try:
+            state = rjson['PowerState']
+        except:
+            return (False, "Redfish response JSON does not have a PowerState attribute")
+        return (True, state)
+
+    @classmethod
+    def _redfish_computer_reset(cls, node, resettype, auth=None):
+        if auth is None:
+            auth = cls._get_auth(node)
+        redfishpath = cls._get_redfish_entity(node)
+        path = 'Systems/%s/Actions/ComputerSystem.Reset' % redfishpath
+        data = { 'ResetType': resettype }
+        headers = { 'Content-Type': 'application/json' }
+        response = cls._do_redfish_req(node['bmc'], path, "post", auth, data, headers)
+        if response.status_code not in [200, 204]:
+            return (False, "Redfish response returned status %d" % response.status_code)
+        # This usually just returns an empty body
+        return (True, "Ok")
+
+    @classmethod
+    def _power_on(cls, node, auth=None):
+        return cls._redfish_computer_reset(node, 'On', auth)
+
+    @classmethod
+    def _power_off(cls, node, auth=None):
+        return cls._redfish_computer_reset(node, 'Off', auth)
+
+    @classmethod
+    def firmware2(cls, node, client, args):
         # Normalize the requested command
         command = args[0].lower()
 
@@ -80,11 +87,38 @@ class Redfish(object):
                 rjson = response.json()
                 client.output(rjson['Version'])
             elif command in ['stat', 'state', 'status']:
-                # This is definitely Olympus specific - move there!
-                path = 'UpdateService/FirmwareInventory/Node%d.BIOS' % node['nodenum']
-                response = cls._do_redfish_req(node, "get", path)
-                rjson = response.json()
-                client.output(rjson['Status']['State'])
+                pass
         except Exception as e:
             client.output("Redfish request failed: %s" % e, stderr=True)
             return -1
+
+    @classmethod
+    def _firmware_state(cls, node, auth=None):
+        if auth is None:
+            auth = cls._get_auth(node)
+        # This is definitely Olympus specific - move there!
+        path = 'UpdateService/FirmwareInventory/Node%d.BIOS' % node['nodenum']
+        response = cls._do_redfish_req(node['bmc'], path, "get", auth)
+        if response.status_code not in [200]:
+            return(False, "Redfish response returned status %d" % response.status_code)
+        rjson = response.json()
+        try:
+            return (True, rjson['Status']['State'])
+        except:
+            return (False, "Redfish response could not be parsed")
+
+    @classmethod
+    def _firmware_version(cls, node, auth=None):
+        if auth is None:
+            auth = cls._get_auth(node)
+        # This is definitely Olympus specific - move there!
+        path = 'UpdateService/FirmwareInventory/Node%d.BIOS' % node['nodenum']
+        response = cls._do_redfish_req(node['bmc'], path, "get", auth)
+        if response.status_code not in [200]:
+            return(False, "Redfish response returned status %d" % response.status_code)
+        rjson = response.json()
+        try:
+            return (True, rjson['Version'])
+        except:
+            return (False, "Redfish response could not be parsed")
+

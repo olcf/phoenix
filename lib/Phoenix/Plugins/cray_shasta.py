@@ -49,6 +49,8 @@ def set_node_attrs(node):
         node['redfishpath'] = 'Node%d' % node['nodenum']
         node['bmctype'] = 'redfish'
         node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
+        node['bmcuser'] = 'root'
+        node['bmcpassword'] = 'initial0'
         # XXX This is a poor assumption, make configurable
         node['hsngroup'] = (node['racknum'] % 1000) + 1
         node['hsnswitch'] = _hsnswitchname(node['racknum'], node['chassis'], node['board'])

@@ -54,10 +54,6 @@ class Node(object):
         if key in self.attr:
             return self.attr[key]
         if key not in self.rawattr:
-            #return key
-            print "Did not find key %s" % key
-            print self.attr
-            print self.rawattr
             raise KeyError
         #self.attr[key] = self.interpolate(key)
         self.interpolate(key)
@@ -209,16 +205,16 @@ class Node(object):
             args = client.command[1:]
             if command is "power":
                 bmc = _load_bmc_class(self['bmctype'])
-                #client.output("Running command %s for node %s" % (client.command, self.attr['name']))
-                bmc.power(self, client, args)
+                rc = bmc.power(self, client, args)
             elif command is "firmware":
                 bmc = _load_bmc_class(self['bmctype'])
-                bmc.firmware(self, client, args)
+                rc = bmc.firmware(self, client, args)
             else:
                 client.output("Unknown command %s" % command, stderr=True)
-            client.mark_command_complete(rc=0)
+                rc = 1
+            client.mark_command_complete(rc=rc)
         except Exception as e:
-                    client.output("Got exception: %s" % e, stderr=True)
+                    client.output("Got exception: %s - %s" % (str(e), e.args), stderr=True)
                     client.mark_command_complete(rc=1)
 
 def _load_bmc_class(bmctype):
