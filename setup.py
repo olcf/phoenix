@@ -98,7 +98,7 @@ try:
 except IndexError:
     release = '0'
 
-setup(name = 'Phoenix',
+setup(name = 'phoenix',
     version = ver[0].strip('v'),
     description = 'Phoenix provisioning tool',
     long_description = 'A set of utilities to configure, boot, and manage a cluster',
