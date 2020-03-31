@@ -201,16 +201,21 @@ class Node(object):
     def run_command(self, client):
         try:
             #client.output("Running command %s for node %s" % (client.command, self.attr['name']))
-            command = client.command[0]
-            args = client.command[1:]
-            if command is "power":
+            if isinstance(client.command, list):
+                command = client.command[0]
+                args = client.command[1:]
+            else:
+                command_parts = client.command.split()
+                command = command_parts[0]
+                args = command_parts[1:]
+            if command == "power":
                 bmc = _load_bmc_class(self['bmctype'])
                 rc = bmc.power(self, client, args)
-            elif command is "firmware":
+            elif command == "firmware":
                 bmc = _load_bmc_class(self['bmctype'])
                 rc = bmc.firmware(self, client, args)
             else:
-                client.output("Unknown command %s" % command, stderr=True)
+                client.output("Unknown command '%s'" % command, stderr=True)
                 rc = 1
             client.mark_command_complete(rc=rc)
         except Exception as e:
