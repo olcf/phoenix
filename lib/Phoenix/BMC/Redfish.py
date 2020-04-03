@@ -41,8 +41,7 @@ class Redfish(BMC):
         if auth is None:
             auth = cls._get_auth(node)
         redfishpath = cls._get_redfish_entity(node)
-        path = 'Systems/%s' % redfishpath
-        response = cls._do_redfish_req(node['bmc'], path, "get", auth)
+        response = cls._do_redfish_req(node['bmc'], redfishpath, "get", auth)
         if response.status_code != 200:
             return (False, "Redfish response returned status %d" % response.status_code)
         rjson = response.json()
@@ -53,11 +52,14 @@ class Redfish(BMC):
         return (True, state)
 
     @classmethod
-    def _redfish_computer_reset(cls, node, resettype, auth=None):
+    def _redfish_reset(cls, node, resettype, auth=None):
         if auth is None:
             auth = cls._get_auth(node)
         redfishpath = cls._get_redfish_entity(node)
-        path = 'Systems/%s/Actions/ComputerSystem.Reset' % redfishpath
+        if "Chassis" in redfishpath:
+            path = '%s/Actions/Chassis.Reset' % redfishpath
+        else:
+            path = '%s/Actions/ComputerSystem.Reset' % redfishpath
         data = { 'ResetType': resettype }
         headers = { 'Content-Type': 'application/json' }
         response = cls._do_redfish_req(node['bmc'], path, "post", auth, data, headers)
@@ -68,11 +70,11 @@ class Redfish(BMC):
 
     @classmethod
     def _power_on(cls, node, auth=None):
-        return cls._redfish_computer_reset(node, 'On', auth)
+        return cls._redfish_reset(node, 'On', auth)
 
     @classmethod
     def _power_off(cls, node, auth=None):
-        return cls._redfish_computer_reset(node, 'Off', auth)
+        return cls._redfish_reset(node, 'Off', auth)
 
     @classmethod
     def firmware2(cls, node, client, args):

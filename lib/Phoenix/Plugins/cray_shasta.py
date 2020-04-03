@@ -46,7 +46,7 @@ def set_node_attrs(node):
         pass
 
     if node['type'] == 'compute':
-        node['redfishpath'] = 'Node%d' % node['nodenum']
+        node['redfishpath'] = 'Systems/Node%d' % node['nodenum']
         node['bmctype'] = 'redfish'
         node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
         node['bmcuser'] = 'root'
@@ -57,9 +57,11 @@ def set_node_attrs(node):
         node['hsnmac'] = _hsnalgomac(node['hsngroup'], _hsnswitchnum(node['chassis'], node['board']), colorado_map[node['slot']][node['nodenum']])
 
     elif node['type'] == 'nc':
-        node['redfishpath'] = 'Blade%d' % node['slot']
+        node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
         node['bmctype'] = 'redfish'
         node['bmc'] = "x{racknum}c{chassis}".format(**node.attr)
+        node['bmcuser'] = 'root'
+        node['bmcpassword'] = 'initial0'
         node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
         node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
 
@@ -68,9 +70,11 @@ def set_node_attrs(node):
         node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0)
 
     elif node['type'] == 'switch':
-        node['redfishpath'] = 'Perif%d' % node['slot']
+        node['redfishpath'] = 'Chassis/Perif%d' % node['slot']
         node['bmctype'] = 'redfish'
         node['bmc'] = "x{racknum}c{chassis}".format(**node.attr)
+        node['bmcuser'] = 'root'
+        node['bmcpassword'] = 'initial0'
         node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0)
         node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0)
 
