@@ -5,6 +5,8 @@
 import logging
 import requests
 
+from Phoenix.BMC import BMCTimeoutError
+
 # This is needed to turn off SSL warnings
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -20,14 +22,17 @@ class Redfish(BMC):
         url = "https://%s/redfish/v1/%s" % (bmc, path)
         logging.debug("url: {0}".format(url))
 
-        if request_type == "get":
-            return requests.get(url, verify=False, auth=auth, timeout=timeout)
-        elif request_type == "post":
-            return requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
-        elif request_type == "put":
-            return requests.put(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
-        else:
-            raise NotImplementedError("HTTP request type %s not understood" % request_type)
+        try:
+            if request_type == "get":
+                return requests.get(url, verify=False, auth=auth, timeout=timeout)
+            elif request_type == "post":
+                return requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
+            elif request_type == "put":
+                return requests.put(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
+            else:
+                raise NotImplementedError("HTTP request type %s not understood" % request_type)
+        except requests.ConnectTimeout as e:
+            raise BMCTimeoutError(e)
 
     @classmethod
     def _get_redfish_entity(cls, node):

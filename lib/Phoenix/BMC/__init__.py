@@ -5,6 +5,9 @@
 import time # for sleep in reset - eventually remove
 import logging
 
+class BMCTimeoutError(Exception):
+        pass
+
 class BMC(object):
     @classmethod
     def _get_auth(cls, node):
