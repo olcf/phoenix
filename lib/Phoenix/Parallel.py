@@ -84,7 +84,8 @@ def setup(nodes, args):
     #from ClusterShell.Worker.Exec import ExecWorker
     #task.set_default('distant_worker', ExecWorker)
 
-    task.set_default('distant_worker', PhoenixWorker)
+    task.set_default('local_worker', PhoenixWorker)
+    task.set_default('local_workername', 'phoenix')
     #task.set_default('fanout', 4)
     task.set_info('fanout', args.fanout)
     task.set_default("stderr", True)
@@ -103,17 +104,11 @@ def setup(nodes, args):
     return (task, handler)
 
 class NodeHandler(EventHandler):
-
     def __init__(self, client, node):
         self.node = node
         self.client = client
         self.count = 0
         EventHandler.__init__(self)
-
-    def ev_timer(self, timer):
-        logging.debug("Timer %d fired for node %s in thread %d", self.count, self.node, getThread())
-        self.count = self.count + 1
-        self.client.worker.executor.submit(self.client.dosomething)
 
 class PhoenixClient(EngineClient):
 
@@ -263,5 +258,8 @@ class PhoenixWorker(DistantWorker):
         for client in self._clients:
             client.abort()
         self.executor.shutdown(wait=False)
+
+    def set_write_eof(self):
+        pass
 
 WORKER_CLASS = PhoenixWorker

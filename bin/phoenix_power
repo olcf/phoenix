@@ -30,7 +30,8 @@ if __name__ == '__main__':
     nodes = NodeSet(args.nodes)
 
     (task, handler) = Phoenix.Parallel.setup(nodes, args)
-    task.shell(["power"] + [args.action] + [args.arguments], nodes=nodes, handler=handler, autoclose=False)
+    cmd = "power %s" % (args.action)
+    task.shell(cmd, nodes=nodes, handler=handler, autoclose=False, stdin=False, tree=True, remote=False)
     task.resume()
 
     sys.exit(0)
