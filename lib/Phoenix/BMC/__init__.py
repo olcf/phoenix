@@ -51,7 +51,7 @@ class BMC(object):
                 client.output("Invalid requested node state command (%s)" % command, stderr=True)
                 return -1
         except Exception as e:
-            client.output("Redfish request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
+            client.output("Power request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
             return -1
 
     @classmethod
@@ -89,7 +89,7 @@ class BMC(object):
                 client.output(state, stderr = not ok)
                 return 0 if ok else 1
         except Exception as e:
-            client.output("Redfish request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
+            client.output("Firmware request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
             return -1
 
     @classmethod
