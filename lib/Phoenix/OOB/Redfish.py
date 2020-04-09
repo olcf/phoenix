@@ -5,18 +5,18 @@
 import logging
 import requests
 
-from Phoenix.BMC import BMCTimeoutError
+from Phoenix.OOB import OOBTimeoutError
 
 # This is needed to turn off SSL warnings
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-from Phoenix.BMC import BMC
+from Phoenix.OOB import OOB
 
 class RedfishError(Exception):
     pass
 
-class Redfish(BMC):
+class Redfish(OOB):
     @classmethod
     def _do_redfish_req(cls, bmc, path, request_type, auth=('admin', 'password'), data={}, headers={}, timeout=(5,30)):
         url = "https://%s/redfish/v1/%s" % (bmc, path)
@@ -32,7 +32,7 @@ class Redfish(BMC):
             else:
                 raise NotImplementedError("HTTP request type %s not understood" % request_type)
         except requests.ConnectTimeout as e:
-            raise BMCTimeoutError(e)
+            raise OOBTimeoutError(e)
 
     @classmethod
     def _get_redfish_entity(cls, node):

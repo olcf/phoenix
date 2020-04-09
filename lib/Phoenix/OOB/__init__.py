@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-"""Generic BMC Functions"""
+"""Generic Out-Of-Band Functions"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
 import time # for sleep in reset - eventually remove
 import logging
 
-class BMCTimeoutError(Exception):
+class OOBTimeoutError(Exception):
         pass
 
-class BMC(object):
+class OOB(object):
     @classmethod
     def _get_auth(cls, node):
         try:
@@ -102,3 +102,10 @@ class BMC(object):
     @classmethod
     def _firmware_state(cls, node):
         raise NotImplementedError
+
+class BMC(OOB):
+    pass
+
+class PDU(OOB):
+    pass
+

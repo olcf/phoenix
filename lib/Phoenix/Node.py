@@ -224,7 +224,7 @@ class Node(object):
 
 def _load_bmc_class(bmctype):
     classname = bmctype.lower().capitalize()
-    modname = "Phoenix.BMC.%s" % classname
+    modname = "Phoenix.OOB.%s" % classname
 
     # Iterate over a copy of sys.modules' keys to avoid RuntimeError
     if modname.lower() not in [mod.lower() for mod in list(sys.modules)]:
