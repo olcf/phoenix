@@ -42,7 +42,7 @@ class Redfish(OOB):
         try:
             return node['redfishpath']
         except KeyError:
-            return 'Self'
+            return 'Systems/Self'
 
     @classmethod
     def _power_state(cls, node, auth=None):
