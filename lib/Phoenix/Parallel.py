@@ -80,13 +80,7 @@ def setup(nodes, args):
         nodes=NodeSet(nodes)
     task = task_self()
 
-    # Figure out the best way to pull in ExecWorker and SshWorker
-    #from ClusterShell.Worker.Exec import ExecWorker
-    #task.set_default('distant_worker', ExecWorker)
-
-    task.set_default('local_worker', PhoenixWorker)
-    task.set_default('local_workername', 'phoenix')
-    #task.set_default('fanout', 4)
+    task.set_info('local_workername', 'Phoenix.Parallel')
     task.set_info('fanout', args.fanout)
     task.set_default("stderr", True)
 
