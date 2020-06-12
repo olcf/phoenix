@@ -70,11 +70,24 @@ def set_node_attrs(node):
         node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0)
 
     elif node['type'] == 'switch':
-        node['redfishpath'] = 'Chassis/Perif%d' % node['slot']
+        node['switchtype'] = 'slingshot'
+        if 'switchmodel' not in node:
+            racknum = node['racknum']
+            # This is based on 2020 product availability and naming convention
+            if (racknum >= 1000 and racknum < 3000) or racknum >= 9000:
+                node['switchmodel'] = 'colorado'
+            else:
+                node['switchmodel'] = 'columbia'
+        node['redfishpath'] = 'Chassis/Enclosure'
         node['bmctype'] = 'redfish'
-        node['bmc'] = "x{racknum}c{chassis}".format(**node.attr)
+        node['bmc'] = node['name'] # Technically this is a switch controller
         node['bmcuser'] = 'root'
         node['bmcpassword'] = 'initial0'
+        if node['switchmodel'] is 'colorado':
+            node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
+            node['pduuser'] = 'root'
+            node['pdupassword'] = 'initial0'
+            node['pduredfishpath'] = 'Chassis/Perif%d' % node['slot']
         node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0)
         node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0)
 
