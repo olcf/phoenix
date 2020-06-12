@@ -47,6 +47,7 @@ def set_node_attrs(node):
 
     if node['type'] == 'compute':
         node['redfishpath'] = 'Systems/Node%d' % node['nodenum']
+        node['firmware_name'] = 'Node%d.BIOS' % node['nodenum']
         node['bmctype'] = 'redfish'
         node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
         node['bmcuser'] = 'root'

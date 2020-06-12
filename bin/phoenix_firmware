@@ -31,6 +31,8 @@ if __name__ == '__main__':
 
     (task, handler) = Phoenix.Parallel.setup(nodes, args)
     cmd = "firmware %s" % (args.action)
+    if args.arguments:
+        cmd = "%s %s" % (cmd, args.arguments)
     task.shell(cmd, nodes=nodes, handler=handler, autoclose=False, stdin=False, tree=True, remote=False)
     task.resume()
 

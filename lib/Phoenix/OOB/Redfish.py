@@ -20,19 +20,22 @@ class Redfish(OOB):
     @classmethod
     def _do_redfish_req(cls, bmc, path, request_type, auth=('admin', 'password'), data={}, headers={}, timeout=(5,30)):
         url = "https://%s/redfish/v1/%s" % (bmc, path)
-        logging.debug("url: {0}".format(url))
+        logging.debug("Making %s request to %s" % (request_type, url))
 
         try:
             if request_type == "get":
-                return requests.get(url, verify=False, auth=auth, timeout=timeout)
+                response = requests.get(url, verify=False, auth=auth, timeout=timeout)
             elif request_type == "post":
-                return requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
+                response = requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
             elif request_type == "put":
-                return requests.put(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
+                response = requests.put(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
             else:
                 raise NotImplementedError("HTTP request type %s not understood" % request_type)
         except requests.ConnectTimeout as e:
             raise OOBTimeoutError(e)
+        
+        logging.debug(response.text)
+        return response
 
     @classmethod
     def _get_redfish_entity(cls, node):
@@ -82,48 +85,36 @@ class Redfish(OOB):
         return cls._redfish_reset(node, 'Off', auth)
 
     @classmethod
-    def firmware2(cls, node, client, args):
-        # Normalize the requested command
-        command = args[0].lower()
-
-        try:
-            if command in ['ver', 'version']:
-                # This is definitely Olympus specific - move there!
-                path = 'UpdateService/FirmwareInventory/Node%d.BIOS' % node['nodenum']
-                response = cls._do_redfish_req(node, "get", path)
-                rjson = response.json()
-                client.output(rjson['Version'])
-            elif command in ['stat', 'state', 'status']:
-                pass
-        except Exception as e:
-            client.output("Redfish request failed: %s" % e, stderr=True)
-            return -1
-
-    @classmethod
-    def _firmware_state(cls, node, auth=None):
+    def _firmware_query(cls, node, fwtype=None, auth=None):
         if auth is None:
             auth = cls._get_auth(node)
-        # This is definitely Olympus specific - move there!
-        path = 'UpdateService/FirmwareInventory/Node%d.BIOS' % node['nodenum']
+        if fwtype is None:
+            try:
+                fwtype = node['firmware_name']
+            except KeyError:
+                fwtype = 'BIOS'
+        path = 'UpdateService/FirmwareInventory/%s' % fwtype
+        logging.debug(path)
         response = cls._do_redfish_req(node['bmc'], path, "get", auth)
+        logging.debug(response.text)
         if response.status_code not in [200]:
             return(False, "Redfish response returned status %d" % response.status_code)
-        rjson = response.json()
+        try:
+            return response.json()
+        except:
+            return (False, "Redfish response could not be parsed")
+
+    @classmethod
+    def _firmware_state(cls, node, fwtype=None, auth=None):
+        rjson = cls._firmware_query(node, fwtype=fwtype, auth=auth)
         try:
             return (True, rjson['Status']['State'])
         except:
             return (False, "Redfish response could not be parsed")
 
     @classmethod
-    def _firmware_version(cls, node, auth=None):
-        if auth is None:
-            auth = cls._get_auth(node)
-        # This is definitely Olympus specific - move there!
-        path = 'UpdateService/FirmwareInventory/Node%d.BIOS' % node['nodenum']
-        response = cls._do_redfish_req(node['bmc'], path, "get", auth)
-        if response.status_code not in [200]:
-            return(False, "Redfish response returned status %d" % response.status_code)
-        rjson = response.json()
+    def _firmware_version(cls, node, fwtype=None, auth=None):
+        rjson = cls._firmware_query(node, fwtype=fwtype, auth=auth)
         try:
             return (True, rjson['Version'])
         except:

@@ -77,18 +77,22 @@ class OOB(object):
     def firmware(cls, node, client, args):
         # Normalize the requested command
         command = args[0].lower()
+        try:
+            fwtype = args[1]
+        except IndexError:
+            fwtype = None
 
         try:
             if command in ['ver', 'version']:
-                (ok, state) = cls._firmware_version(node, cls._get_auth(node))
+                (ok, state) = cls._firmware_version(node, fwtype=fwtype, auth=cls._get_auth(node))
                 client.output(state, stderr = not ok)
                 return 0 if ok else 1
             elif command in ['stat', 'state', 'status']:
-                (ok, state) = cls._firmware_state(node, cls._get_auth(node))
+                (ok, state) = cls._firmware_state(node, fwtype=fwtype, auth=cls._get_auth(node))
                 client.output(state, stderr = not ok)
                 return 0 if ok else 1
             elif command in ['update', 'upgrade']:
-                (ok, state) = cls._firmware_upgrade(node, cls._get_auth(node))
+                (ok, state) = cls._firmware_upgrade(node, fwtype=fwtype, auth=cls._get_auth(node))
                 client.output(state, stderr = not ok)
                 return 0 if ok else 1
         except Exception as e:
