@@ -80,6 +80,9 @@ def setup(nodes, args):
         nodes=NodeSet(nodes)
     task = task_self()
 
+    task.set_default('local_worker', PhoenixWorker)
+    # Defaults are not sent to gateways, but info is.
+    # https://github.com/cea-hpc/clustershell/pull/439
     task.set_info('local_workername', 'Phoenix.Parallel')
     task.set_info('fanout', args.fanout)
     task.set_default("stderr", True)
