@@ -66,17 +66,15 @@ This file provides per-node details.  Values can use `jinja2` to interpolate or 
 	mycluster128:
 	  image: compute_testing
 
-### ClusterShell configuration
-Configure the `phoenix` group provider in `/etc/clustershell/groups.conf.d/phoenix.conf`:
-
-	[phoenix]
-	map: phoenix_group $GROUP
-	list: phoenix_group --list --bare
-
-Set the default group source plugin to be `phoenix` in `/etc/clustershell/groups.conf`:
+### Native ClusterShell tool configuration
+Internally, Phoenix uses the groups.yaml for group resolution. If you want to use the native ClusterShell tools (`clush`, `cluset`, etc.), then you need to setup ClusterShell to use the `phoenix` group provider (installed by the RPM at `/etc/clustershell/groups.conf.d/phoenix.conf`). Set the default group source plugin to be `phoenix` in `/etc/clustershell/groups.conf`:
 
 	[Main]
 	default: phoenix
+
+Alternatively, the `phoenix` group provider can be manually specified on the command line by prefixing the group name with `phoenix:`
+
+	clush -w @phoenix:compute hostname
 
 ## Command Line Tools
 ### phoenix_node

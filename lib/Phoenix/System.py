@@ -11,6 +11,7 @@ except ImportError:
     from yaml import Loader, Dumper
 
 from ClusterShell.NodeSet import NodeSet
+from ClusterShell.NodeUtils import GroupSource
 import Phoenix
 import re
 import copy
@@ -83,3 +84,13 @@ class System(object):
         if not cls.loaded_groups:
             cls.load_groups()
         return sorted(cls.groups.keys())
+
+class PhoenixGroupSource(GroupSource):
+    def __init__(self):
+        self.name = 'phoenix'
+
+    def resolv_map(self, group):
+        return System.find_group(group)
+
+    def resolv_list(self):
+        return System.list_groups()
