@@ -89,6 +89,7 @@ def set_node_attrs(node):
             node['pduuser'] = 'root'
             node['pdupassword'] = 'initial0'
             node['pduredfishpath'] = 'Chassis/Perif%d' % node['slot']
+        node['firmware_name'] = 'BMC'
         node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0)
         node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0)
 
