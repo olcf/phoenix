@@ -56,7 +56,7 @@ class Redfish(OOB):
             for attrpath in attr:
                 value = value[attrpath]
         except:
-            return (False, "Redfish response JSON does not have attribute' %s'" % attr)
+            return (False, "Redfish response JSON does not have attribute '%s'" % attr)
         return (True, value)
 
     @classmethod
