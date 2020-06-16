@@ -19,6 +19,7 @@ class RedfishError(Exception):
 class Redfish(OOB):
     @classmethod
     def _do_redfish_req(cls, bmc, path, request_type, auth=('admin', 'password'), data={}, headers={}, timeout=(5,30)):
+        """A simple redfish request - returns a requests response"""
         url = "https://%s/redfish/v1/%s" % (bmc, path)
         logging.debug("Making %s request to %s" % (request_type, url))
 
@@ -38,7 +39,29 @@ class Redfish(OOB):
         return response
 
     @classmethod
-    def _get_redfish_entity(cls, node):
+    def _get_redfish_attribute(cls, node, path, attr, status_codes=None, request_type="get", auth=None):
+        """A simple redfish request - returns a string with the requested attribute
+           attr can be an array of nested paths, or a dot-separated path
+           status_codes is an array of acceptable status codes
+           """
+        if auth is None:
+            auth = cls._get_auth(node)
+        response = cls._do_redfish_req(node['bmc'], path, request_type, auth)
+        if status_codes is not None and response.status_code not in status_codes:
+            return (False, "Redfish response returned status %d" % response.status_code)
+        value = response.json()
+        if type(attr) is not list:
+            attr = attr.split('.')
+        try:
+            for attrpath in attr:
+                value = value[attrpath]
+        except:
+            return (False, "Redfish response JSON does not have attribute' %s'" % attr)
+        return (True, value)
+
+    @classmethod
+    def _redfish_path_system(cls, node):
+        """Determine the best path the the System entry"""
         try:
             return node['redfishpath']
         except KeyError:
@@ -46,24 +69,14 @@ class Redfish(OOB):
 
     @classmethod
     def _power_state(cls, node, auth=None):
-        if auth is None:
-            auth = cls._get_auth(node)
-        redfishpath = cls._get_redfish_entity(node)
-        response = cls._do_redfish_req(node['bmc'], redfishpath, "get", auth)
-        if response.status_code != 200:
-            return (False, "Redfish response returned status %d" % response.status_code)
-        rjson = response.json()
-        try:
-            state = rjson['PowerState']
-        except:
-            return (False, "Redfish response JSON does not have a PowerState attribute")
-        return (True, state)
+        redfishpath = cls._redfish_path_system(node)
+        return cls._get_redfish_attribute(node, redfishpath, 'PowerState', status_codes=[200], auth=auth)
 
     @classmethod
     def _redfish_reset(cls, node, resettype, auth=None):
         if auth is None:
             auth = cls._get_auth(node)
-        redfishpath = cls._get_redfish_entity(node)
+        redfishpath = cls.y_redfish_path_system(node)
         if "Chassis" in redfishpath:
             path = '%s/Actions/Chassis.Reset' % redfishpath
         else:
@@ -85,38 +98,22 @@ class Redfish(OOB):
         return cls._redfish_reset(node, 'Off', auth)
 
     @classmethod
-    def _firmware_query(cls, node, fwtype=None, auth=None):
-        if auth is None:
-            auth = cls._get_auth(node)
+    def _redfish_path_firmware(cls, node, fwtype=None):
+        """Determine the best path to the Firmware entries"""
         if fwtype is None:
             try:
                 fwtype = node['firmware_name']
             except KeyError:
                 fwtype = 'BIOS'
-        path = 'UpdateService/FirmwareInventory/%s' % fwtype
-        logging.debug(path)
-        response = cls._do_redfish_req(node['bmc'], path, "get", auth)
-        logging.debug(response.text)
-        if response.status_code not in [200]:
-            return(False, "Redfish response returned status %d" % response.status_code)
-        try:
-            return response.json()
-        except:
-            return (False, "Redfish response could not be parsed")
+        return 'UpdateService/FirmwareInventory/%s' % fwtype
 
     @classmethod
     def _firmware_state(cls, node, fwtype=None, auth=None):
-        rjson = cls._firmware_query(node, fwtype=fwtype, auth=auth)
-        try:
-            return (True, rjson['Status']['State'])
-        except:
-            return (False, "Redfish response could not be parsed")
+        path = cls._redfish_path_firmware(node, fwtype)
+        return cls._get_redfish_attribute(node, path, ['Status', 'State'], auth=auth)
 
     @classmethod
     def _firmware_version(cls, node, fwtype=None, auth=None):
-        rjson = cls._firmware_query(node, fwtype=fwtype, auth=auth)
-        try:
-            return (True, rjson['Version'])
-        except:
-            return (False, "Redfish response could not be parsed")
+        path = cls._redfish_path_firmware(node, fwtype)
+        return cls._get_redfish_attribute(node, path, ['Version'], auth=auth)
 
