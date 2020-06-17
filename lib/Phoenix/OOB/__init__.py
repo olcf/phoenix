@@ -113,7 +113,7 @@ class OOB(object):
             (ok, state) = cls._inventory(node, args)
             client.output(state, stderr = not ok)
             return 0 if ok else 1
-        except:
+        except Exception as e:
             client.output("Inventory request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
             return -1
 
