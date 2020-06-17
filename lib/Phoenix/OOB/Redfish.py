@@ -57,7 +57,7 @@ class Redfish(OOB):
                 value = value[attrpath]
         except:
             return (False, "Redfish response JSON does not have attribute '%s'" % attr)
-        return (True, value)
+        return (True, str(value))
 
     @classmethod
     def _redfish_path_system(cls, node):
