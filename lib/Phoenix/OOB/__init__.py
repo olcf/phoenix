@@ -107,6 +107,20 @@ class OOB(object):
     def _firmware_state(cls, node):
         raise NotImplementedError
 
+    @classmethod
+    def inventory(cls, node, client, args):
+        try:
+            (ok, state) = cls._inventory(node, args)
+            client.output(state, stderr = not ok)
+            return 0 if ok else 1
+        except:
+            client.output("Inventory request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
+            return -1
+
+    @classmethod
+    def _inventory(cls, node):
+        raise NotImplementedError
+
 class BMC(OOB):
     pass
 

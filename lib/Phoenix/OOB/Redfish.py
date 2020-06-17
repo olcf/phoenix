@@ -76,7 +76,7 @@ class Redfish(OOB):
     def _redfish_reset(cls, node, resettype, auth=None):
         if auth is None:
             auth = cls._get_auth(node)
-        redfishpath = cls.y_redfish_path_system(node)
+        redfishpath = cls._redfish_path_system(node)
         if "Chassis" in redfishpath:
             path = '%s/Actions/Chassis.Reset' % redfishpath
         else:
@@ -117,3 +117,28 @@ class Redfish(OOB):
         path = cls._redfish_path_firmware(node, fwtype)
         return cls._get_redfish_attribute(node, path, ['Version'], auth=auth)
 
+    inventory_map = {
+        'mac': ('EthernetInterfaces/ManagementEthernet', 'MACAddress'),
+        'ram': ('', 'MemorySummary.TotalSystemMemoryGiB'),
+        'proccount': ('', 'ProcessorSummary.Count'),
+        'proctype': ('', 'ProcessorSummary.Model'),
+        }
+
+    @classmethod
+    def _inventory(cls, node, args):
+        systempath = cls._redfish_path_system(node)
+        if len(args) == 0:
+            return (True, 'Summary is not currently supported')
+        elif len(args) == 1:
+            try:
+                invitem = cls.inventory_map[args[0]]
+                itempath = invitem[0]
+                attr = invitem[1]
+            except KeyError:
+                return (False, "Unknown inventory item '%s'" % args[0])
+        else:
+            itempath = args[0]
+            attr = args[1]
+
+        path = '%s/%s' % (systempath, itempath)
+        return cls._get_redfish_attribute(node, path, attr)

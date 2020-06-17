@@ -214,6 +214,9 @@ class Node(object):
             elif command == "firmware":
                 bmc = _load_bmc_class(self['bmctype'])
                 rc = bmc.firmware(self, client, args)
+            elif command == "inventory":
+                bmc = _load_bmc_class(self['bmctype'])
+                rc = bmc.inventory(self, client, args)
             else:
                 client.output("Unknown command '%s'" % command, stderr=True)
                 rc = 1
