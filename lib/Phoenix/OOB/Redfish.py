@@ -95,7 +95,7 @@ class Redfish(OOB):
 
     @classmethod
     def _power_off(cls, node, auth=None):
-        return cls._redfish_reset(node, 'Off', auth)
+        return cls._redfish_reset(node, 'ForceOff', auth)
 
     @classmethod
     def _redfish_path_firmware(cls, node, fwtype=None):
