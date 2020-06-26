@@ -25,23 +25,20 @@ class OOB(object):
         try:
             if command in ['stat', 'state', 'status', 'query']:
                 (ok, state) = cls._power_state(node, cls._get_auth(node))
-                client.output(state, stderr = not ok)
+                client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['on']:
                 (ok,state) = cls._power_on(node, cls._get_auth(node))
-                if ok:
-                    client.output("Ok")
+                client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['off']:
-                ok = cls._power_off(node, cls._get_auth(node))
-                if ok:
-                    client.output("Ok")
+                (ok, state) = cls._power_off(node, cls._get_auth(node))
+                client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['reset', 'restart']:
                 try:
-                    ok = cls._power_reset(node, cls._get_auth(node))
-                    if ok:
-                        client.output("Ok")
+                    (ok, state) = cls._power_reset(node, cls._get_auth(node))
+                    client.output(state, stderr=not ok)
                     return 0 if ok else 1
                 except NotImplementedError:
                     # Fix to use off '--wait' instead of an arbitrary sleep
@@ -85,15 +82,15 @@ class OOB(object):
         try:
             if command in ['ver', 'version']:
                 (ok, state) = cls._firmware_version(node, fwtype=fwtype, auth=cls._get_auth(node))
-                client.output(state, stderr = not ok)
+                client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['stat', 'state', 'status']:
                 (ok, state) = cls._firmware_state(node, fwtype=fwtype, auth=cls._get_auth(node))
-                client.output(state, stderr = not ok)
+                client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['update', 'upgrade']:
                 (ok, state) = cls._firmware_upgrade(node, fwtype=fwtype, auth=cls._get_auth(node))
-                client.output(state, stderr = not ok)
+                client.output(state, stderr=not ok)
                 return 0 if ok else 1
         except Exception as e:
             client.output("Firmware request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
@@ -111,7 +108,7 @@ class OOB(object):
     def inventory(cls, node, client, args):
         try:
             (ok, state) = cls._inventory(node, args)
-            client.output(state, stderr = not ok)
+            client.output(state, stderr=not ok)
             return 0 if ok else 1
         except Exception as e:
             client.output("Inventory request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
