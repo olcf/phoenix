@@ -9,6 +9,8 @@ class OOBTimeoutError(Exception):
         pass
 
 class OOB(object):
+    oobtype = "unknown"
+
     @classmethod
     def _get_auth(cls, node):
         try:
@@ -22,9 +24,16 @@ class OOB(object):
         command = args[0].lower()
         logging.debug("command: {0}".format(command))
 
+        #if command[0:3] == "pdu":
+        #    command = command[3:]
+        #    oobtype = "pdu"
+        #else:
+        #    oobtype = "bmc"
+        #logging.debug("Type is %s", oobtype)
+
         try:
             if command in ['stat', 'state', 'status', 'query']:
-                (ok, state) = cls._power_state(node, cls._get_auth(node))
+                (ok, state) = cls._power_state(node, auth=cls._get_auth(node))
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['on']:

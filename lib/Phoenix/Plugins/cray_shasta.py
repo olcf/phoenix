@@ -67,6 +67,11 @@ def set_node_attrs(node):
         node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
 
     elif node['type'] == 'cc':
+        node['redfishpath'] = 'Chassis/Enclosure'
+        node['bmctype'] = 'redfish'
+        node['bmc'] = node['name']
+        node['bmcuser'] = 'root'
+        node['bmcpassword'] = 'initial0'
         node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], 0, 0)
         node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0)
 
@@ -85,6 +90,7 @@ def set_node_attrs(node):
         node['bmcuser'] = 'root'
         node['bmcpassword'] = 'initial0'
         if node['switchmodel'] is 'colorado':
+            node['pdutype'] = 'redfish'
             node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
             node['pduuser'] = 'root'
             node['pdupassword'] = 'initial0'

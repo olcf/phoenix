@@ -18,9 +18,9 @@ class RedfishError(Exception):
 
 class Redfish(OOB):
     @classmethod
-    def _do_redfish_req(cls, bmc, path, request_type, auth=('admin', 'password'), data={}, headers={}, timeout=(5,30)):
+    def _do_redfish_req(cls, host, path, request_type, auth=('admin', 'password'), data={}, headers={}, timeout=(5,30)):
         """A simple redfish request - returns a requests response"""
-        url = "https://%s/redfish/v1/%s" % (bmc, path)
+        url = "https://%s/redfish/v1/%s" % (host, path)
         logging.debug("Making %s request to %s" % (request_type, url))
 
         try:
@@ -44,9 +44,13 @@ class Redfish(OOB):
            attr can be an array of nested paths, or a dot-separated path
            status_codes is an array of acceptable status codes
            """
+        try:
+            host = node[cls.oobtype]
+        except:
+            return (False, "Parameter %s not set on node" % cls.oobtype)
         if auth is None:
             auth = cls._get_auth(node)
-        response = cls._do_redfish_req(node['bmc'], path, request_type, auth)
+        response = cls._do_redfish_req(node[cls.oobtype], path, request_type, auth)
         if status_codes is not None and response.status_code not in status_codes:
             return (False, "Redfish response returned status %d" % response.status_code)
         value = response.json()
@@ -62,14 +66,23 @@ class Redfish(OOB):
     @classmethod
     def _redfish_path_system(cls, node):
         """Determine the best path the the System entry"""
-        try:
-            return node['redfishpath']
-        except KeyError:
+        if cls.oobtype == "bmc":
+            try:
+                return node['redfishpath']
+            except KeyError:
+                return 'Systems/Self'
+        elif cls.oobtype == "pdu":
+            try:
+                return node['pduredfishpath']
+            except KeyError:
+                return 'Systems/Self'
+        else:
             return 'Systems/Self'
 
     @classmethod
     def _power_state(cls, node, auth=None):
         redfishpath = cls._redfish_path_system(node)
+        logging.debug("Inside _power_state %s", redfishpath)
         return cls._get_redfish_attribute(node, redfishpath, 'PowerState', status_codes=[200], auth=auth)
 
     @classmethod
@@ -81,11 +94,20 @@ class Redfish(OOB):
             path = '%s/Actions/Chassis.Reset' % redfishpath
         else:
             path = '%s/Actions/ComputerSystem.Reset' % redfishpath
+        if cls.oobtype == "bmc":
+            host = node['bmc']
+        elif cls.oobtype == "pdu":
+            host = node['pdu']
+
         data = { 'ResetType': resettype }
         headers = { 'Content-Type': 'application/json' }
-        response = cls._do_redfish_req(node['bmc'], path, "post", auth, data, headers)
+        response = cls._do_redfish_req(host, path, "post", auth, data, headers)
         if response.status_code not in [200, 204]:
-            return (False, "Redfish response returned status %d" % response.status_code)
+            try:
+                value = response.json()
+                return (False, value['error']['message'])
+            except:
+                return (False, "Redfish response returned status %d" % response.status_code)
         # This usually just returns an empty body
         return (True, "Ok")
 
@@ -142,3 +164,9 @@ class Redfish(OOB):
 
         path = '%s/%s' % (systempath, itempath)
         return cls._get_redfish_attribute(node, path, attr)
+
+class RedfishBmc(Redfish):
+    oobtype = "bmc"
+
+class RedfishPdu(Redfish):
+    oobtype = "pdu"
