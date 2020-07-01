@@ -77,10 +77,10 @@ Alternatively, the `phoenix` group provider can be manually specified on the com
 	clush -w @phoenix:compute hostname
 
 ## Command Line Tools
-### phoenix_node
+### pxnode
 This is used to inspect the configuration of a node.
 
-	$ phoenix_node mycluster[1,128]
+	$ pxnode mycluster[1,128]
 	mycluster1:
 	  bmc: mycluster1-bmc
 	  bmctype: openbmc
@@ -133,19 +133,19 @@ It supports "collecting" the results:
 	---------------
 	Linux
 
-### phoenix_power
+### pxpower
 This utility controls and queries power status for nodes defined in phoenix.
 
-    # phoenix_power @compute status
+    # pxpower @compute status
     nid000003-nmn: On
     nid000004-nmn: On
     nid000001-nmn: On
     nid000002-nmn: Off
 
-    # phoenix_power nid000003-nmn off
+    # pxpower nid000003-nmn off
     nid000003-nmn: Ok
 
-    # phoenix_power @compute on
+    # pxpower @compute on
     nid000003-nmn: Ok
     nid000004-nmn: Ok
     nid000001-nmn: Ok

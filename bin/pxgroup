@@ -8,7 +8,7 @@ import Phoenix
 from Phoenix.System import System
 
 def get_parser():
-    parser = argparse.ArgumentParser(prog="phoenix_group", description="Map between groups and nodes")
+    parser = argparse.ArgumentParser(description="Map between groups and nodes")
     parser.add_argument('--list', dest='list', default=None, action='store_true', help='List all known groups')
     parser.add_argument('--bare', dest='bare', default=False, action='store_true', help='Show bare group names (without the @ symbol)')
     parser.add_argument('group', nargs='?', default=None, type=str, help='Group to list')

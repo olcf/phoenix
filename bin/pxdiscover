@@ -12,7 +12,7 @@ from Phoenix.Node import Node
 from Phoenix.DataSource.CsvDataSource import CsvDataSource
 
 def get_parser():
-    parser = argparse.ArgumentParser(prog="phoenix_discover", description="Discover Phoenix nodes")
+    parser = argparse.ArgumentParser(description="Discover Phoenix nodes")
     parser.add_argument('nodes', default=None, type=str, help='Nodes to discover')
     parser.add_argument('arguments', nargs='*')
     parser.add_argument('-v', '--verbose', action='count', default=0)

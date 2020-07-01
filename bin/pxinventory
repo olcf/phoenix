@@ -11,7 +11,7 @@ import Phoenix.Parallel
 from Phoenix.Node import Node
 
 def get_parser():
-    parser = argparse.ArgumentParser(prog="phoenix_inventory", description="View the inventory of Phoenix nodes")
+    parser = argparse.ArgumentParser(description="View the inventory of Phoenix nodes")
     parser.add_argument('nodes', default=None, type=str, help='Nodes to list')
     parser.add_argument('arguments', nargs='*')
     parser.add_argument('-v', '--verbose', action='count', default=0)

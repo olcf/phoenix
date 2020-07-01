@@ -11,7 +11,7 @@ import Phoenix.Parallel
 from Phoenix.Node import Node
 
 def get_parser():
-    parser = argparse.ArgumentParser(prog="phoenix_firmware", description="Control the firmware of Phoenix nodes")
+    parser = argparse.ArgumentParser(description="Control the firmware of Phoenix nodes")
     parser.add_argument('nodes', default=None, type=str, help='Nodes to list')
     parser.add_argument('action', default=None, type=str, help='Action')
     parser.add_argument('arguments', nargs='?')
