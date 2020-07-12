@@ -21,5 +21,11 @@ try:
 except KeyError:
     conf_path = '/etc/phoenix'
 
+
+try:
+    data_pata = os.environ['PHOENIX_DATA']
+except KeyError:
+    data_path = '/var/opt/phoenix/data'
+
 groupsource = PhoenixGroupSource()
 set_std_group_resolver(GroupResolver(groupsource))

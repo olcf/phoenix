@@ -19,7 +19,7 @@ class CsvDataSource(DataSource):
         self.data_freshness = 0
 
     def _get_filename(self):
-        return "%s/data/%s.yaml" % (Phoenix.conf_path, self.name)
+        return "%s/%s.csv" % (Phoenix.data_path, self.name)
 
     def read(self, force=False):
         # Avoid thrashing the reads
