@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+"""Phoenix recipe list, show, build, image"""
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
+import sys
+import argparse
+import logging
+import Phoenix
+from Phoenix.Recipe import Recipe
+
+def get_parser():
+    parser = argparse.ArgumentParser(description="Phoenix image recipe utility")
+    parser.add_argument('-v', '--verbose', action='count', default=0)
+
+    subparsers = parser.add_subparsers(help='sub-command help', dest='action')
+
+    parser_show = subparsers.add_parser('show', help='show help')
+    parser_show.add_argument('name', nargs='+', help='Image name')
+
+    parser_list = subparsers.add_parser('list', help='list help')
+
+    parser_build = subparsers.add_parser('build', help='build help')
+    parser_build.add_argument('name', nargs='+', help='Image name')
+
+    return parser
+
+if __name__ == '__main__':
+    parser = get_parser()
+    args = parser.parse_args()
+
+    Phoenix.setup_logging(args.verbose)
+
+    if args.action == 'list':
+        print "\n".join(Recipe.list_recipes())
+    elif args.action == 'show':
+        for name in args.name:
+            recipe = Recipe(name)
+            print recipe
+    elif args.action == 'build':
+        print "would build " + str(args.name)
+
+    rc = 0
+
+    sys.exit(rc)
