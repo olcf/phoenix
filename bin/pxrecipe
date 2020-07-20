@@ -31,7 +31,11 @@ if __name__ == '__main__':
     Phoenix.setup_logging(args.verbose)
 
     if args.action == 'list':
-        print "\n".join(Recipe.list_recipes())
+        recipes = Recipe.list_recipes()
+        if len(recipes) == 0:
+            print "No recipes found"
+        else:
+            print "\n".join(recipes)
     elif args.action == 'show':
         for name in args.name:
             recipe = Recipe(name)

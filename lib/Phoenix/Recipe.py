@@ -42,8 +42,11 @@ class Recipe(object):
     @classmethod
     def list_recipes(cls):
         """ List all known recipes on the system """
-        user_provided = os.listdir("%s/recipes" % Phoenix.conf_path)
-        return [x[0:-5] for x in sorted(user_provided) if x.endswith(".yaml")]
+        try:
+            user_provided = os.listdir("%s/recipes" % Phoenix.conf_path)
+            return [x[0:-5] for x in sorted(user_provided) if x.endswith(".yaml")]
+        except OSError:
+            return []
 
     @classmethod
     def find_recipe(cls, name):
