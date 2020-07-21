@@ -11,7 +11,10 @@ except ImportError:
     from yaml import Loader, Dumper
 
 import os
+import sys
 import subprocess
+import signal
+import time
 import datetime
 import Phoenix
 #from Phoenix.System import System
@@ -206,13 +209,32 @@ class Recipe(object):
             tag = datetime.datetime.now().strftime("%Y%m%d%H%M")
         logging.info("Building recipe %s with tag %s", self.name, tag)
 
-        self.createroot(tag)
-        self.setuprepos()
-        self.installinitpackages()
-        for step in self.steps:
-            step.run(self)
-        self.artifacts()
-        self.cleanup()
+        with ConfirmKeyboardInterrupt():
+            self.createroot(tag)
+            self.setuprepos()
+            self.installinitpackages()
+            for step in self.steps:
+                step.run(self)
+            self.artifacts()
+            self.cleanup()
+
+class ConfirmKeyboardInterrupt(object):
+    def __enter__(self):
+        self.interrupttime = 0
+        self.saved_handler = signal.signal(signal.SIGINT, self.handler)
+
+    def handler(self, sig, frame):
+        curtime = time.time()
+        if curtime - self.interrupttime > 2.0:
+            print("Press Ctrl-C again within 2 seconds to abort")
+            self.interrupttime = curtime
+        else:
+            logging.error("Aborted by user. Please cleanup manually")
+            #self.saved_handler(*(sig, frame))
+            sys.exit(1)
+
+    def __exit__(self, type, value, traceback):
+        signal.signal(signal.SIGINT, self.saved_handler)
 
 def guesspackagemanager(distro):
     # FIXME: make this work better
@@ -307,7 +329,7 @@ class StepFile(Step):
             raise RuntimeError
 
 def runcmd(command):
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=os.setpgrp)
     while True:
         output = proc.stdout.readline()
         if output == '':
