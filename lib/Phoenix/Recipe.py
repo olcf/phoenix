@@ -11,15 +11,19 @@ except ImportError:
     from yaml import Loader, Dumper
 
 import os
+import subprocess
+import datetime
 import Phoenix
 #from Phoenix.System import System
 
 class Recipe(object):
     def __init__(self, name=None):
         self.name = name
+        self.root = None
         self.imagetype = None
         self.initfrom = None
         self.distro = None
+        self.initpackages = list()
         self.packagemanager = None
         self.repos = dict()
         self.steps = list()
@@ -31,6 +35,7 @@ class Recipe(object):
         result.append("Name:      %s" % self.name)
         result.append("ImageType: %s" % self.imagetype)
         result.append("Distro:    %s" % self.distro)
+        result.append("InitPkgs:  %s" % ",".join(self.initpackages))
         result.append("Repos:")
         for key in self.repos:
             result.append("  %s" % key)
@@ -87,6 +92,13 @@ class Recipe(object):
                 self.initfrom = value
             elif key == "distro":
                 self.distro = value
+                if self.packagemanager is None:
+                    self.packagemanager = guesspackagemanager(value)
+            elif key == "initpackages":
+                if type(value) == list:
+                    self.initpackages.extend(value)
+                else:
+                    self.initpackages.append(value)
             elif key == "repos":
                 self.repos.update(value)
             elif key == "steps":
@@ -102,10 +114,101 @@ class Recipe(object):
                                 self.steps.append(StepCommand(step['command']))
                         elif steptype == 'package':
                             self.steps.append(StepPackage(step['package']))
+                        elif steptype == 'file':
+                            self.steps.append(StepFile(step['file']))
                         else:
                             self.steps.append(step)
             else:
                 logging.warning("Key %s not understood", key)
+
+    def createroot(self, tag):
+        name = "%s-%s" % (self.name, tag)
+        # FIXME add more error handling here
+        try:
+            self.container = subprocess.check_output(["buildah", "from", "--name", name, self.initfrom], stderr=subprocess.STDOUT).rstrip()
+            self.root = subprocess.check_output(["buildah", "mount", self.container], stderr=subprocess.STDOUT).rstrip()
+        except subprocess.CalledProcessError as cpe:
+            logging.error("Command failed: %s", cpe.output)
+            raise RuntimeError
+        logging.info("Recipe %s with container %s mounted at %s", self.name, self.container, self.root)
+
+    def setuprepos(self):
+        # Probably best to have a Builder class that is subclassed...
+        # but that's what refactors are for, right?
+        for repo in self.repos:
+            if type(self.repos[repo]) == dict:
+                try:
+                    repourl = self.repos[repo]['url']
+                except:
+                    pass
+            else:
+                repourl = self.repos[repo]
+            if repourl[0:4] != "http":
+                logging.error("Only http(s) repos are supported at this time")
+                raise RuntimeError
+                return
+            if self.packagemanager == "zypper":
+                logging.info("Adding repo %s at %s", repo, repourl)
+                output = subprocess.check_output(["zypper",
+                                                  "--root", self.root,
+                                                  "addrepo",
+                                                  "-G",
+                                                  "--name", repo,
+                                                  "--enable",
+                                                  repourl,
+                                                  repo],
+                                                  stderr=subprocess.STDOUT)
+                logging.debug(output)
+            else:
+                logging.error("Unsupported package manager")
+                raise RuntimeError
+                return
+
+    def installinitpackages(self):
+        if len(self.initpackages) == 0:
+            logging.debug("No init packages to install")
+            return
+
+        logging.info("Installing init packages %s", self.initpackages)
+        if self.packagemanager == "zypper":
+            command = ["zypper",
+                       "--root", self.root,
+                       "--non-interactive",
+                       "install",
+                       "--no-confirm",
+                       "--no-recommends"
+                       ]
+            command.extend(self.initpackages)
+            output = subprocess.check_output(command, stderr=subprocess.STDOUT)
+            logging.debug(output)
+
+        else:
+            logging.error("Unsupported package manager")
+            raise RuntimeError
+            return
+
+    def build(self, tag=None):
+        if self.initfrom == "scratch" and len(self.initpackages) == 0:
+            logging.error("You must specify initpackages when building from scratch")
+            return
+        if tag == None:
+            tag = datetime.datetime.now().strftime("%Y%m%d%H%M")
+        logging.info("Building recipe %s with tag %s", self.name, tag)
+        self.createroot(tag)
+        self.setuprepos()
+        self.installinitpackages()
+        for step in self.steps:
+            step.run(self)
+
+def guesspackagemanager(distro):
+    # FIXME: make this work better
+    if distro[0:3] == "sle":
+        return "zypper"
+    elif distro[0:4] == "rhel":
+        if distro[5] < 8:
+            return "yum"
+        else:
+            return "dnf"
 
 class Step(object):
     pass
@@ -119,6 +222,19 @@ class StepCommand(Step):
     def __str__(self):
         return self.command
 
+    def run(self, recipe):
+        logging.info("Running command '%s' against %s", self.command, recipe.root)
+        command = ["buildah",
+                   "run",
+                   recipe.container,
+                   "/bin/bash",
+                   "-c",
+                   "--",
+                   self.command
+                   ]
+        output = subprocess.check_output(command, stderr=subprocess.STDOUT)
+        logging.debug(output)
+
 class StepPackage(Step):
     name = 'Package'
 
@@ -130,3 +246,44 @@ class StepPackage(Step):
 
     def __str__(self):
         return ','.join(self.packages)
+
+    def run(self, recipe):
+        logging.info("Installing packages %s in %s", self.packages, recipe.root)
+        command = ["buildah",
+                   "run",
+                   recipe.container,
+                   "zypper",
+                   "--non-interactive",
+                   "install",
+                   "--no-confirm",
+                   "--no-recommends"
+                   ]
+	command.extend(self.packages)
+	output = subprocess.check_output(command, stderr=subprocess.STDOUT)
+	logging.debug(output)
+
+class StepFile(Step):
+    name = 'File'
+
+    def __init__(self, filedesc):
+        if type(filedesc) is dict:
+            self.src = filedesc['src']
+            self.dst = filedesc['dst']
+        else:
+            self.src = filedesc
+            self.dst = filedesc
+
+    def __str__(self):
+        return "%s => %s" % (self.src, self.dst)
+
+    def run(self, recipe):
+        logging.info("Copying file %s to %s", self.src, self.dst)
+        command = ["buildah",
+                   "copy",
+                   recipe.container,
+                   self.src,
+                   self.dst
+                   ]
+	output = subprocess.check_output(command, stderr=subprocess.STDOUT)
+	logging.debug(output)
+

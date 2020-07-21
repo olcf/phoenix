@@ -20,7 +20,7 @@ def get_parser():
     parser_list = subparsers.add_parser('list', help='list help')
 
     parser_build = subparsers.add_parser('build', help='build help')
-    parser_build.add_argument('name', nargs='+', help='Image name')
+    parser_build.add_argument('name',type=str, help='Image name')
 
     return parser
 
@@ -30,10 +30,13 @@ if __name__ == '__main__':
 
     Phoenix.setup_logging(args.verbose)
 
+    rc = 0
+
     if args.action == 'list':
         recipes = Recipe.list_recipes()
         if len(recipes) == 0:
             print "No recipes found"
+            rc = 1
         else:
             print "\n".join(recipes)
     elif args.action == 'show':
@@ -41,8 +44,10 @@ if __name__ == '__main__':
             recipe = Recipe(name)
             print recipe
     elif args.action == 'build':
-        print "would build " + str(args.name)
-
-    rc = 0
+        recipe = Recipe(args.name)
+        try:
+            recipe.build()
+        except RuntimeError:
+            rc = 1
 
     sys.exit(rc)
