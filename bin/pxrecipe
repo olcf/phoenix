@@ -20,7 +20,8 @@ def get_parser():
     parser_list = subparsers.add_parser('list', help='list help')
 
     parser_build = subparsers.add_parser('build', help='build help')
-    parser_build.add_argument('name',type=str, help='Image name')
+    parser_build.add_argument('name', type=str, help='Recipe name')
+    parser_build.add_argument('--tag', '-t', type=str, default=None, help='Build Tag (default: current datetime)')
 
     return parser
 
@@ -46,7 +47,7 @@ if __name__ == '__main__':
     elif args.action == 'build':
         recipe = Recipe(args.name)
         try:
-            recipe.build()
+            recipe.build(args.tag)
         except RuntimeError:
             rc = 1
 
