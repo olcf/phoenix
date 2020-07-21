@@ -149,16 +149,19 @@ class Recipe(object):
                 return
             if self.packagemanager == "zypper":
                 logging.info("Adding repo %s at %s", repo, repourl)
-                output = subprocess.check_output(["zypper",
-                                                  "--root", self.root,
-                                                  "addrepo",
-                                                  "-G",
-                                                  "--name", repo,
-                                                  "--enable",
-                                                  repourl,
-                                                  repo],
-                                                  stderr=subprocess.STDOUT)
-                logging.debug(output)
+                command = ["zypper",
+                           "--root", self.root,
+                           "addrepo",
+                           "-G",
+                           "--name", repo,
+                           "--enable",
+                           repourl,
+                           repo
+                           ]
+                rc = runcmd(command)
+                if rc:
+                    logging.error("Could not add repo %s at %s", repo, repourl)
+                    raise RuntimeError
             else:
                 logging.error("Unsupported package manager")
                 raise RuntimeError
@@ -179,13 +182,21 @@ class Recipe(object):
                        "--no-recommends"
                        ]
             command.extend(self.initpackages)
-            output = subprocess.check_output(command, stderr=subprocess.STDOUT)
-            logging.debug(output)
+            rc = runcmd(command)
+            if rc:
+                logging.error("Failed to install the init packages")
+                raise RuntimeError
 
         else:
             logging.error("Unsupported package manager")
             raise RuntimeError
             return
+
+    def artifacts(self):
+        logging.info("Extracting artifacts - not yet implemented")
+
+    def cleanup(self):
+        logging.info("Cleaning up build environment - not yet implemented")
 
     def build(self, tag=None):
         if self.initfrom == "scratch" and len(self.initpackages) == 0:
@@ -194,11 +205,14 @@ class Recipe(object):
         if tag == None:
             tag = datetime.datetime.now().strftime("%Y%m%d%H%M")
         logging.info("Building recipe %s with tag %s", self.name, tag)
+
         self.createroot(tag)
         self.setuprepos()
         self.installinitpackages()
         for step in self.steps:
             step.run(self)
+        self.artifacts()
+        self.cleanup()
 
 def guesspackagemanager(distro):
     # FIXME: make this work better
@@ -232,8 +246,9 @@ class StepCommand(Step):
                    "--",
                    self.command
                    ]
-        output = subprocess.check_output(command, stderr=subprocess.STDOUT)
-        logging.debug(output)
+        rc = runcmd(command)
+        if rc:
+            logging.error("Return code %d from command %s", rc, self.command)
 
 class StepPackage(Step):
     name = 'Package'
@@ -259,8 +274,10 @@ class StepPackage(Step):
                    "--no-recommends"
                    ]
 	command.extend(self.packages)
-	output = subprocess.check_output(command, stderr=subprocess.STDOUT)
-	logging.debug(output)
+        rc = runcmd(command)
+        if rc:
+            logging.error("Could not install packages")
+            raise RuntimeError
 
 class StepFile(Step):
     name = 'File'
@@ -284,6 +301,19 @@ class StepFile(Step):
                    self.src,
                    self.dst
                    ]
-	output = subprocess.check_output(command, stderr=subprocess.STDOUT)
-	logging.debug(output)
+        rc = runcmd(command)
+        if rc:
+            logging.error("Could not copy file  %s to %s", self.src, self.dst)
+            raise RuntimeError
 
+def runcmd(command):
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    while True:
+        output = proc.stdout.readline()
+        if output == '':
+            rc = proc.poll()
+            if rc is not None:
+                break
+        else:
+            logging.debug(output.rstrip())
+    return rc
