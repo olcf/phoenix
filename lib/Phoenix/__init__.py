@@ -27,5 +27,10 @@ try:
 except KeyError:
     data_path = '/var/opt/phoenix/data'
 
+try:
+    artifact_path = os.environ['PHOENIX_ARTIFACTS']
+except KeyError:
+    artifact_path = '/srv/www/htdocs/phoenix'
+
 groupsource = PhoenixGroupSource()
 set_std_group_resolver(GroupResolver(groupsource))

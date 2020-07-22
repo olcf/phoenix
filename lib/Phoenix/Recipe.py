@@ -16,6 +16,8 @@ import subprocess
 import signal
 import time
 import datetime
+import glob
+import shutil
 import Phoenix
 #from Phoenix.System import System
 
@@ -23,6 +25,7 @@ class Recipe(object):
     def __init__(self, name=None):
         self.name = name
         self.root = None
+        self.tag = None
         self.imagetype = None
         self.initfrom = None
         self.distro = None
@@ -30,6 +33,7 @@ class Recipe(object):
         self.packagemanager = None
         self.repos = dict()
         self.steps = list()
+        self.artifacts = list()
         if name is not None:
             self.load_recipe(name)
 
@@ -45,6 +49,10 @@ class Recipe(object):
         result.append("Steps:")
         for key in self.steps:
             result.append("  %s: %s" % (key.name, key))
+        result.append("Artifacts:")
+        for key in self.artifacts:
+            result.append("  %s: %s" % (key.name, key))
+
         return '\n'.join(result)
 
     @classmethod
@@ -121,6 +129,19 @@ class Recipe(object):
                             self.steps.append(StepFile(step['file']))
                         else:
                             self.steps.append(step)
+            elif key == "artifacts":
+                for artifact in value:
+                    for artifacttype in artifact:
+                        if artifacttype == 'file':
+                            if type(artifact['file']) is list:
+                                for fname in artifact['file']:
+                                    self.artifacts.append(ArtifactFile(fname))
+                            else:
+                                self.artifacts.append(ArtifactFile(artifact['file']))
+                        elif artifacttype == 'initramfs':
+                            self.artifacts.append(ArtifactInitramfs())
+                        else:
+                            logging.warning('Unknown artifact type %s', artifacttype)
             else:
                 logging.warning("Key %s not understood", key)
 
@@ -195,10 +216,7 @@ class Recipe(object):
             raise RuntimeError
             return
 
-    def artifacts(self):
-        logging.info("Extracting artifacts - not yet implemented")
-
-    def cleanup(self):
+    def docleanup(self):
         logging.info("Cleaning up build environment - not yet implemented")
 
     def build(self, tag=None):
@@ -207,6 +225,7 @@ class Recipe(object):
             return
         if tag == None:
             tag = datetime.datetime.now().strftime("%Y%m%d%H%M")
+        self.tag = tag
         logging.info("Building recipe %s with tag %s", self.name, tag)
 
         with ConfirmKeyboardInterrupt():
@@ -215,8 +234,10 @@ class Recipe(object):
             self.installinitpackages()
             for step in self.steps:
                 step.run(self)
-            self.artifacts()
-            self.cleanup()
+            for artifact in self.artifacts:
+                artifact.run(self)
+            self.docleanup()
+        print("Successfully built %s/%s" % (self.name, self.tag))
 
 class ConfirmKeyboardInterrupt(object):
     def __enter__(self):
@@ -328,8 +349,57 @@ class StepFile(Step):
             logging.error("Could not copy file  %s to %s", self.src, self.dst)
             raise RuntimeError
 
-def runcmd(command):
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=os.setpgrp)
+class Artifact(object):
+    pass
+
+class ArtifactFile(Artifact):
+    name = 'File'
+
+    def __init__(self, filedesc):
+        self.pattern = filedesc
+
+    def __str__(self):
+        return self.pattern
+
+    def run(self, recipe):
+        # TODO: Make sure the resulting glob doesn't escape the container root
+        #       Not really a security issue, as users shouldn't run untrusted recipes
+        outputdir = os.path.join(Phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
+        try:
+            os.makedirs(outputdir)
+        except FileExistsError:
+            pass
+        logging.info("Saving artifact '%s' to %s", self.pattern, outputdir)
+        paths = glob.glob(recipe.root + '/' + self.pattern)
+        for path in paths:
+            logging.debug("Copying %s to %s", path, outputdir)
+            shutil.copy(path, outputdir)
+
+class ArtifactInitramfs(Artifact):
+    name = 'Initramfs'
+
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "True"
+
+    def run(self, recipe):
+        outputdir = os.path.join(Phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
+        cpiocommand = "find . | cpio --quiet -H newc -o | pigz -9 -n > %s/initramfs.gz" % outputdir
+        logging.info("Saving image root as initramfs artifact")
+        command = [ "/bin/bash",
+                    "-c",
+                    cpiocommand
+                    ]
+        rc = runcmd(command, cwd=recipe.root)
+        if rc:
+            logging.error("Could not create initramfs")
+            raise RuntimeError
+
+
+def runcmd(command, cwd=None):
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=os.setpgrp, cwd=cwd)
     while True:
         output = proc.stdout.readline()
         if output == '':
