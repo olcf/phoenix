@@ -106,7 +106,7 @@ setup(name = 'phoenix',
     author_email = 'ezellma@ornl.gov',
     url = 'https://gitlab.ccs.ornl.gov/hpc-admins/phoenix',
     package_dir={'': 'lib'},
-    packages = [ 'Phoenix', 'Phoenix.DataSource', 'Phoenix.OOB', 'Phoenix.Plugins' ],
+    packages = [ 'Phoenix', 'Phoenix.BootLoader', 'Phoenix.DataSource', 'Phoenix.OOB', 'Phoenix.Plugins' ],
     #packages=find_packages('lib'),
     scripts = ['bin/%s' % x for x in scripts],
     cmdclass = { 'bdist_rpm': bdist_rpm_custom, 'sdist': CustomSdist, 'generate_man': GenerateMan },
@@ -114,7 +114,8 @@ setup(name = 'phoenix',
                    ('/etc/phoenix', []),
                    ('/etc/phoenix/recipes', []),
                    ('/var/opt/phoenix/data', []),
-                   ('/etc/clustershell/groups.conf.d', ['contrib/clustershell/phoenix.conf'])
+                   ('/etc/clustershell/groups.conf.d', ['contrib/clustershell/phoenix.conf']),
+                   ('/usr/lib/systemd/system', ['contrib/pxbootfile.service'])
                  ]
     #install_requires= [ 'clustershell' ]
     )

@@ -1,0 +1,16 @@
+[Unit]
+Description=Phoenix Bootfile Daemon
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/sysconfig/pxbootfile
+ExecStart=/usr/bin/pxbootfile $PXBOOTFILE_OPTS
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartPreventExitStatus=255
+TasksMax=infinity
+
+[Install]
+WantedBy=multi-user.target
