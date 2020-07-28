@@ -7,7 +7,7 @@ import argparse
 import logging
 from ClusterShell.NodeSet import NodeSet
 import Phoenix
-from Phoenix.BootLoader import get_bootloader_script
+from Phoenix.BootLoader import write_bootloader_scripts
 from Phoenix.Node import Node
 from Phoenix.System import System
 
@@ -19,9 +19,8 @@ def get_parser():
 
     parser_dhcp = subparsers.add_parser('dhcp', help='dhcp help')
 
-    parser_bootfile = subparsers.add_parser('bootfile', help='bootfile help')
+    parser_bootfile = subparsers.add_parser('bootfiles', help='bootfile help')
 
-    #parser.add_argument("function", choices=['hosts', 'dhcp'])
     return parser
 
 if __name__ == '__main__':
@@ -37,12 +36,9 @@ if __name__ == '__main__':
                 for ifacename, iface in node['interfaces'].items():
                     hostname = iface['hostname'] if 'hostname' in iface else nodename
                     print "%s\t%s\t%s.%s" % (iface['ip'], hostname, hostname, System.config['domain'])
-                #print node['name']
     elif args.action == 'bootfile':
-        for nodename,node in sorted(Node.nodes.items()):
-            print get_bootloader_script(node)
+        write_bootloader_scripts()
 
     rc = 0
-
 
     sys.exit(rc)

@@ -83,6 +83,13 @@ def get_bootloader_script(node):
     loader_class = _find_class(node)
     return loader_class.script(node)
 
+def write_bootloader_scripts():
+    for nodename,node in sorted(Node.nodes.items()):
+	if 'interfaces' in node:
+	    for ifacename, iface in node['interfaces'].items():
+		with open ('%s/bootfiles/%s' % (Phoenix.artifact_path, iface['ip']), 'w') as ofile:
+		    ofile.write(get_bootloader_script(node))
+
 def _find_class(node):
     try:
         loader = node['bootloader']
