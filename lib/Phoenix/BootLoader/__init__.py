@@ -8,11 +8,24 @@ import Phoenix
 from Phoenix.Node import Node
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import socket
+import fcntl
+import os
+import signal
+
+need_to_reload = False
+
+def handler(signum, frame):
+    global need_to_reload
+    need_to_reload = True
 
 class BootfileServer(object):
     def __init__(self, port=8000, require_privports=False):
         self.port = port
         self.require_privports = require_privports
+        signal.signal(signal.SIGIO, handler)
+        fd = os.open(Phoenix.conf_path, os.O_RDONLY)
+        fcntl.fcntl(fd, fcntl.F_SETSIG, 0)
+        fcntl.fcntl(fd, fcntl.F_NOTIFY, fcntl.DN_MODIFY | fcntl.DN_CREATE | fcntl.DN_MULTISHOT)
 
     def serve_forever(self):
         httpd = HTTPServer(('0.0.0.0', self.port), PhoenixBootfileHandler)
@@ -26,6 +39,12 @@ class PhoenixBootfileHandler(BaseHTTPRequestHandler):
         self.wfile.write('Node not found')
 
     def do_GET(self):
+        global need_to_reload
+        if need_to_reload:
+            logging.info('Detected config changes - reloading')
+            Node.load_nodes(clear=True)
+            need_to_reload = False
+
         if self.server.require_privports and self.client_address[1] > 1024:
             logging.error("Denying unauthenticated request from %s:%s", self.client_address[0], self.client_address[1])
             self.send_response(403)
