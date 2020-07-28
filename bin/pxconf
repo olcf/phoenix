@@ -36,7 +36,7 @@ if __name__ == '__main__':
                 for ifacename, iface in node['interfaces'].items():
                     hostname = iface['hostname'] if 'hostname' in iface else nodename
                     print "%s\t%s\t%s.%s" % (iface['ip'], hostname, hostname, System.config['domain'])
-    elif args.action == 'bootfile':
+    elif args.action == 'bootfiles':
         write_bootloader_scripts()
 
     rc = 0
