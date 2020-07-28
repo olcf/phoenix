@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+"""Phoenix bootloader support"""
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
+import sys
+import logging
+import Phoenix
+from Phoenix.Node import Node
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import socket
+
+class BootfileServer(object):
+    def __init__(self, port=8000, require_privports=False):
+        self.port = port
+        self.require_privports = require_privports
+
+    def serve_forever(self):
+        httpd = HTTPServer(('0.0.0.0', self.port), PhoenixBootfileHandler)
+        httpd.require_privports = self.require_privports
+        httpd.serve_forever()
+
+class PhoenixBootfileHandler(BaseHTTPRequestHandler):
+    def return404(self):
+        self.send_response(404)
+        self.end_headers()
+        self.wfile.write('Node not found')
+
+    def do_GET(self):
+        if self.server.require_privports and self.client_address[1] > 1024:
+            logging.error("Denying unauthenticated request from %s:%s", self.client_address[0], self.client_address[1])
+            self.send_response(403)
+            self.end_headers()
+            self.wfile.write('Access denied')
+            return
+
+        try:
+            hostname, aliases, _ = socket.gethostbyaddr(self.client_address[0])
+        except OSError:
+            self.return404()
+            return
+
+        node = None
+        try:
+            node = Node.find_node(hostname)
+        except KeyError:
+            for alias in aliases:
+                try:
+                    node = Node.find_node(alias)
+                    break
+                except KeyError:
+                    pass
+
+        if node == None:
+            self.return404()
+            return
+
+        loader_class = _find_class(node)
+
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(loader_class.script(node))
+
+def get_bootloader_script(node):
+    loader_class = _find_class(node)
+    return loader_class.script(node)
+
+def _find_class(node):
+    try:
+        loader = node['bootloader']
+    except KeyError:
+        loader = 'ipxe'
+
+    classname = loader.lower().capitalize()
+    modname = "Phoenix.BootLoader.%s" % classname
+
+    # Iterate over a copy of sys.modules' keys to avoid RuntimeError
+    if modname.lower() not in [mod.lower() for mod in list(sys.modules)]:
+        # Import module if not yet loaded
+        __import__(modname)
+
+    # Get the class pointer
+    try:
+        return getattr(sys.modules[modname], classname)
+    except:
+        raise ImportError("Could not find class %s" % classname)
+
+class BootLoader(object):
+    bootloadertype = "unknown"
