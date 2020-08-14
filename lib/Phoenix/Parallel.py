@@ -23,6 +23,7 @@ import signal
 
 import Phoenix
 from Phoenix.Node import Node
+from Phoenix.Command import Command
 
 from ClusterShell.Task import Task, task_self
 from ClusterShell.NodeSet import NodeSet
@@ -136,23 +137,10 @@ class PhoenixClient(EngineClient):
             self.output("Could not find node %s" % self.key, stderr=True)
             self.mark_command_complete(rc=1)
         else:
-            logging.info("Phoenix client starting for node %s in thread %d", self.key, getThread() )
-            self.worker.executor.submit(self.node.run_command, self)
+            logging.info("Phoenix client submitting command for node %s in thread %d", self.key, getThread() )
+            self.worker.executor.submit(Command.run, self)
         finally:
             return self
-
-    def dosomething(self):
-        #self.output("dosomething for %s bmc %s command %s retry %d in thread %d" % (self.key, self.node['bmc'], self.command, self.retries, getThread() ))
-        self.retries = self.retries + 1
-        #print(node['bmc'])
-        #self.output("Command for %s was %s. BMC is %s" % (self.key, self.command, node.bmc))
-        time.sleep(1)
-        if random.randrange(5) == 0:
-            self.output("Done with sleep, It is done")
-            self.mark_command_complete(rc=0)
-        else:
-            #self.output("Done with sleep, Try again...")
-            self.worker.task.timer(1.0, self.handler)
 
     def output(self, message, stderr=False):
         if not message.endswith('\n'):
