@@ -22,6 +22,7 @@ class Redfish(OOB):
         """A simple redfish request - returns a requests response"""
         url = "https://%s/redfish/v1/%s" % (host, path)
         logging.debug("Making %s request to %s" % (request_type, url))
+        logging.debug("Data is %s", data)
 
         try:
             if request_type == "get":
@@ -62,6 +63,31 @@ class Redfish(OOB):
         except:
             return (False, "Redfish response JSON does not have attribute '%s'" % attr)
         return (True, str(value))
+
+    @classmethod
+    def _post_redfish(cls, node, path, data, status_codes=None, auth=None):
+        try:
+            host = node[cls.oobtype]
+        except:
+            return (False, "Parameter %s not set on node" % cls.oobtype)
+        if auth is None:
+            auth = cls._get_auth(node)
+        headers={'Content-Type': 'application/json'}
+        response = cls._do_redfish_req(host, path, "post", auth=auth, data=data, headers=headers)
+        logging.debug("Matt body is %s", response.request.body)
+        logging.debug(str(status_codes))
+        if status_codes is not None and response.status_code not in status_codes:
+            try:
+                rjson = response.json()
+                value = rjson["error"]["message"]
+            except:
+                value = "Redfish response returned status %d" % response.status_code
+            return (False, value)
+        if len(response.text) == 0:
+            status = "Ok"
+        else:
+            status = str(response.text)
+        return (True, status)
 
     @classmethod
     def _redfish_path_system(cls, node):
@@ -130,6 +156,13 @@ class Redfish(OOB):
         return 'UpdateService/FirmwareInventory/%s' % fwtype
 
     @classmethod
+    def _redfish_target_firmware(cls, node, fwtype=None):
+        try:
+            return node['firmware_target']
+        except KeyError:
+            return None
+
+    @classmethod
     def _firmware_state(cls, node, fwtype=None, auth=None):
         path = cls._redfish_path_firmware(node, fwtype)
         return cls._get_redfish_attribute(node, path, ['Status', 'State'], auth=auth)
@@ -138,6 +171,19 @@ class Redfish(OOB):
     def _firmware_version(cls, node, fwtype=None, auth=None):
         path = cls._redfish_path_firmware(node, fwtype)
         return cls._get_redfish_attribute(node, path, ['Version'], auth=auth)
+
+    @classmethod
+    def _firmware_upgrade(cls, node, url, fwtype=None, auth=None):
+        path = 'UpdateService/Actions/SimpleUpdate'
+        target = cls._redfish_target_firmware(node, fwtype)
+        # TODO - validate image path, convert 'bare' firmware name into full http path
+        # For now, only support full HTTP paths
+        if not url.startswith('http'):
+            return(False, 'Invalid firmware URL %s' % url)
+        data = {"ImageURI": url, "TransferProtocol":"HTTP"}
+        if target:
+            data["Targets"] = [target]
+        return cls._post_redfish(node, path, data, status_codes=[200, 204])
 
     inventory_map = {
         'mac': ('EthernetInterfaces/ManagementEthernet', 'MACAddress'),

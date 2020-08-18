@@ -5,7 +5,7 @@
 import logging
 import re
 
-shasta_regex = re.compile(r'x(?P<racknum>\d+)[ce](?P<chassis>\d+)([rs](?P<slot>\d+)b(?P<board>\d+)(n(?P<nodenum>\d+))?)?')
+shasta_regex = re.compile(r'x(?P<racknum>\d+)[ce](?P<chassis>\d+)([rs](?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
 ipprefix = 'fc00:0:100:60'
 
 # colorado_map[slot][node]
@@ -48,6 +48,7 @@ def set_node_attrs(node):
     if node['type'] == 'compute':
         node['redfishpath'] = 'Systems/Node%d' % node['nodenum']
         node['firmware_name'] = 'Node%d.BIOS' % node['nodenum']
+        node['firmware_target'] = '/redfish/v1/UpdateService/FirmwareInventory/Node%d.BIOS' % node['nodenum']
         node['bmctype'] = 'redfish'
         node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
         node['bmcuser'] = 'root'
@@ -59,15 +60,28 @@ def set_node_attrs(node):
 
     elif node['type'] == 'nc':
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
+        node['firmware_name'] = 'BMC'
+        node['bmctype'] = 'redfish'
+        node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
+        node['bmcuser'] = 'root'
+        node['bmcpassword'] = 'initial0'
+        node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
+        node['pdutype'] = 'redfish'
+        node['pduuser'] = 'root'
+        node['pdupassword'] = 'initial0'
+        node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
+        node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
+
+    elif node['type'] == 'blade':
+        node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
         node['bmctype'] = 'redfish'
         node['bmc'] = "x{racknum}c{chassis}".format(**node.attr)
         node['bmcuser'] = 'root'
         node['bmcpassword'] = 'initial0'
-        node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
-        node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
 
     elif node['type'] == 'cc':
         node['redfishpath'] = 'Chassis/Enclosure'
+        node['firmware_name'] = 'BMC'
         node['bmctype'] = 'redfish'
         node['bmc'] = node['name']
         node['bmcuser'] = 'root'

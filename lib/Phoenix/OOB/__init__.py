@@ -98,7 +98,11 @@ class OOB(object):
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['update', 'upgrade']:
-                (ok, state) = cls._firmware_upgrade(node, fwtype=fwtype, auth=cls._get_auth(node))
+                try:
+                    url = args[2]
+                except IndexError:
+                    url = None
+                (ok, state) = cls._firmware_upgrade(node, url, fwtype=fwtype, auth=cls._get_auth(node))
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
         except Exception as e:
