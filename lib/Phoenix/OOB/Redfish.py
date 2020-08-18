@@ -160,6 +160,8 @@ class Redfish(OOB):
         try:
             return node['firmware_target']
         except KeyError:
+            if fwtype.lower() == "recovery":
+                return '/redfish/v1/UpdateService/FirmwareInventory/Recovery'
             return None
 
     @classmethod
