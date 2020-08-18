@@ -6,11 +6,18 @@ import sys
 import logging
 import Phoenix
 from Phoenix.Node import Node
-from http.server import HTTPServer, BaseHTTPRequestHandler
 import socket
 import fcntl
 import os
 import signal
+
+try:
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+except ImportError:
+    class BaseHTTPRequestHandler(object):
+        def __init__(self):
+            logging.error("Could not find BaseHTTPRequestHandler, install the python package")
+            sys.exit(1)
 
 need_to_reload = False
 
@@ -28,7 +35,11 @@ class BootfileServer(object):
         fcntl.fcntl(fd, fcntl.F_NOTIFY, fcntl.DN_MODIFY | fcntl.DN_CREATE | fcntl.DN_MULTISHOT)
 
     def serve_forever(self):
-        httpd = HTTPServer(('0.0.0.0', self.port), PhoenixBootfileHandler)
+        try:
+            httpd = HTTPServer(('0.0.0.0', self.port), PhoenixBootfileHandler)
+        except NameError:
+            logging.error("Could not find HTTPServer, install the python package")
+            sys.exit(1)
         httpd.require_privports = self.require_privports
         httpd.serve_forever()
 
