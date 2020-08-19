@@ -10,6 +10,7 @@ import Phoenix
 from Phoenix.BootLoader import write_bootloader_scripts
 from Phoenix.Node import Node
 from Phoenix.System import System
+from Phoenix.Dhcp import load_dhcp_provider
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Phoenix configuration utility")
@@ -18,6 +19,7 @@ def get_parser():
     parser_hosts = subparsers.add_parser('hosts', help='hosts help')
 
     parser_dhcp = subparsers.add_parser('dhcp', help='dhcp help')
+    parser_updatedhcp = subparsers.add_parser('updatedhcp', help='update dhcp help')
 
     parser_bootfile = subparsers.add_parser('bootfiles', help='bootfile help')
 
@@ -38,6 +40,12 @@ if __name__ == '__main__':
                     print "%s\t%s\t%s.%s" % (iface['ip'], hostname, hostname, System.config['domain'])
     elif args.action == 'bootfiles':
         write_bootloader_scripts()
+    elif args.action == 'dhcp':
+        provider = load_dhcp_provider()
+        print provider.get_dhcp_conf()
+    elif args.action == 'updatedhcp':
+        provider = load_dhcp_provider()
+        provider.update_dhcp_reservations()
 
     rc = 0
 
