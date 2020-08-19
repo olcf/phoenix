@@ -110,14 +110,13 @@ class Node(object):
                 if node not in cls.nodes:
                     cls.nodes[node] = Node(node)
                 for key, value in data.items():
-                    # Deep copy is needed to make sure each node gets its own copy
-                    #setattr(nodes[node], key, copy.deepcopy(value))
-                    if not isinstance(value, str) or cls.tpl_regex.search(value):
-                        cls.nodes[node].rawattr[key] = copy.deepcopy(value)
-                        logging.debug("Setting node %s raw key %s to %s (%s)", node, key, value, cls.nodes[node].rawattr[key])
-                    else:
+                    if isinstance(value, bool) or (isinstance(value, str) and not cls.tpl_regex.search(value)):
                         cls.nodes[node][key] = value
                         logging.debug("Setting node %s key %s to %s", node, key, value)
+                    else:
+                        # Deep copy is needed to make sure each node gets its own copy
+                        cls.nodes[node].rawattr[key] = copy.deepcopy(value)
+                        logging.debug("Setting node %s raw key %s to %s (%s)", node, key, value, cls.nodes[node].rawattr[key])
 
         # Mark that nodes have been loaded
         cls.loaded_nodes = True
@@ -196,4 +195,7 @@ class Node(object):
         elif type(source[key]) == str:
             # Just interpolate one key in the dict
             dest[key] = self.interpolatevalue(source[key])
+            del source[key]
+        elif type(source[key]) == bool:
+            dest[key] = source[key]
             del source[key]
