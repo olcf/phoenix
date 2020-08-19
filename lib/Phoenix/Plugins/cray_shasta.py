@@ -70,7 +70,7 @@ def set_node_attrs(node):
         node['pduuser'] = 'root'
         node['pdupassword'] = 'initial0'
         node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
-        node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
+        node['ip6'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
 
     elif node['type'] == 'blade':
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
@@ -87,7 +87,7 @@ def set_node_attrs(node):
         node['bmcuser'] = 'root'
         node['bmcpassword'] = 'initial0'
         node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], 0, 0)
-        node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0)
+        node['ip6'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0)
 
     elif node['type'] == 'switch':
         node['switchtype'] = 'slingshot'
@@ -111,10 +111,10 @@ def set_node_attrs(node):
             node['pduredfishpath'] = 'Chassis/Perif%d' % node['slot']
         node['firmware_name'] = 'BMC'
         node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0)
-        node['ip'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0)
+        node['ip6'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0)
 
     elif node['type'] == 'cec':
-        node['ip'] = "%s:0:a%d:%x:0" % (ipprefix, node['chassis'], node['racknum'])
+        node['ip6'] = "%s:0:a%d:%x:0" % (ipprefix, node['chassis'], node['racknum'])
         # The CECs live in a chassis, but remove this for now
         del node['chassis']
 
