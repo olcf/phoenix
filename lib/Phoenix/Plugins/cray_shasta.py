@@ -116,7 +116,7 @@ def set_node_attrs(node):
             _setinterfaceparam(node, 'eth0', 'dhcp', True)
             _setinterfaceparam(node, 'eth0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0))
             _setinterfaceparam(node, 'eth0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0))
-            _setinterfaceparam(node, 'me0', 'hostname', node['name'])
+            _setinterfaceparam(node, 'eth0', 'hostname', node['name'])
         node['firmware_name'] = 'BMC'
 
     elif node['type'] == 'cec':
