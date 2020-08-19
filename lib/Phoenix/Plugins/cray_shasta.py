@@ -69,8 +69,10 @@ def set_node_attrs(node):
         node['pdutype'] = 'redfish'
         node['pduuser'] = 'root'
         node['pdupassword'] = 'initial0'
-        node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
-        node['ip6'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board'])
+        _setinterfaceparam(node, 'me0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
+        _setinterfaceparam(node, 'me0', 'dhcp', True)
+        _setinterfaceparam(node, 'me0', 'hostname', node['name'])
+        _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
 
     elif node['type'] == 'blade':
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
@@ -86,8 +88,10 @@ def set_node_attrs(node):
         node['bmc'] = node['name']
         node['bmcuser'] = 'root'
         node['bmcpassword'] = 'initial0'
-        node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], 0, 0)
-        node['ip6'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0)
+        _setinterfaceparam(node, 'me0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], 0, 0))
+        _setinterfaceparam(node, 'me0', 'dhcp', True)
+        _setinterfaceparam(node, 'me0', 'hostname', node['name'])
+        _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0))
 
     elif node['type'] == 'switch':
         node['switchtype'] = 'slingshot'
@@ -109,14 +113,27 @@ def set_node_attrs(node):
             node['pduuser'] = 'root'
             node['pdupassword'] = 'initial0'
             node['pduredfishpath'] = 'Chassis/Perif%d' % node['slot']
+            _setinterfaceparam(node, 'eth0', 'dhcp', True)
+            _setinterfaceparam(node, 'eth0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0))
+            _setinterfaceparam(node, 'eth0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0))
+            _setinterfaceparam(node, 'me0', 'hostname', node['name'])
         node['firmware_name'] = 'BMC'
-        node['mac'] = _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0)
-        node['ip6'] = _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0)
 
     elif node['type'] == 'cec':
         node['ip6'] = "%s:0:a%d:%x:0" % (ipprefix, node['chassis'], node['racknum'])
         # The CECs live in a chassis, but remove this for now
         del node['chassis']
+
+def _setinterfaceparam(node, interface, paramname, paramvalue):
+    """ Updates a node's interface with a certain value """
+    if 'interfaces' not in node:
+        node['interfaces'] = dict()
+    if interface not in node['interfaces']:
+        node['interfaces'][interface] = dict()
+    if paramname in node['interfaces'][interface]:
+        # User already set this, don't overwrite
+        return
+    node['interfaces'][interface][paramname] = paramvalue
 
 def _mgmtalgomac(rack, chassis, slot, idx, prefix=2):
     """ Returns the string representation of an algorithmic mac address """
