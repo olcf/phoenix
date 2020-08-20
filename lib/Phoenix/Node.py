@@ -160,12 +160,12 @@ class Node(object):
             return str(net + offset)
         
     @classmethod
-    def data(cls, key):
-        logging.debug("Called data with key %s", key)
+    def data(cls, *args):
+        logging.debug("Called data with key %s", args)
         if cls.datasource is None:
             cls.datasource = load_datasource()
         logging.debug("calling getkey")
-        output = cls.datasource.getval(key)
+        output = cls.datasource.getval(*args)
         logging.debug("got data value %s", output)
         return output
 

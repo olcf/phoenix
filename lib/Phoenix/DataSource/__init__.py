@@ -8,11 +8,11 @@ from Phoenix.System import System
 
 class DataSource(object):
     @classmethod
-    def getval(cls, key):
+    def getval(cls, *args):
         raise NotImplementedError
 
     @classmethod
-    def setval(cls, key, value):
+    def setval(cls, *args):
         raise NotImplementedError
 
 def load_datasource():

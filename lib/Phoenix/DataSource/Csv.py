@@ -50,27 +50,20 @@ class CsvDataSource(DataSource):
                 writer.writerow([datakey, cls.data[key][datakey]])
 
     @classmethod
-    def getval(cls, key):
-    #def __getitem__(self, key):
-        logging.debug("Inside CsvDataSource getval for key %s", key)
-        parts = key.split('/', 1)
-        filekey = parts[0]
-        csvkey = parts[1]
-        cls._read(filekey)
+    def getval(cls, *args):
+        logging.debug("Inside CsvDataSource getval for key %s", args)
+        cls._read(args[0])
         try:
-            output = cls.data[filekey][csvkey]
+            output = cls.data[args[0]]['/'.join(args[1:])]
         except:
             output = None
         return output
 
     @classmethod
-    def setval(cls, key, value):
-    #def __setitem__(self, key, value):
-        parts = key.split('/', 1)
-        filekey = parts[0]
-        csvkey = parts[1]
+    def setval(cls, *args):
+        logging.debug("args[0] is %s", args[0])
         # This is probably overkill, but fine for now
-        cls._read(filekey)
-        cls.data[filekey][csvkey] = value
+        cls._read(args[0])
+        cls.data[args[0]]["/".join(args[1:-1])] = args[-1]
         # Probably need to throttle this
-        cls._write(filekey)
+        cls._write(args[0])

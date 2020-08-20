@@ -39,6 +39,6 @@ if __name__ == '__main__':
     for buf, nodes in task.iter_buffers():
         for node in nodes:
             print "%s is %s" % (node, buf)
-            data.setval('mac/' + node, buf)
+            data.setval('mac', node, buf)
 
     sys.exit(0)
