@@ -20,12 +20,14 @@ import importlib
 import ipaddress
 import Phoenix
 from Phoenix.System import System
+from Phoenix.DataSource import load_datasource
 
 class Node(object):
     tpl_regex = re.compile(r'{{')
     num_regex = re.compile(r'\d+')
     loaded_functions = False
     loaded_nodes = False
+    datasource = None
     environment = None
 
     plugins = dict()
@@ -157,12 +159,22 @@ class Node(object):
             net = System.find_network(base)
             return str(net + offset)
         
+    @classmethod
+    def data(cls, key):
+        logging.debug("Called data with key %s", key)
+        if cls.datasource is None:
+            cls.datasource = load_datasource()
+        logging.debug("calling getkey")
+        output = cls.datasource.getval(key)
+        logging.debug("got data value %s", output)
+        return output
 
     @classmethod
     def load_functions(cls):
         logging.info("Loading Jinja templates")
         cls.environment = Environment()
         cls.environment.globals['ipadd'] = Node.ipadd
+        cls.environment.globals['data'] = Node.data
         #Environment.globals['ipadd'] = Node.ipadd
         cls.loaded_functions = True
 
@@ -171,7 +183,9 @@ class Node(object):
         if not Node.loaded_functions:
             Node.load_functions()
         #return str(Template(value).render(**self.attr))
-        return str(Node.environment.from_string(value).render(**self.attr))
+        output = str(Node.environment.from_string(value).render(**self.attr))
+        logging.debug("Interpolated value %s as %s", value, output)
+        return output
         
     def interpolate(self, key=None, source=None, dest=None):
         """ Interpolates a value from source dict to dest dict.

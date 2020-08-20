@@ -9,7 +9,7 @@ from ClusterShell.NodeSet import NodeSet
 import Phoenix
 import Phoenix.Parallel
 from Phoenix.Node import Node
-from Phoenix.DataSource.CsvDataSource import CsvDataSource
+from Phoenix.DataSource.Csv import CsvDataSource
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Discover Phoenix nodes")
@@ -34,11 +34,11 @@ if __name__ == '__main__':
     task.shell(cmd, nodes=nodes, autoclose=False, stdin=False, tree=True, remote=False)
     task.resume()
 
-    data = CsvDataSource('mac')
+    data = CsvDataSource
 
     for buf, nodes in task.iter_buffers():
         for node in nodes:
             print "%s is %s" % (node, buf)
-            data[node] = buf
+            data.setval('mac/' + node, buf)
 
     sys.exit(0)
