@@ -6,9 +6,9 @@ import sys
 import argparse
 import logging
 from ClusterShell.NodeSet import NodeSet
-import Phoenix
-from Phoenix.Node import Node
-from Phoenix.BootLoader import BootfileServer
+import phoenix
+from phoenix.node import Node
+from phoenix.bootloader import BootfileServer
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Phoenix configuration utility")
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parser = get_parser()
     args = parser.parse_args()
 
-    Phoenix.setup_logging(args.verbose)
+    phoenix.setup_logging(args.verbose)
     Node.load_nodes()
 
     logging.info("Starting server")

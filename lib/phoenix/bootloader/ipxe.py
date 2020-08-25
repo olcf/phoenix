@@ -2,14 +2,22 @@
 """Phoenix bootloader support for iPXE"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
-from Phoenix.BootLoader import BootLoader
+import logging
+from phoenix.bootloader import Bootloader
 
-class Ipxe(BootLoader):
+class IpxeBootloader(Bootloader):
     bootloadertype = 'ipxe'
 
     @classmethod
     def script(cls, node):
+        logging.debug("Generating iPXE script for node %s", node['name'])
         default_args = "BOOTIF=${mac} ip=${ip}::${gateway}:${netmask}:${hostname} rw"
+
+        try:
+            image = node['image']
+        except KeyError:
+            logging.warn('No image set for %s, not generating bootfile', node['name'])
+            raise
 
         try:
             server_ip = node['http_server']

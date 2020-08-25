@@ -8,7 +8,7 @@ import logging
 class OOBTimeoutError(Exception):
         pass
 
-class OOB(object):
+class Oob(object):
     oobtype = "unknown"
 
     @classmethod
@@ -131,9 +131,9 @@ class OOB(object):
     def _inventory(cls, node):
         raise NotImplementedError
 
-class BMC(OOB):
+class Bmc(Oob):
     pass
 
-class PDU(OOB):
+class Pdu(Oob):
     pass
 

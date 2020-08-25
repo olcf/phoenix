@@ -12,7 +12,7 @@ except ImportError:
 
 from ClusterShell.NodeSet import NodeSet
 from ClusterShell.NodeUtils import GroupSource
-import Phoenix
+import phoenix
 import re
 import copy
 import ipaddress
@@ -31,7 +31,7 @@ class System(object):
     def load_config(cls, filename=None):
         """ Reads and processes the system.yaml file """
         if filename is None:
-            filename = "%s/system.yaml" % Phoenix.conf_path
+            filename = "%s/system.yaml" % phoenix.conf_path
 
         # Read the yaml file
         logging.info("Loading system file '%s'", filename)
@@ -64,7 +64,7 @@ class System(object):
     def load_groups(cls, filename=None):
         """ Reads and processes the groups.yaml file """
         if filename is None:
-            filename = "%s/groups.yaml" % Phoenix.conf_path
+            filename = "%s/groups.yaml" % phoenix.conf_path
 
         # Read the yaml file
         logging.info("Loading group file '%s'", filename)

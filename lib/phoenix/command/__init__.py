@@ -6,8 +6,8 @@ import sys
 import logging
 
 from ClusterShell.NodeSet import NodeSet
-import Phoenix
-from Phoenix.System import System
+import phoenix
+from phoenix.system import System
 
 class Command(object):
     def __init__(self, name):
@@ -62,19 +62,5 @@ def _load_oob_class(oobtype, oobprovider):
     if oobprovider is None:
         logging.debug("Node does not have %stype set", oobtype)
         raise ImportError("Node does not have %stype set" % oobtype)
-    logging.debug(oobprovider)
-    #classname = oobprovider.lower().capitalize() + oobtype.lower().capitalize()
-    classname = oobprovider.lower().capitalize()
-    modname = "Phoenix.OOB.%s" % classname
-
-    # Iterate over a copy of sys.modules' keys to avoid RuntimeError
-    if modname.lower() not in [mod.lower() for mod in list(sys.modules)]:
-        # Import module if not yet loaded
-        __import__(modname)
-
-
-    # Get the class pointer
-    try:
-        return getattr(sys.modules[modname], classname + oobtype.lower().capitalize())
-    except:
-        raise ImportError("Could not find class %s" % classname + oobtype.lower().capitalize())
+    logging.debug("OOB type is %s, provider is %s", oobtype, oobprovider)
+    return phoenix.get_component('oob', oobprovider, oobprovider.capitalize() + oobtype.capitalize())

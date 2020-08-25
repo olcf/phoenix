@@ -5,18 +5,18 @@
 import logging
 import time
 import csv
-import Phoenix
+import phoenix
 
-from Phoenix.DataSource import DataSource
+from phoenix.datasource import Datasource
 
-class CsvDataSource(DataSource):
+class CsvfileDatasource(Datasource):
     cachetime = 300
     data = {}
     data_freshness = {}
 
     @classmethod
     def _get_filename(cls, key):
-        return "%s/%s.csv" % (Phoenix.data_path, key)
+        return "%s/%s.csv" % (phoenix.data_path, key)
 
     @classmethod
     def _read(cls, key, force=False):

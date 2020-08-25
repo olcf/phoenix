@@ -4,8 +4,8 @@
 
 import sys
 import logging
-import Phoenix
-from Phoenix.Node import Node
+import phoenix
+from phoenix.node import Node
 import socket
 import fcntl
 import os
@@ -30,7 +30,7 @@ class BootfileServer(object):
         self.port = port
         self.require_privports = require_privports
         signal.signal(signal.SIGIO, handler)
-        fd = os.open(Phoenix.conf_path, os.O_RDONLY)
+        fd = os.open(phoenix.conf_path, os.O_RDONLY)
         fcntl.fcntl(fd, fcntl.F_SETSIG, 0)
         fcntl.fcntl(fd, fcntl.F_NOTIFY, fcntl.DN_MODIFY | fcntl.DN_CREATE | fcntl.DN_MULTISHOT)
 
@@ -98,28 +98,28 @@ def write_bootloader_scripts():
     for nodename,node in sorted(Node.nodes.items()):
 	if 'interfaces' in node:
 	    for ifacename, iface in node['interfaces'].items():
-		with open ('%s/bootfiles/%s' % (Phoenix.artifact_path, iface['ip']), 'w') as ofile:
-		    ofile.write(get_bootloader_script(node))
+                if 'dhcp' not in iface or iface['dhcp'] == False:
+                    logging.debug("Skipping %s because it is not set for DHCP", node['name'])
+                    continue
+                try:
+                    script = get_bootloader_script(node)
+                except:
+                    logging.debug("Skipping %s because a script was not generated", node['name'])
+                    continue
+                outputpath = '%s/bootfiles/%s' % (phoenix.artifact_path, iface['ip'])
+                logging.debug("Writing bootfile to %s", outputpath)
+		with open (outputpath, 'w') as ofile:
+		    ofile.write(script)
 
 def _find_class(node):
     try:
         loader = node['bootloader']
     except KeyError:
-        loader = 'ipxe'
+        loader = DEFAULT_PROVIDER
 
-    classname = loader.lower().capitalize()
-    modname = "Phoenix.BootLoader.%s" % classname
+    return phoenix.get_component('bootloader', loader)
 
-    # Iterate over a copy of sys.modules' keys to avoid RuntimeError
-    if modname.lower() not in [mod.lower() for mod in list(sys.modules)]:
-        # Import module if not yet loaded
-        __import__(modname)
-
-    # Get the class pointer
-    try:
-        return getattr(sys.modules[modname], classname)
-    except:
-        raise ImportError("Could not find class %s" % classname)
-
-class BootLoader(object):
+class Bootloader(object):
     bootloadertype = "unknown"
+
+DEFAULT_PROVIDER='ipxe'

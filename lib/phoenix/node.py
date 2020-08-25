@@ -18,9 +18,8 @@ import re
 import copy
 import importlib
 import ipaddress
-import Phoenix
-from Phoenix.System import System
-from Phoenix.DataSource import load_datasource
+import phoenix
+from phoenix.system import System
 
 class Node(object):
     tpl_regex = re.compile(r'{{')
@@ -85,7 +84,7 @@ class Node(object):
             cls.nodes = dict()
 
         if filename is None:
-            filename = "%s/nodes.yaml" % Phoenix.conf_path
+            filename = "%s/nodes.yaml" % phoenix.conf_path
 
         # Read the yaml file
         logging.info("Loading node file '%s'", filename)
@@ -132,7 +131,7 @@ class Node(object):
     @classmethod
     def find_plugin(cls, name):
         if name not in cls.plugins:
-            cls.plugins['name'] = importlib.import_module("Phoenix.Plugins.%s" % name)
+            cls.plugins['name'] = importlib.import_module("phoenix.plugins.%s" % name)
         return cls.plugins['name']
 
     def run_plugins(self):
@@ -163,7 +162,7 @@ class Node(object):
     def data(cls, *args):
         logging.debug("Called data with key %s", args)
         if cls.datasource is None:
-            cls.datasource = load_datasource()
+            cls.datasource = phoenix.get_component('datasource')
         logging.debug("calling getkey")
         output = cls.datasource.getval(*args)
         logging.debug("got data value %s", output)

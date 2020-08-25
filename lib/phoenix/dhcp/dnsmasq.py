@@ -5,11 +5,11 @@
 import sys
 import logging
 import datetime
-import Phoenix
-from Phoenix.System import System
-from Phoenix.Node import Node
+import phoenix
+from phoenix.system import System
+from phoenix.node import Node
 
-class DhcpDnsmasq(object):
+class DnsmasqDhcp(object):
     dhcptype = "dnsmasq"
 
     @classmethod

@@ -21,9 +21,9 @@ import concurrent.futures
 import threading
 import signal
 
-import Phoenix
-from Phoenix.Node import Node
-from Phoenix.Command import Command
+import phoenix
+from phoenix.node import Node
+from phoenix.command import Command
 
 from ClusterShell.Task import Task, task_self
 from ClusterShell.NodeSet import NodeSet
@@ -84,7 +84,7 @@ def setup(nodes, args):
     task.set_default('local_worker', PhoenixWorker)
     # Defaults are not sent to gateways, but info is.
     # https://github.com/cea-hpc/clustershell/pull/439
-    task.set_info('tree_default:local_workername', 'Phoenix.Parallel')
+    task.set_info('tree_default:local_workername', 'phoenix.parallel')
     task.set_info('fanout', args.fanout)
     task.set_default("stderr", True)
 

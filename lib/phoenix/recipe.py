@@ -18,8 +18,7 @@ import time
 import datetime
 import glob
 import shutil
-import Phoenix
-#from Phoenix.System import System
+import phoenix
 
 class Recipe(object):
     def __init__(self, name=None):
@@ -59,7 +58,7 @@ class Recipe(object):
     def list_recipes(cls):
         """ List all known recipes on the system """
         try:
-            user_provided = os.listdir("%s/recipes" % Phoenix.conf_path)
+            user_provided = os.listdir("%s/recipes" % phoenix.conf_path)
             return [x[0:-5] for x in sorted(user_provided) if x.endswith(".yaml")]
         except OSError:
             return []
@@ -70,7 +69,7 @@ class Recipe(object):
             file system
         """
         # First check in the phoenix_conf area
-        filename = "%s/recipes/%s.yaml" % (Phoenix.conf_path, name)
+        filename = "%s/recipes/%s.yaml" % (phoenix.conf_path, name)
         if os.path.exists(filename):
             return filename
 
@@ -364,7 +363,7 @@ class ArtifactFile(Artifact):
     def run(self, recipe):
         # TODO: Make sure the resulting glob doesn't escape the container root
         #       Not really a security issue, as users shouldn't run untrusted recipes
-        outputdir = os.path.join(Phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
+        outputdir = os.path.join(phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
         try:
             os.makedirs(outputdir)
         except FileExistsError:
@@ -385,7 +384,7 @@ class ArtifactInitramfs(Artifact):
         return "True"
 
     def run(self, recipe):
-        outputdir = os.path.join(Phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
+        outputdir = os.path.join(phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
         cpiocommand = "find . | cpio --quiet -H newc -o | pigz -9 -n > %s/initramfs.gz" % outputdir
         logging.info("Saving image root as initramfs artifact")
         command = [ "/bin/bash",

@@ -5,18 +5,18 @@
 import logging
 import requests
 
-from Phoenix.OOB import OOBTimeoutError
+from phoenix.oob import OOBTimeoutError
 
 # This is needed to turn off SSL warnings
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-from Phoenix.OOB import OOB
+from phoenix.oob import Oob
 
 class RedfishError(Exception):
     pass
 
-class Redfish(OOB):
+class Redfish(Oob):
     @classmethod
     def _do_redfish_req(cls, host, path, request_type, auth=('admin', 'password'), data={}, headers={}, timeout=(5,30)):
         """A simple redfish request - returns a requests response"""
