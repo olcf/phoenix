@@ -5,7 +5,7 @@
 import sys
 import argparse
 import phoenix
-from phoenix.system import System
+from phoenix.group import Group
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Map between groups and nodes")
@@ -23,13 +23,13 @@ if __name__ == '__main__':
 
     if args.list:
         if args.bare:
-            print '\n'.join(System.list_groups())
+            print '\n'.join(Group.list_groups())
         else:
-            print '\n'.join([ '@%s' % x for x in System.list_groups() ])
+            print '\n'.join([ '@%s' % x for x in Group.list_groups() ])
         sys.exit(0)
 
     if args.group is None:
         parser.print_usage(sys.stderr)
         sys.exit(2)
 
-    print System.find_group(args.group)
+    print Group.find_group(args.group)

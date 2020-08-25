@@ -11,7 +11,6 @@ except ImportError:
     from yaml import Loader, Dumper
 
 from ClusterShell.NodeSet import NodeSet
-from ClusterShell.NodeUtils import GroupSource
 import phoenix
 import re
 import copy
@@ -19,11 +18,9 @@ import ipaddress
 
 class System(object):
     loaded_config = False
-    loaded_groups = False
 
     # Dicts to hold all System data
     config = dict()
-    groups = dict()
 
     tpl_regex = re.compile(r'{{')
 
@@ -59,38 +56,3 @@ class System(object):
             cls.config['networks'][net]['ipobj'] = ipaddress.ip_address(unicode(cls.config['networks'][net]['network'], "utf-8"))
 
         return cls.config['networks'][net]['ipobj']
-
-    @classmethod
-    def load_groups(cls, filename=None):
-        """ Reads and processes the groups.yaml file """
-        if filename is None:
-            filename = "%s/groups.yaml" % phoenix.conf_path
-
-        # Read the yaml file
-        logging.info("Loading group file '%s'", filename)
-        with open(filename) as nodefd:
-            cls.groups.update(load(nodefd, Loader=Loader))
-
-    @classmethod
-    def find_group(cls, group):
-        if not cls.loaded_groups:
-            cls.load_groups()
-        if group[0] == '@':
-            group = group[1:]
-        return cls.groups[group]
-
-    @classmethod
-    def list_groups(cls):
-        if not cls.loaded_groups:
-            cls.load_groups()
-        return sorted(cls.groups.keys())
-
-class PhoenixGroupSource(GroupSource):
-    def __init__(self):
-        self.name = 'phoenix'
-
-    def resolv_map(self, group):
-        return System.find_group(group)
-
-    def resolv_list(self):
-        return System.list_groups()

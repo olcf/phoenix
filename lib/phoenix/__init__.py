@@ -9,7 +9,7 @@ import sys
 from ClusterShell.NodeUtils import GroupResolver
 from ClusterShell.NodeSet import set_std_group_resolver
 from phoenix.system import System
-from phoenix.system import PhoenixGroupSource
+from phoenix.group import PhoenixGroupSource
 
 
 def setup_logging(level=0):
