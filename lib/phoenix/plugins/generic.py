@@ -13,7 +13,7 @@ def set_node_attrs(node):
 
     # Extract node index number from the name
     m = num_regex.findall(node['name'])
-    if m is not None:
+    if m is not None and len(m) > 0:
         node['nodeindex'] = int(m[-1])
         if len(m) > 1:
             node['nodenums'] = [ int(x) for x in m ]
