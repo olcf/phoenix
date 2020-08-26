@@ -107,6 +107,8 @@ class Oob(object):
                 (ok, state) = cls._firmware_upgrade(node, url, fwtype=fwtype, auth=cls._get_auth(node))
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
+        except OOBTimeoutError as e:
+            client.output("Connection timeout", stderr=True)
         except Exception as e:
             client.output("Firmware request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
             return -1
@@ -125,6 +127,8 @@ class Oob(object):
             (ok, state) = cls._inventory(node, args)
             client.output(state, stderr=not ok)
             return 0 if ok else 1
+        except OOBTimeoutError as e:
+            client.output("Connection timeout", stderr=True)
         except Exception as e:
             client.output("Inventory request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
             return -1
