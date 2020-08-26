@@ -9,6 +9,11 @@ from ClusterShell.NodeSet import NodeSet
 import phoenix
 from phoenix.system import System
 
+from phoenix.oob import OOBTimeoutError
+
+class CommandTimeout(Exception):
+    pass
+
 class Command(object):
     def __init__(self, name):
         pass
@@ -54,6 +59,10 @@ class Command(object):
                 client.output("Unknown command '%s'" % command, stderr=True)
                 rc = 1
             client.mark_command_complete(rc=rc)
+        except CommandTimeout:
+            client._engine.remove(client, did_timeout=True)
+        except OOBTimeoutError:
+            client._engine.remove(client, did_timeout=True)
         except Exception as e:
             client.output("Error running command: %s - %s" % (str(e), e.args), stderr=True)
             client.mark_command_complete(rc=1)

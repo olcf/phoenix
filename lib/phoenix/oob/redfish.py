@@ -6,6 +6,7 @@ import logging
 import requests
 
 from phoenix.oob import OOBTimeoutError
+from phoenix.command import CommandTimeout
 
 # This is needed to turn off SSL warnings
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -34,6 +35,8 @@ class Redfish(Oob):
             else:
                 raise NotImplementedError("HTTP request type %s not understood" % request_type)
         except requests.ConnectTimeout as e:
+            raise OOBTimeoutError(e)
+        except requests.ConnectionError as e:
             raise OOBTimeoutError(e)
         
         logging.debug(response.text)

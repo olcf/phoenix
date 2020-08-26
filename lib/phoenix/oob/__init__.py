@@ -59,9 +59,11 @@ class Oob(object):
             else:
                 client.output("Invalid requested node state command (%s)" % command, stderr=True)
                 return -1
+        except OOBTimeoutError as e:
+            client.output("Connection timeout", stderr=True)
         except Exception as e:
             client.output("Power request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
-            return -1
+            raise
 
     @classmethod
     def _power_state(cls, node):
