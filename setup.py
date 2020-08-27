@@ -67,7 +67,7 @@ class GenerateMan(Command):
 class CustomSdist(sdist):
     """Override sdist to generate man pages"""
     def run(self):
-        self.run_command('generate_man')
+        #self.run_command('generate_man')
         sdist.run(self)
 
 class bdist_rpm_custom(bdist_rpm):
@@ -110,7 +110,7 @@ setup(name = 'phoenix',
     #packages=find_packages('lib'),
     scripts = ['bin/%s' % x for x in scripts],
     cmdclass = { 'bdist_rpm': bdist_rpm_custom, 'sdist': CustomSdist, 'generate_man': GenerateMan },
-    data_files = [ ('/usr/share/man/man1', ['man/man1/%s.1.gz' % x for x in scripts]),
+    data_files = [ #('/usr/share/man/man1', ['man/man1/%s.1.gz' % x for x in scripts]),
                    ('/etc/phoenix', []),
                    ('/etc/phoenix/recipes', []),
                    ('/var/opt/phoenix/data', []),
