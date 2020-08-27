@@ -101,6 +101,11 @@ def setup(nodes, args):
     handler.runtimer_init(task, len(nodes))
     return (task, handler)
 
+def parser_add_arguments_parallel(parser):
+    parser.add_argument('-f', '--fanout', type=int, default=64, help='Fanout value')
+    parser.add_argument('-t', '--command-timeout', type=int, default=0)
+    parser.add_argument('-T', '--connect-timeout', type=int, default=20)
+
 class NodeHandler(EventHandler):
     def __init__(self, client, node):
         self.node = node
@@ -211,6 +216,7 @@ class PhoenixWorker(DistantWorker):
             raise WorkerError("Worker has already been attached to a task")
         self.task = task
         self.fanout = task.info("fanout", 0)
+        logging.debug("Inside _set_task")
         # Create the thread executor with the thread count set to the fanout
         try:
             self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self.fanout, thread_name_prefix="phoenix_worker")

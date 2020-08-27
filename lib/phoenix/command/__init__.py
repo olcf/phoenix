@@ -4,6 +4,7 @@
 
 import sys
 import logging
+import os
 
 from ClusterShell.NodeSet import NodeSet
 import phoenix
@@ -15,12 +16,9 @@ class CommandTimeout(Exception):
     pass
 
 class Command(object):
-    def __init__(self, name):
-        pass
-
     @classmethod
     def run(cls, client):
-        logging.info("new run_command for %s and node %s", client.command, client.node)
+        logging.info("Inside Command.run for %s and node %s", client.command, client.node['name'])
         try:
             if isinstance(client.command, list):
                 command = client.command[0]
@@ -29,35 +27,28 @@ class Command(object):
                 command_parts = client.command.split()
                 command = command_parts[0]
                 args = command_parts[1:]
-            if command == "power":
-                try:
-                    if args[0][0:3] == "pdu":
-                        # Call the "normal" power commands (without pdu* prefix) against the PDU class"
-                        args[0] = args[0][3:]
-                        oobkind = "pdu"
-                        oobtype = self['pdutype']
-                        oobcls = _load_oob_class("pdu", oobtype)
-                    else:
-                        oobkind = "bmc"
-                        oobtype = client.node['bmctype']
-                except KeyError:
-                    client.output("%stype not set" % oobkind, stderr=True)
-                    rc=1
-                else:
-                    oobcls = _load_oob_class(oobkind, oobtype)
-                    rc = oobcls.power(client.node, client, args)
-            elif command == "firmware":
+            if command == "firmware":
                 oob = _load_oob_class("bmc", client.node['bmctype'])
                 rc = oob.firmware(client.node, client, args)
             elif command == "inventory":
+                try:
+                    oobtype = client.node['bmctype']
+                except KeyError:
+                    try:
+                        nodetype = node['type']
+                        if nodetype == 'switch':
+                            oobtype = 'snmp'
+                    except KeyError:
+                        client.output("Unknown inventory provider", stderr=True)
+                        rc=1
                 oob = _load_oob_class("bmc", client.node['bmctype'])
                 rc = oob.inventory(client.node, client, args)
-            elif comand == "discover":
+            elif command == "discover":
                 oob = _load_oob_class("bmc", client.node['discovertype'])
                 rc = oob.discover(client.node, client, args)
             else:
-                client.output("Unknown command '%s'" % command, stderr=True)
-                rc = 1
+                cmdclass = phoenix.get_component('command', command)
+                rc = cmdclass.run(client)
             client.mark_command_complete(rc=rc)
         except CommandTimeout:
             client._engine.remove(client, did_timeout=True)
@@ -73,3 +64,21 @@ def _load_oob_class(oobtype, oobprovider):
         raise ImportError("Node does not have %stype set" % oobtype)
     logging.debug("OOB type is %s, provider is %s", oobtype, oobprovider)
     return phoenix.get_component('oob', oobprovider, oobprovider.capitalize() + oobtype.capitalize())
+
+class CommandClient(object):
+    def output(self, message, stderr=False):
+        print message
+
+def run_command_cli():
+    command = os.path.basename(sys.argv[0])
+    if command.startswith('px'):
+        command = command[2:]
+    elif command == 'phoenix':
+        sys.argv.pop(0)
+        try:
+            command = sys.argv[0]
+        except IndexError:
+            #logging.error("No action specified")
+            return 1
+    cmdclass = phoenix.get_component('command', command)
+    return cmdclass.cli()

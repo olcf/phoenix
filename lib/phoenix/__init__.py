@@ -6,6 +6,8 @@ import os
 import logging
 import sys
 
+logging.basicConfig(format="%(levelname)s: %(message)s")
+
 from ClusterShell.NodeUtils import GroupResolver
 from ClusterShell.NodeSet import set_std_group_resolver
 from phoenix.system import System
@@ -15,7 +17,7 @@ from phoenix.group import PhoenixGroupSource
 def setup_logging(level=0):
     levels = [logging.WARNING, logging.INFO, logging.DEBUG]
     level = levels[min(len(levels)-1,level)]
-    logging.basicConfig(level=level, format="%(levelname)s: %(message)s")
+    logging.getLogger().setLevel(level)
 
 #default_providers = { 'dhcp'      : 'dnsmasq',
 #                      'bootloader': 'ipxe'
