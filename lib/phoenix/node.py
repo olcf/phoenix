@@ -68,6 +68,10 @@ class Node(object):
     def __contains__(self, key):
         if key in self.attr or key in self.rawattr:
             return True
+        if not self.ran_plugins:
+            self.run_plugins()
+            if key in self.attr or key in self.rawattr:
+                return True
         return False
 
     @classmethod
