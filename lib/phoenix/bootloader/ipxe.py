@@ -25,6 +25,11 @@ class IpxeBootloader(Bootloader):
             server_ip = '${dhcp-server}'
 
         try:
+            server_port = node['http_server_port']
+        except KeyError:
+            server_port = 8000
+
+        try:
             console = node['console']
         except KeyError:
             console = 'ttyS0,115200'
@@ -36,9 +41,16 @@ class IpxeBootloader(Bootloader):
 
         result = list()
         result.append('#!ipxe')
-        result.append('kernel http://%s/phoenix/images/%s/vmlinuz initrd=initramfs.gz %s console=%s %s' %
-                            (server_ip, node['image'], default_args, console, kcmdline))
-        result.append('initrd http://%s/phoenix/images/%s/initramfs.gz' % (server_ip, node['image']))
-        result.append('boot')
+        result.append('kernel http://%s:%d/phoenix/images/%s/vmlinuz initrd=initramfs.gz %s console=%s %s' %
+                            (server_ip, server_port, node['image'], default_args, console, kcmdline))
+        result.append('initrd http://%s:%d/phoenix/images/%s/initramfs.gz' % (server_ip, server_port, node['image']))
+        result.append('boot ||')
+        result.append('echo')
+        result.append('echo Boot must have failed')
+        result.append('echo')
+        result.append('echo Sleeping 30 seconds')
+        result.append('sleep 30')
+        result.append('chain http://%s:%d/bootfile' % (server_ip, server_port))
+        result.append('')
 
         return '\n'.join(result)

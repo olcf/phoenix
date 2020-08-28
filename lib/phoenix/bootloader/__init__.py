@@ -98,6 +98,8 @@ def write_bootloader_scripts():
     for nodename,node in sorted(Node.nodes.items()):
 	if 'interfaces' in node:
 	    for ifacename, iface in node['interfaces'].items():
+                if ifacename == 'bmc':
+                    continue
                 if 'dhcp' not in iface or iface['dhcp'] == False:
                     logging.debug("Skipping %s because it is not set for DHCP", node['name'])
                     continue

@@ -69,7 +69,7 @@ except KeyError:
 try:
     artifact_path = os.environ['PHOENIX_ARTIFACTS']
 except KeyError:
-    artifact_path = '/srv/www/htdocs/phoenix'
+    artifact_path = '/var/opt/phoenix/artifacts'
 
 groupsource = PhoenixGroupSource()
 set_std_group_resolver(GroupResolver(groupsource))
