@@ -41,9 +41,9 @@ class IpxeBootloader(Bootloader):
 
         result = list()
         result.append('#!ipxe')
-        result.append('kernel http://%s:%d/phoenix/images/%s/vmlinuz initrd=initramfs.gz %s console=%s %s' %
+        result.append('kernel http://%s:%d/images/%s/vmlinuz initrd=initramfs.gz %s console=%s %s' %
                             (server_ip, server_port, node['image'], default_args, console, kcmdline))
-        result.append('initrd http://%s:%d/phoenix/images/%s/initramfs.gz' % (server_ip, server_port, node['image']))
+        result.append('initrd http://%s:%d/images/%s/initramfs.gz' % (server_ip, server_port, node['image']))
         result.append('boot ||')
         result.append('echo')
         result.append('echo Boot must have failed')
