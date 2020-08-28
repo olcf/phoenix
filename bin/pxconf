@@ -23,6 +23,8 @@ def get_parser():
 
     parser_bootfile = subparsers.add_parser('bootfiles', help='bootfile help')
 
+    parser_ethers = subparsers.add_parser('ethers', help='ethers help')
+
     return parser
 
 if __name__ == '__main__':
@@ -46,6 +48,10 @@ if __name__ == '__main__':
     elif args.action == 'updatedhcp':
         provider = load_dhcp_provider()
         provider.update_dhcp_reservations()
+    elif args.action == 'ethers':
+        for nodename,node in sorted(Node.nodes.items()):
+            if 'hsnmac' in node:
+                print "%s\t%s" % (node['hsnmac'], nodename + 'h0')
 
     rc = 0
 
