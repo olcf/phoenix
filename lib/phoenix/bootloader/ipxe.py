@@ -11,7 +11,6 @@ class IpxeBootloader(Bootloader):
     @classmethod
     def script(cls, node):
         logging.debug("Generating iPXE script for node %s", node['name'])
-        default_args = "BOOTIF=${mac} ip=${ip}::${gateway}:${netmask}:${hostname} rw"
 
         try:
             image = node['image']
@@ -38,6 +37,8 @@ class IpxeBootloader(Bootloader):
             kcmdline = node['kcmdline']
         except KeyError:
             kcmdline = ''
+
+        default_args = "BOOTIF=${mac} ip=${ip}:%s-%d:${gateway}:${netmask}:${hostname} rw" % (server_ip, server_port)
 
         result = list()
         result.append('#!ipxe')
