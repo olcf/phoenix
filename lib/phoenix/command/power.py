@@ -53,7 +53,7 @@ class PowerCommand(Command):
             oobkind = "pdu"
             try:
                 oobtype = client.node['pdutype']
-                oobcls = _load_oob_class("pdu", oobtype)
+                oobcls = phoenix.get_component("oob", oobtype, oobtype.capitalize() + "Pdu")
             except KeyError:
                 client.output("pdutype not set", stderr=True)
                 client.mark_command_complete(rc=1)
@@ -62,7 +62,6 @@ class PowerCommand(Command):
             oobkind = "bmc"
             try:
                 oobtype = client.node['bmctype']
-                #oobcls = _load_oob_class("bmc", oobtype)
                 oobcls = phoenix.get_component("oob", oobtype, oobtype.capitalize() + "Bmc")
             except KeyError:
                 client.output("bmctype not set", stderr=True)
@@ -77,27 +76,6 @@ class PowerCommand(Command):
         except Exception as e:
             client.output("Error running command: %s - %s" % (str(e), e.args), stderr=True)
             client.mark_command_complete(rc=1)
-
-def _load_oob_class(oobtype, oobprovider):
-    if oobprovider is None:
-        logging.debug("Node does not have %stype set", oobtype)
-        raise ImportError("Node does not have %stype set" % oobtype)
-    logging.debug(oobprovider)
-    #classname = oobprovider.lower().capitalize() + oobtype.lower().capitalize()
-    classname = oobprovider.lower().capitalize()
-    modname = "Phoenix.OOB.%s" % classname
-
-    # Iterate over a copy of sys.modules' keys to avoid RuntimeError
-    if modname.lower() not in [mod.lower() for mod in list(sys.modules)]:
-        # Import module if not yet loaded
-        __import__(modname)
-
-
-    # Get the class pointer
-    try:
-        return getattr(sys.modules[modname], classname + oobtype.lower().capitalize())
-    except:
-        raise ImportError("Could not find class %s" % classname + oobtype.lower().capitalize())
 
 if __name__ == '__main__':
     sys.exit(PowerCommand.run())
