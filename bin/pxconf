@@ -35,9 +35,12 @@ if __name__ == '__main__':
     Node.load_nodes()
 
     if args.action == 'hosts':
+        System.load_config()
         for nodename,node in sorted(Node.nodes.items()):
             if 'interfaces' in node:
                 for ifacename, iface in node['interfaces'].items():
+                    if 'ip' not in iface:
+                        continue
                     hostname = iface['hostname'] if 'hostname' in iface else nodename
                     print "%s\t%s\t%s.%s" % (iface['ip'], hostname, hostname, System.config['domain'])
     elif args.action == 'bootfiles':
