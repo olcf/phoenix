@@ -4,13 +4,13 @@
 
 import sys
 import logging
-from yaml import load, dump
+import platform
+import yaml
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     logging.info("Unable to load CLoader and/or CDumper")
     from yaml import Loader, Dumper
-
 from ClusterShell.NodeSet import NodeSet
 from jinja2 import Template
 from jinja2 import Environment
@@ -20,6 +20,19 @@ import importlib
 import ipaddress
 import phoenix
 from phoenix.system import System
+
+# Technically, maps in yaml are unordered. We want entries in nodes.yaml
+# to be processed in the order present in the file so that overriding
+# works the way one might expect. pyyaml stores mapping in a python dict()
+# which was unordered until CPython 3.6 and made a language feature in 3.7.
+# Use an OrderedDict for older python versions.
+if sys.version_info < (3,7) or (sys.version_info < (3,6) and platform.python_implementation == "CPython"):
+    from collections import OrderedDict
+
+    def odict_constructor(loader, node):
+        return OrderedDict(loader.construct_pairs(node))
+
+    yaml.add_constructor("tag:yaml.org,2002:map", odict_constructor, Loader=Loader)
 
 class Node(object):
     tpl_regex = re.compile(r'{{')
@@ -42,7 +55,7 @@ class Node(object):
         if not self.ran_plugins:
             self.run_plugins()
         self.interpolate(None)
-        return dump({self.attr['name']: self.attr}, default_flow_style=False)
+        return yaml.dump({self.attr['name']: self.attr}, default_flow_style=False)
         attrs = ["%s = %s (%s)" % (attr_name, self[attr_name], type(self[attr_name])) for attr_name in sorted(self.attr.keys() + self.rawattr.keys())]
         return "Node(%s)\n\t%s" % (self.attr['name'], "\n\t".join(attrs))
 
@@ -93,7 +106,7 @@ class Node(object):
         # Read the yaml file
         logging.info("Loading node file '%s'", filename)
         with open(filename) as nodefd:
-            nodedata = load(nodefd, Loader=Loader)
+            nodedata = yaml.load(nodefd, Loader=Loader)
 
         # Load the data into the node structures
         for noderange, data in nodedata.items():
