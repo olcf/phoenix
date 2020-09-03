@@ -40,14 +40,20 @@ class InventoryCommand(Command):
     @classmethod
     def run(cls, client):
         action = client.command[1]
-        oobkind = "bmc"
-        try:
-            oobtype = client.node['bmctype']
-            oobcls = phoenix.get_component("oob", oobtype, oobtype.capitalize() + "Bmc")
-        except KeyError:
-            client.output("bmctype not set", stderr=True)
-            client.mark_command_complete(rc=1)
-            return 1
+        if client.node['type'] == 'switch':
+            oobtype = 'snmp'
+            logging.info("About to load switch")
+            oobcls = phoenix.get_component("oob", oobtype, oobtype.capitalize() + "Switch")
+            logging.info("loaded switch")
+        else:
+            oobkind = "bmc"
+            try:
+                oobtype = client.node['bmctype']
+                oobcls = phoenix.get_component("oob", oobtype, oobtype.capitalize() + "Bmc")
+            except KeyError:
+                client.output("bmctype not set", stderr=True)
+                client.mark_command_complete(rc=1)
+                return 1
         try:
             rc = oobcls.inventory(client.node, client, [action])
             client.mark_command_complete(rc=rc)
