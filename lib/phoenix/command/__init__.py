@@ -30,19 +30,6 @@ class Command(object):
             if command == "firmware":
                 oob = _load_oob_class("bmc", client.node['bmctype'])
                 rc = oob.firmware(client.node, client, args)
-            elif command == "inventory":
-                try:
-                    oobtype = client.node['bmctype']
-                except KeyError:
-                    try:
-                        nodetype = node['type']
-                        if nodetype == 'switch':
-                            oobtype = 'snmp'
-                    except KeyError:
-                        client.output("Unknown inventory provider", stderr=True)
-                        rc=1
-                oob = _load_oob_class("bmc", client.node['bmctype'])
-                rc = oob.inventory(client.node, client, args)
             elif command == "discover":
                 oob = _load_oob_class("bmc", client.node['discovertype'])
                 rc = oob.discover(client.node, client, args)
