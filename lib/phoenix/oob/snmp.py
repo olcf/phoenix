@@ -15,11 +15,15 @@ class Snmp(Oob):
 
     @classmethod
     def _snmpwalk(cls, oidd, hostname, community):
-	oid = netsnmp.VarList(netsnmp.Varbind(oidd))
-	snmp_res = netsnmp.snmpwalk(oid, Version=2, DestHost=hostname, Community=community)
+        session = netsnmp.Session(Version=2, DestHost=hostname, Community=community, Timeout=3000000, Retries=0)
+        oid = netsnmp.VarList(netsnmp.Varbind(oidd))
+        session.walk(oid)
 
-	for x in oid:
-	    yield x
+        if session.ErrorStr != '':
+            raise OOBTimeoutError
+
+        for x in oid:
+            yield x
 
 class SnmpSwitch(Snmp):
     oobtype = "switch"
