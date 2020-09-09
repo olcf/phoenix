@@ -18,7 +18,7 @@ class CommandTimeout(Exception):
 class Command(object):
     @classmethod
     def run(cls, client):
-        logging.info("Inside Command.run for %s and node %s", client.command, client.node['name'])
+        logging.debug("Inside Command.run for %s and node %s", client.command, client.node['name'])
         try:
             if isinstance(client.command, list):
                 command = client.command[0]
@@ -44,6 +44,8 @@ class Command(object):
         except Exception as e:
             client.output("Error running command: %s - %s" % (str(e), e.args), stderr=True)
             client.mark_command_complete(rc=1)
+        logging.debug("command.run complete")
+        return True
 
 def _load_oob_class(oobtype, oobprovider):
     if oobprovider is None:
@@ -54,7 +56,7 @@ def _load_oob_class(oobtype, oobprovider):
 
 class CommandClient(object):
     def output(self, message, stderr=False):
-        print message
+        print(message)
 
 def run_command_cli():
     command = os.path.basename(sys.argv[0])

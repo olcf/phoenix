@@ -147,8 +147,13 @@ class Node(object):
 
     @classmethod
     def find_plugin(cls, name):
+        logging.debug("Inside find_plugin")
         if name not in cls.plugins:
-            cls.plugins['name'] = importlib.import_module("phoenix.plugins.%s" % name)
+            try:
+                cls.plugins['name'] = importlib.import_module("phoenix.plugins.%s" % name)
+            except Exception as e:
+                logging.debug(e)
+                raise
         return cls.plugins['name']
 
     def run_plugins(self):
@@ -163,17 +168,13 @@ class Node(object):
 
         logging.info("Running plugins for %s" % (self['name']))
         plugin = Node.find_plugin(plugin_name)
+        logging.info("Found plugin for node")
         plugin.set_node_attrs(self)
 
     @classmethod
     def ipadd(cls, base, offset):
         logging.debug("Called ipadd with %s and %d", base, offset)
         return str(System.find_network(base) + offset)
-        if unicode(base[0], 'utf-8').isnumeric():
-            return str(ipaddress.ip_address(unicode(base, "utf-8")) + offset)
-        else:
-            net = System.find_network(base)
-            return str(net + offset)
         
     @classmethod
     def data(cls, *args):
@@ -214,7 +215,7 @@ class Node(object):
             dest = self.attr
         if key is None:
             # Interpolate everything in this dict
-            for newkey in source.keys():
+            for newkey in list(source.keys()):
                 self.interpolate(newkey, source, dest)
         elif isinstance(source[key], dict):
             newdest = dict()

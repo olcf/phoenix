@@ -96,8 +96,8 @@ def get_bootloader_script(node):
 
 def write_bootloader_scripts():
     for nodename,node in sorted(Node.nodes.items()):
-	if 'interfaces' in node:
-	    for ifacename, iface in node['interfaces'].items():
+        if 'interfaces' in node:
+            for ifacename, iface in node['interfaces'].items():
                 if ifacename == 'bmc':
                     continue
                 if 'dhcp' not in iface or iface['dhcp'] == False:
@@ -110,8 +110,8 @@ def write_bootloader_scripts():
                     continue
                 outputpath = '%s/bootfiles/%s' % (phoenix.artifact_path, iface['ip'])
                 logging.debug("Writing bootfile to %s", outputpath)
-		with open (outputpath, 'w') as ofile:
-		    ofile.write(script)
+                with open (outputpath, 'w') as ofile:
+                    ofile.write(script)
 
 def _find_class(node):
     try:

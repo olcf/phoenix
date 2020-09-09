@@ -5,6 +5,7 @@
 import os
 import logging
 import sys
+import imp
 
 logging.basicConfig(format="%(levelname)s: %(message)s")
 
@@ -27,14 +28,16 @@ def get_component(category, provider=None, providerclass=None):
     packagefile = "phoenix." + category
     if packagefile not in list(sys.modules):
         logging.debug("Loading package %s", packagefile)
+        imp.acquire_lock()
         __import__(packagefile)
+        imp.release_lock()
 
     if provider is None:
-	System.load_config()
-	try:
-	    provider = System.config[category]
-	except KeyError:
-	    provider = getattr(sys.modules[packagefile], 'DEFAULT_PROVIDER')
+        System.load_config()
+        try:
+            provider = System.config[category]
+        except KeyError:
+            provider = getattr(sys.modules[packagefile], 'DEFAULT_PROVIDER')
     provider = provider.lower()
 
     modulefile = provider
@@ -44,15 +47,17 @@ def get_component(category, provider=None, providerclass=None):
     if modname not in list(sys.modules):
         logging.debug("Loading module %s", modname)
         # Import module if not yet loaded
+        imp.acquire_lock()
         __import__(modname)
+        imp.release_lock()
 
     # Get the class pointer
     if providerclass == None:
         providerclass = provider.capitalize() + category.capitalize()
     try:
         return getattr(sys.modules[modname], providerclass)
-    except:
-        raise ImportError("Could not find class %s" % providerclass)
+    except Exception as e:
+        raise ImportError("Could not find class %s (%s)" % (providerclass, e))
 
 # Lightweight attempt to standardize a location for config files
 try:

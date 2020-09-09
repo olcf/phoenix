@@ -22,7 +22,7 @@ class Oob(object):
     def power(cls, node, client, args):
         # Normalize the requested command
         command = args[0].lower()
-        logging.debug("command: {0}".format(command))
+        logging.debug("inside power command: {0}".format(command))
 
         #if command[0:3] == "pdu":
         #    command = command[3:]

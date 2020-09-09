@@ -315,7 +315,7 @@ class StepPackage(Step):
                    "--no-confirm",
                    "--no-recommends"
                    ]
-	command.extend(self.packages)
+        command.extend(self.packages)
         rc = runcmd(command)
         if rc:
             logging.error("Could not install packages")

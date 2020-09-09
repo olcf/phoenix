@@ -124,6 +124,8 @@ def set_node_attrs(node):
         # The CECs live in a chassis, but remove this for now
         del node['chassis']
 
+    logging.debug("Done running cray_shasta plugin for node %s", node['name'])
+
 def _setinterfaceparam(node, interface, paramname, paramvalue):
     """ Updates a node's interface with a certain value """
     if 'interfaces' not in node:
@@ -175,5 +177,5 @@ def _hsnswitchnum(chassis, board, type='hill'):
     return 0
 
 if __name__ == '__main__':
-    print _hsnalgomac(1, 1, 47)
-    print _hsnalgomac(1, 1, colorado_map[0][0])
+    print(_hsnalgomac(1, 1, 47))
+    print(_hsnalgomac(1, 1, colorado_map[0][0]))

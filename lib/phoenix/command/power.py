@@ -22,13 +22,13 @@ from phoenix.oob import OOBTimeoutError
 class PowerCommand(Command):
     @classmethod
     def get_parser(cls):
-	parser = argparse.ArgumentParser(description="Control the power of Phoenix nodes")
-	parser.add_argument('nodes', default=None, type=str, help='Nodes to list')
-	parser.add_argument('action', default=None, type=str, help='Action')
+        parser = argparse.ArgumentParser(description="Control the power of Phoenix nodes")
+        parser.add_argument('nodes', default=None, type=str, help='Nodes to list')
+        parser.add_argument('action', default=None, type=str, help='Action')
         parser.add_argument('--pdu', default=False, action='store_true', help='Target the PDU')
-	parser.add_argument('-v', '--verbose', action='count', default=0)
+        parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
-	return parser
+        return parser
 
     @classmethod
     def cli(cls):
@@ -41,6 +41,7 @@ class PowerCommand(Command):
         cmd = ["power", args.action]
         if args.pdu:
             cmd.append("pdu")
+        logging.debug("Submitting shell command %s", cmd)
         task.shell(cmd, nodes=nodes, handler=handler, autoclose=False, stdin=False, tree=True, remote=False)
         task.resume()
         rc = 0
@@ -69,13 +70,13 @@ class PowerCommand(Command):
                 return 1
         try:
             rc = oobcls.power(client.node, client, [action])
-            client.mark_command_complete(rc=rc)
+            return rc
         except OOBTimeoutError:
             client.output("Timeout", stderr=True)
-            client.mark_command_complete(rc=1)
+            return 1
         except Exception as e:
             client.output("Error running command: %s - %s" % (str(e), e.args), stderr=True)
-            client.mark_command_complete(rc=1)
+            return 1
 
 if __name__ == '__main__':
     sys.exit(PowerCommand.run())

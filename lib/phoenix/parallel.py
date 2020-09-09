@@ -55,7 +55,7 @@ def excepthook(exception_type, exception_value, traceback):
     try:
         raise exception_value
     except KeyboardInterrupt as kbe:
-        print "Keyboard interrupt."
+        print("Keyboard interrupt.")
         parallel_exit(128 + signal.SIGINT)
     except GENERIC_ERRORS as exc:
         parallel_exit(handle_generic_error(exc))
@@ -133,6 +133,7 @@ class PhoenixClient(EngineClient):
         if self._stderr:
             self.streams.set_stream(self.worker.SNAME_STDERR, self._stderr[0], E_READ)
         self.streams.set_stream(self.worker.SNAME_STDOUT, self._stdout[0], E_READ)
+        logging.debug("Streams set")
 
         self.worker._on_start(self.key)
 
@@ -144,19 +145,25 @@ class PhoenixClient(EngineClient):
         else:
             logging.info("Phoenix client submitting command for node %s in thread %d", self.key, getThread() )
             self.worker.executor.submit(Command.run, self)
+            logging.info("submitted")
         finally:
+            logging.info("returning self")
             return self
 
     def output(self, message, stderr=False):
-        if not message.endswith('\n'):
-            message = message + '\n'
-        if stderr and self._stderr:
-            os.write(self._stderr[1], message)
-        else:
-            os.write(self._stdout[1], message)
+        try:
+            message = message.encode()
+            if not message.endswith(b'\n'):
+                message = message + b'\n'
+            if stderr and self._stderr:
+                os.write(self._stderr[1], message)
+            else:
+                os.write(self._stdout[1], message)
+        except Exception as e:
+            logging.debug("Failed to write out message: %s" % e)
 
     def mark_command_complete(self, rc=None):
-        logging.info("Command %s complete for node %s", self.key, self.command)
+        logging.info("Command %s complete for node %s. Closing fd %d", self.command, self.key, self._stdout[1])
         os.close(self._stdout[1])
         if self._stderr:
             os.close(self._stderr[1])
@@ -223,6 +230,7 @@ class PhoenixWorker(DistantWorker):
         except TypeError:
             # The python 2.x ThreadPoolExecutor doesn't support thread_name_prefix
             self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = self.fanout)
+        logging.info("set_task done, executor is %s", self.executor)
 
     # Required by other parts of ClusterShell
     def _engine_clients(self):

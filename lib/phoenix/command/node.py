@@ -39,13 +39,14 @@ class NodeCommand(Command):
 
     @classmethod
     def run(cls, client):
+        logging.debug("Inside command.node.run")
         rc=0
         try:
             client.output("%s" % client.node)
         except Exception as e:
-            client.output("%s" % e, stderr=True)
+            client.output("Exception: %s" % e, stderr=True)
             rc=1
-        client.mark_command_complete(rc=rc)
+        return rc
 
 if __name__ == '__main__':
     sys.exit(NodeCommand.run())

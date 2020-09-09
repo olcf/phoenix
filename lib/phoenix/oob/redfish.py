@@ -39,7 +39,7 @@ class Redfish(Oob):
         except requests.ConnectionError as e:
             raise OOBTimeoutError(e)
         
-        logging.debug(response.text)
+        logging.debug("Response is %s", response.text)
         return response
 
     @classmethod

@@ -16,12 +16,12 @@ from phoenix.oob import OOBTimeoutError
 class InventoryCommand(Command):
     @classmethod
     def get_parser(cls):
-	parser = argparse.ArgumentParser(description="Query inventory of Phoenix nodes")
-	parser.add_argument('nodes', default=None, type=str, help='Nodes to query')
-	parser.add_argument('action', default=None, type=str, help='Action')
-	parser.add_argument('-v', '--verbose', action='count', default=0)
+        parser = argparse.ArgumentParser(description="Query inventory of Phoenix nodes")
+        parser.add_argument('nodes', default=None, type=str, help='Nodes to query')
+        parser.add_argument('action', default=None, type=str, help='Action')
+        parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
-	return parser
+        return parser
 
     @classmethod
     def cli(cls):
@@ -42,9 +42,7 @@ class InventoryCommand(Command):
         action = client.command[1]
         if client.node['type'] == 'switch':
             oobtype = 'snmp'
-            logging.info("About to load switch")
             oobcls = phoenix.get_component("oob", oobtype, oobtype.capitalize() + "Switch")
-            logging.info("loaded switch")
         else:
             oobkind = "bmc"
             try:
@@ -52,14 +50,13 @@ class InventoryCommand(Command):
                 oobcls = phoenix.get_component("oob", oobtype, oobtype.capitalize() + "Bmc")
             except KeyError:
                 client.output("bmctype not set", stderr=True)
-                client.mark_command_complete(rc=1)
                 return 1
         try:
             rc = oobcls.inventory(client.node, client, [action])
-            client.mark_command_complete(rc=rc)
+            return rc
         except OOBTimeoutError:
             client.output("Timeout", stderr=True)
-            client.mark_command_complete(rc=1)
+            return rc
         except Exception as e:
             client.output("Error running command: %s - %s" % (str(e), e.args), stderr=True)
-            client.mark_command_complete(rc=1)
+            return rc

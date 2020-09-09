@@ -44,15 +44,27 @@ class System(object):
         if not cls.loaded_config:
             cls.load_config()
 
+        # This is for python2/python3 compatability
+        try:
+            net = net.decode()
+        except:
+            pass
+
         if net not in cls.config['networks']:
             # Attempt to support an ip string, otherwise just return 0.0.0.0
-            if unicode(net[0], 'utf-8').isnumeric():
-                return ipaddress.ip_address(unicode(net, "utf-8")) 
+            if net[0].isnumeric():
+                return ipaddress.ip_address(net) 
             else:
                 return ipaddress.ip_address(0)
 
         if 'ipobj' not in cls.config['networks'][net]:
             logging.debug("Caching network %s ip", net)
-            cls.config['networks'][net]['ipobj'] = ipaddress.ip_address(unicode(cls.config['networks'][net]['network'], "utf-8"))
+
+            # This is for python2/python3 compatability
+            try:
+                net2 = cls.config['networks'][net]['network'].decode()
+            except:
+                net2 = cls.config['networks'][net]['network']
+            cls.config['networks'][net]['ipobj'] = ipaddress.ip_address(net2)
 
         return cls.config['networks'][net]['ipobj']
