@@ -25,6 +25,8 @@ def get_parser():
 
     parser_ethers = subparsers.add_parser('ethers', help='ethers help')
 
+    parser_hpcm = subparsers.add_parser('hpcm', help='hpcm help')
+
     return parser
 
 if __name__ == '__main__':
@@ -55,6 +57,16 @@ if __name__ == '__main__':
         for nodename,node in sorted(Node.nodes.items()):
             if 'hsnmac' in node:
                 print "%s\t%s" % (node['hsnmac'], nodename + 'h0')
+    elif args.action == 'hpcm':
+        print("[discover]")
+        for node in NodeSet('@nc'):
+            n = Node.find_node(node)
+            print("internal_name={name},hostname1={name},mgmt_bmc_net_macs=\"{mac}\",mgmt_bmc_net_name=hostctrl3000,rack_nr={rack},chassis={chassis},tray={slot},cmm_parent={pdu},username=root,password=initial0,node_controller".format(name=n['name'], mac=n['interfaces']['me0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], pdu=n['pdu']))
+        servicenum=600
+        for node in NodeSet('@compute'):
+            n = Node.find_node(node)
+            print("internal_name=service{servicenum},mgmt_net_macs=\"{mac}\",mgmt_net_name=hostmgmt2000,rack_nr={rack},chassis={chassis},tray={slot},node_nr={nodenum},controller_nr={board},hostname1={name},node_controller={bmc},network_group=rack{rack},console_device=ttyS0,conserver_logging=yes,rootfs=nfs,nfs_writable_type=tmpfs-overlay,transport=rsync,mgmt_net_bonding_master=bond0,dhcp_bootfile=ipxe-direct,mgmt_net_interfaces=\"enp65s0\",baud_rate=115200,image={image}".format(name=n['name'], mac=n['interfaces']['eth0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], board=n['board'], nodenum=n['nodenum'], bmc=n['bmc'], servicenum=servicenum, image=n['image']))
+            servicenum = servicenum + 1
 
     rc = 0
 
