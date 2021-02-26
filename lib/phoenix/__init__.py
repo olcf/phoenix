@@ -26,11 +26,11 @@ def setup_logging(level=0):
 
 def get_component(category, provider=None, providerclass=None):
     packagefile = "phoenix." + category
+    imp.acquire_lock()
     if packagefile not in list(sys.modules):
         logging.debug("Loading package %s", packagefile)
-        imp.acquire_lock()
         __import__(packagefile)
-        imp.release_lock()
+    imp.release_lock()
 
     if provider is None:
         System.load_config()
@@ -44,12 +44,12 @@ def get_component(category, provider=None, providerclass=None):
     modname = "phoenix.%s.%s" % (category, modulefile)
 
     # Check if the module needs to be loaded, load it if required
+    imp.acquire_lock()
     if modname not in list(sys.modules):
         logging.debug("Loading module %s", modname)
         # Import module if not yet loaded
-        imp.acquire_lock()
         __import__(modname)
-        imp.release_lock()
+    imp.release_lock()
 
     # Get the class pointer
     if providerclass == None:
