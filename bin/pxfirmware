@@ -27,7 +27,11 @@ if __name__ == '__main__':
 
     phoenix.setup_logging(args.verbose)
 
-    nodes = NodeSet(args.nodes)
+    try:
+        nodes = NodeSet(args.nodes)
+    except Exception as e:
+        logging.error(e)
+        sys.exit(1)
 
     (task, handler) = phoenix.parallel.setup(nodes, args)
     cmd = "firmware %s" % (args.action)

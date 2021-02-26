@@ -10,7 +10,7 @@ except ImportError:
     logging.info("Unable to load CLoader and/or CDumper")
     from yaml import Loader, Dumper
 
-from ClusterShell.NodeUtils import GroupSource
+from ClusterShell.NodeUtils import GroupSource, GroupSourceQueryFailed
 import phoenix
 
 class Group(object):
@@ -36,7 +36,10 @@ class Group(object):
             cls.load_groups()
         if group[0] == '@':
             group = group[1:]
-        return cls.groups[group]
+        try:
+            return cls.groups[group]
+        except KeyError:
+            raise GroupSourceQueryFailed("Group not found", "test")
 
     @classmethod
     def list_groups(cls):
