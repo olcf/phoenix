@@ -24,7 +24,7 @@ class PowerCommand(Command):
     def get_parser(cls):
         parser = argparse.ArgumentParser(description="Control the power of Phoenix nodes")
         parser.add_argument('nodes', default=None, type=str, help='Nodes to list')
-        parser.add_argument('action', default=None, type=str, help='Action')
+        parser.add_argument('action', default='stat', nargs='?', type=str, help='Action')
         parser.add_argument('--pdu', default=False, action='store_true', help='Target the PDU')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
