@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-"""Plugin for Cray shasta machines"""
+"""Plugin for HPE Cray EX machines"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
 import logging
 import re
 
-shasta_regex = re.compile(r'x(?P<racknum>\d+)[ce](?P<chassis>\d+)([rs](?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
+cray_ex_regex = re.compile(r'x(?P<racknum>\d+)[ce](?P<chassis>\d+)([rs](?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
 ipprefix = 'fc00:0:100:60'
 
 # colorado_map[slot][node]
@@ -25,9 +25,9 @@ def set_node_attrs(node):
         Note that a "node" in this context could be a
         compute node, nC, cC, cec, or switch
     '''
-    logging.debug("Running cray_shasta plugin for node %s", node['name'])
+    logging.debug("Running cray_ex plugin for node %s", node['name'])
 
-    m = shasta_regex.search(node['name'])
+    m = cray_ex_regex.search(node['name'])
 
     if m is None:
         logging.debug("Name '%s' did not match the regex", node['name'])
@@ -124,7 +124,7 @@ def set_node_attrs(node):
         # The CECs live in a chassis, but remove this for now
         del node['chassis']
 
-    logging.debug("Done running cray_shasta plugin for node %s", node['name'])
+    logging.debug("Done running cray_ex plugin for node %s", node['name'])
 
 def _setinterfaceparam(node, interface, paramname, paramvalue):
     """ Updates a node's interface with a certain value """
