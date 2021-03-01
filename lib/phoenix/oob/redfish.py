@@ -7,6 +7,7 @@ import requests
 
 from phoenix.oob import OOBTimeoutError
 from phoenix.command import CommandTimeout
+from phoenix.system import System
 
 # This is needed to turn off SSL warnings
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -181,10 +182,19 @@ class Redfish(Oob):
     def _firmware_upgrade(cls, node, url, fwtype=None, auth=None):
         path = 'UpdateService/Actions/SimpleUpdate'
         target = cls._redfish_target_firmware(node, fwtype)
-        # TODO - validate image path, convert 'bare' firmware name into full http path
-        # For now, only support full HTTP paths
+        default_firmware = False
+        if url is None:
+            try:
+                url = node['firmware']
+                default_firmware = True
+            except KeyError:
+                return(False, 'Please specify a firmware URL')
         if not url.startswith('http'):
-            return(False, 'Invalid firmware URL %s' % url)
+            try:
+                firmwarebase = System.setting('firmware_base')
+                url = firmwarebase + '/' + url
+            except KeyError:
+                return(False, 'Invalid firmware URL %s' % url)
         data = {"ImageURI": url, "TransferProtocol":"HTTP"}
         if target:
             data["Targets"] = [target]

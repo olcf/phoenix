@@ -27,6 +27,9 @@ class System(object):
     @classmethod
     def load_config(cls, filename=None):
         """ Reads and processes the system.yaml file """
+        if cls.loaded_config:
+            return
+
         if filename is None:
             filename = "%s/system.yaml" % phoenix.conf_path
 
@@ -37,6 +40,12 @@ class System(object):
 
         cls.config = systemdata
         cls.loaded_config = True
+
+    @classmethod
+    def setting(cls, key):
+        if not cls.loaded_config:
+            cls.load_config()
+        return cls.config[key]
 
     @classmethod
     def find_network(cls, net):
