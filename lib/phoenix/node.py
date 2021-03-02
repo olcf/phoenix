@@ -39,11 +39,13 @@ class Node(object):
     num_regex = re.compile(r'\d+')
     loaded_functions = False
     loaded_nodes = False
+    loaded_nodemap = False
     datasource = None
     environment = None
 
     plugins = dict()
     nodes = dict()
+    nodemap = dict()
 
     def __init__(self, name):
         self.rawattr = dict()
@@ -140,10 +142,44 @@ class Node(object):
         cls.loaded_nodes = True
 
     @classmethod
+    def _load_nodemap(cls, filename=None, ndoeset=None, clear=False):
+        """ Reads and processes a nodemap yaml file
+        """
+
+        if clear:
+            cls.nodemap = dict()
+
+        if filename is None:
+            filename = "%s/nodemap.yaml" % phoenix.conf_path
+
+        # Read the yaml file
+        logging.info("Trying to load nodemap file '%s'", filename)
+        try:
+            with open(filename) as nodemapfd:
+                nodemapdata = yaml.load(nodemapfd, Loader=Loader)
+
+            cls.nodemap.update(nodemapdata)
+        except:
+            logging.info("Could not load nodemap")
+
+        cls.loaded_nodemap = True
+
+    @classmethod
     def find_node(cls, node):
         if not cls.loaded_nodes:
             cls.load_nodes()
-        return cls.nodes[node]
+        try:
+            return cls.nodes[node]
+        except KeyError:
+            if not cls.loaded_nodemap:
+                cls._load_nodemap()
+            try:
+                n2 = cls.nodemap[node]
+                logging.debug("Didn't find node %s but nodemap maps that to %s", node, n2)
+            except:
+                logging.debug("Nodemap did not map %s", node)
+                raise KeyError(node)
+            return cls.nodes[n2]
 
     @classmethod
     def find_plugin(cls, name):

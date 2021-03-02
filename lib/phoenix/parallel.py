@@ -140,7 +140,7 @@ class PhoenixClient(EngineClient):
         try:
             self.node = Node.find_node(self.key)
         except KeyError:
-            self.output("Could not find node %s" % self.key, stderr=True)
+            self.output("_start Could not find node %s" % self.key, stderr=True)
             self.mark_command_complete(rc=1)
         else:
             logging.info("Phoenix client submitting command for node %s in thread %d", self.key, getThread() )
@@ -207,7 +207,10 @@ class PhoenixWorker(DistantWorker):
         # Load Phoenix with the nodes we care about
         # Consider if we want to only do this if Node.loaded_nodes is False to
         # avoid reading the conf files again
-        Node.load_nodes(nodeset=self.nodes)
+        #Node.load_nodes(nodeset=self.nodes)
+        # FIXME: since implementing nodemaps, we have to load all nodes
+        # Find a better way to map determine what nodes to load
+        Node.load_nodes()
 
         autoclose = kwargs.get('autoclose', False)
         stderr = kwargs.get('stderr', False)
