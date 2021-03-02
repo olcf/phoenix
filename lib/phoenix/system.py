@@ -42,10 +42,13 @@ class System(object):
         cls.loaded_config = True
 
     @classmethod
-    def setting(cls, key):
+    def setting(cls, key, default=None):
         if not cls.loaded_config:
             cls.load_config()
-        return cls.config[key]
+        try:
+            return cls.config[key]
+        except KeyError:
+            return default
 
     @classmethod
     def find_network(cls, net):
