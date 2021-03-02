@@ -22,6 +22,10 @@ class Group(object):
     @classmethod
     def load_groups(cls, filename=None):
         """ Reads and processes the groups.yaml file """
+
+        if cls.loaded_groups:
+            return
+
         if filename is None:
             filename = "%s/groups.yaml" % phoenix.conf_path
 
@@ -29,6 +33,8 @@ class Group(object):
         logging.info("Loading group file '%s'", filename)
         with open(filename) as groupfd:
             cls.groups.update(load(groupfd, Loader=Loader))
+
+        cls.loaded_groups = True
 
     @classmethod
     def find_group(cls, group):
