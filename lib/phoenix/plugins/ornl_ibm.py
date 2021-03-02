@@ -10,7 +10,7 @@ name_regex = re.compile(r'(.)(\d{2})n(\d{2})')
 columns=36
 nodespercol=18
 
-def set_node_attrs(node):
+def set_node_attrs(node, alias=None):
     logging.debug("Running ornl_ibm plugin for node %s" % (node['name']))
 
     # Extract node index number from the name

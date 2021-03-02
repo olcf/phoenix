@@ -8,7 +8,7 @@ from phoenix.system import System
 num_regex = re.compile(r'\d+')
 logging.debug("Generic plugin compiled the num_regex")
 
-def set_node_attrs(node):
+def set_node_attrs(node, alias=None):
     logging.debug("Running generic plugin for node %s" % (node['name']))
 
     # Extract node index number from the name

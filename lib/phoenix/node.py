@@ -159,6 +159,7 @@ class Node(object):
                 nodemapdata = yaml.load(nodemapfd, Loader=Loader)
 
             cls.nodemap.update(nodemapdata)
+            cls.nodemap.update({v: k for k, v in nodemapdata.items()})
         except:
             logging.info("Could not load nodemap")
 
@@ -182,6 +183,18 @@ class Node(object):
             return cls.nodes[n2]
 
     @classmethod
+    def node_alias(cls, node):
+        logging.debug("Inside node_alias")
+        if not cls.loaded_nodemap:
+            logging.debug("Node_alias calling load_nodemap")
+            cls._load_nodemap()
+        try:
+            return cls.nodemap[node]
+        except:
+            logging.debug("No alias found for %s", node)
+            return None
+
+    @classmethod
     def find_plugin(cls, name):
         logging.debug("Inside find_plugin")
         if name not in cls.plugins:
@@ -202,10 +215,17 @@ class Node(object):
         else:
             plugin_name = 'generic'
 
-        logging.info("Running plugins for %s" % (self['name']))
+        logging.info("Running plugins for %s", self['name'])
         plugin = Node.find_plugin(plugin_name)
         logging.info("Found plugin for node")
-        plugin.set_node_attrs(self)
+
+        # Check to see if this node has an alias in the nodemap
+        try:
+            alias = self.node_alias(self['name'])
+        except KeyError:
+            alias = none
+
+        plugin.set_node_attrs(self, alias=alias)
 
     @classmethod
     def ipadd(cls, base, offset):

@@ -20,17 +20,24 @@ colorado_map = {
     7: { 0: 2,  1: 3  }
 }
 
-def set_node_attrs(node):
+def set_node_attrs(node, alias=None):
     ''' Sets attributes for nodes in the system
         Note that a "node" in this context could be a
         compute node, nC, cC, cec, or switch
     '''
     logging.debug("Running cray_ex plugin for node %s", node['name'])
 
-    m = cray_ex_regex.search(node['name'])
+    # FIXME: This won't do the right thing if you system name starts with 'x'
+    #        Hopefully that won't bite us any time soon...
+    if node['name'].startswith('x'):
+        node['xname'] = node['name']
+    elif alias is not None and alias.startswith('x'):
+        node['xname'] = alias
+
+    m = cray_ex_regex.search(node['xname'])
 
     if m is None:
-        logging.debug("Name '%s' did not match the regex", node['name'])
+        logging.debug("Name '%s' (%s) did not match the regex", node['name'], node['xname'])
         return
 
     try:
