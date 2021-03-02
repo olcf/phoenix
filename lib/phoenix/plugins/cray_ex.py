@@ -6,6 +6,7 @@ import logging
 import re
 
 cray_ex_regex = re.compile(r'x(?P<racknum>\d+)[ce](?P<chassis>\d+)([rs](?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
+num_regex = re.compile(r'.*?(\d+)$')
 ipprefix = 'fc00:0:100:60'
 
 # colorado_map[slot][node]
@@ -33,6 +34,9 @@ def set_node_attrs(node, alias=None):
         node['xname'] = node['name']
     elif alias is not None and alias.startswith('x'):
         node['xname'] = alias
+        m = num_regex.match(node['name'])
+        if m is not None:
+            node['nodeindex'] = int(m.group(1))
 
     m = cray_ex_regex.search(node['xname'])
 
