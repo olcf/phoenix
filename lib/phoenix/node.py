@@ -130,7 +130,11 @@ class Node(object):
                 if node not in cls.nodes:
                     cls.nodes[node] = Node(node)
                 for key, value in data.items():
-                    if isinstance(value, bool) or (isinstance(value, str) and not cls.tpl_regex.search(value)):
+                    if (isinstance(value, bool) or
+                        isinstance(value, int) or
+                        isinstance(value, float) or
+                        (isinstance(value, str) and not cls.tpl_regex.search(value))
+                       ):
                         cls.nodes[node][key] = value
                         logging.debug("Setting node %s key %s to %s", node, key, value)
                     else:
