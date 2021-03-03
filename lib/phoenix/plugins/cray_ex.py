@@ -64,10 +64,18 @@ def set_node_attrs(node, alias=None):
         node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
         node['bmcuser'] = 'root'
         node['bmcpassword'] = 'initial0'
-        # XXX This is a poor assumption, make configurable
-        node['hsngroup'] = (node['racknum'] % 1000) + 1
-        node['hsnswitch'] = _hsnswitchname(node['racknum'], node['chassis'], node['board'])
-        node['hsnmac'] = _hsnalgomac(node['hsngroup'], _hsnswitchnum(node['chassis'], node['board']), colorado_map[node['slot']][node['nodenum']])
+        try:
+            hsnnics = node['hsnnics']
+        except KeyError:
+            node['hsnnics'] = 1
+            hsnnics = 1
+        for hsnnic in range(hsnnics):
+            nic = 'hsn%d' % hsnnic
+            # XXX This is a poor assumption for single NIC, wrong for multi-NIC. Need to make configurable
+            group = (node['racknum'] % 1000) + 1
+            _setinterfaceparam(node, nic, 'group', group)
+            _setinterfaceparam(node, nic, 'switch', _hsnswitchname(node['racknum'], node['chassis'], node['board']))
+            _setinterfaceparam(node, nic, 'mac', _hsnalgomac(group, _hsnswitchnum(node['chassis'], node['board']), colorado_map[node['slot']][node['nodenum']]))
 
     elif node['type'] == 'nc':
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
