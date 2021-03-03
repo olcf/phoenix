@@ -55,8 +55,17 @@ if __name__ == '__main__':
         provider.update_dhcp_reservations()
     elif args.action == 'ethers':
         for nodename,node in sorted(Node.nodes.items()):
-            if 'hsnmac' in node:
-                print "%s\t%s" % (node['hsnmac'], nodename + 'h0')
+            if 'interfaces' not in node:
+                logging.debug("No interfaces defined for node %s, skipping", nodename)
+                continue
+            for interface in node['interfaces']:
+                iface = node['interfaces'][interface]
+                if 'dhcp' not in iface or not iface['dhcp']:
+                    logging.debug("Skipping % interface %s because DHCP is not set", nodename, interface)
+                    continue
+                if 'hostname' not in iface:
+                    iface['hostname'] = nodename
+                print "%s\t%s" % (iface['mac'], iface['hostname'])
     elif args.action == 'hpcm':
         print("[discover]")
         for node in NodeSet('@nc'):
