@@ -111,7 +111,7 @@ class ConfCommand(Command):
         System.load_config()
         # NOTE: it doesn't really make sense to include a nodeset here...
         Node.load_nodes()
-        provider = load_dhcp_provider()                                         
+        provider = load_dhcp_provider()
         print provider.get_dhcp_conf()
         return 0
 
@@ -120,11 +120,11 @@ class ConfCommand(Command):
         System.load_config()
         # NOTE: it doesn't really make sense to include a nodeset here...
         Node.load_nodes()
-        provider = load_dhcp_provider()                                         
+        provider = load_dhcp_provider()
         print provider.update_dhcp_reservations()
         return 0
 
-    @classmethod                                                                
+    @classmethod
     def hpcm(cls, nodes, args):
         System.load_config()
         Node.load_nodes(nodeset=nodes)
@@ -145,33 +145,8 @@ class ConfCommand(Command):
     def run(cls, client):
         ''' Run the action for a single host (this is one instance of a parallel request '''
         action = client.command[1]
-        if 'pdu' in client.command:
-            oobkind = "pdu"
-            try:
-                oobtype = client.node['pdutype']
-                oobcls = phoenix.get_component("oob", oobtype, oobtype.capitalize() + "Pdu")
-            except KeyError:
-                client.output("pdutype not set", stderr=True)
-                client.mark_command_complete(rc=1)
-                return 1
-        else:
-            oobkind = "bmc"
-            try:
-                oobtype = client.node['bmctype']
-                oobcls = phoenix.get_component("oob", oobtype, oobtype.capitalize() + "Bmc")
-            except KeyError:
-                client.output("bmctype not set", stderr=True)
-                client.mark_command_complete(rc=1)
-                return 1
-        try:
-            rc = oobcls.power(client.node, client, [action])
-            return rc
-        except OOBTimeoutError:
-            client.output("Timeout", stderr=True)
-            return 1
-        except Exception as e:
-            client.output("Error running command: %s - %s" % (str(e), e.args), stderr=True)
-            return 1
+        client.output("Not yet implemented", stderr=True)
+        return 1
 
 if __name__ == '__main__':
-    sys.exit(PowerCommand.run())
+    sys.exit(ConfCommand.run())
