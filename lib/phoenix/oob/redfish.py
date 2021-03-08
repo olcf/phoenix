@@ -94,13 +94,35 @@ class Redfish(Oob):
         return (True, status)
 
     @classmethod
+    def _redfish_get_systems(cls, node, auth=None):
+        """Return a list of systems managed on this endpoint"""
+        try:
+            host = node[cls.oobtype]
+        except:
+            return list()
+        if auth is None:
+            auth = cls._get_auth(node)
+        try:
+            response = cls._do_redfish_req(host, "Systems", "get", auth=auth)
+            value = response.json()
+            members = value['Members']
+            return [x['@odata.id'].split('/')[-1] for x in members]
+        except:
+            return list()
+
+    @classmethod
     def _redfish_path_system(cls, node):
         """Determine the best path the the System entry"""
         if cls.oobtype == "bmc":
             try:
                 return node['redfishpath']
             except KeyError:
-                return 'Systems/Self'
+                systems = cls._redfish_get_systems(node)
+                logging.debug("Systems is %s", systems)
+                system = "Systems/%s" % systems[0] if len(systems) > 0 else 'Systems/Self'
+                # Save the detected value to avoid having to query the BMC again later
+                node['redfishpath'] = system
+                return system
         elif cls.oobtype == "pdu":
             try:
                 return node['pduredfishpath']
