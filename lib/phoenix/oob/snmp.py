@@ -4,6 +4,7 @@
 
 import logging
 import netsnmp
+import json
 
 from phoenix.oob import OOBTimeoutError
 from phoenix.oob import Oob
@@ -35,6 +36,24 @@ class SnmpSwitch(Snmp):
     @classmethod
     def _switch_summary(cls, node):
         output = ['%-30s %s' % ('Interface', 'Mac (VLAN)')]
+        summary_table = cls._switch_port_mac(node)
+        logging.debug("%s", summary_table)
+        for key, value in sorted(summary_table.items()):
+            if len(value) > 2:
+                macs = "<%d, likely uplink>" % len(value)
+            else:
+                macs = ", ".join(["%s (%d)" % (y[0], y[1]) for y in value])
+            output.append("%-30s %s" % (key, macs))
+        return "\n".join(output)
+
+    @classmethod
+    def _sort_interfaces(cls, key1, key2):
+        parts = key.split('/')
+
+    @classmethod
+    def _switch_port_mac(cls, node):
+        logging.debug("Inside _switch_port_mac for %s", node['name'])
+        macmap = dict()
         hostname = node['name']
         try:
             community = node['community']
@@ -80,18 +99,21 @@ class SnmpSwitch(Snmp):
             except KeyError:
                 # Likely a management port or VLAN
                 maclist = list()
-            if len(maclist) > 2:
-                macs = "<%d, likely uplink>" % len(maclist)
-            else:
-                macs = ", ".join(["%s (%d)" % (y[0], y[1]) for y in maclist])
-            output.append("%-30s %s" % (x.val, macs))
-        return "\n".join(output)
+            macmap[x.val] = maclist
+        logging.debug("Done with _switch_port_mac for %s. %s", node['name'], macmap)
+        return macmap
 
     @classmethod
     def _inventory(cls, node, args):
-        # For now, all we support is a switch summary
-        output = cls._switch_summary(node)
-        return (True, output)
+        action = args[0]
+        if action == "macmap" or action == "macs":
+            output = cls._switch_summary(node)
+            return (True, output)
+        elif action == "macmapjson":
+            output = json.dumps(cls._switch_port_mac(node))
+            return (True, output)
+        else:
+            return (False, "Action %s not implemented" % action)
 
 class SnmpPdu(Snmp):
     oobtype = "pdu"

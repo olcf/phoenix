@@ -63,6 +63,8 @@ def set_node_attrs(node, alias=None):
         node['bmctype'] = 'redfish'
         node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
         node['bmcuser'] = 'root'
+        node['discoverytype'] = 'bmc'
+        _setinterfaceparam(node, 'eth0', 'discoverytype', 'bmc')
         node['bmcpassword'] = 'initial0'
         try:
             hsnnics = node['hsnnics']
