@@ -20,6 +20,7 @@ import logging
 import concurrent.futures
 import threading
 import signal
+import socket
 
 import phoenix
 from phoenix.node import Node
@@ -35,6 +36,7 @@ from ClusterShell.Event import EventHandler
 from ClusterShell.CLI.Display import Display
 from ClusterShell.CLI.Error import GENERIC_ERRORS, handle_generic_error
 from ClusterShell.CLI.Clush import DirectOutputHandler, DirectProgressOutputHandler, GatherOutputHandler
+from ClusterShell.Topology import TopologyGraph
 
 def getThread():
     return threading.current_thread().ident
@@ -88,6 +90,17 @@ def setup(nodes, args):
     task.set_info('tree_default:local_workername', 'phoenix.parallel')
     task.set_info('fanout', args.fanout)
     task.set_default("stderr", True)
+
+    servicenodelist = System.setting('servicenodes')
+    # Use servicenodes only for root to avoid ssh issues
+    if os.getuid() == 0 and servicenodelist is not None:
+	servicenodes = NodeSet(servicenodelist)
+	hostname = socket.gethostname().split('.')[0]
+	graph = TopologyGraph()
+	graph.add_route(NodeSet(hostname), servicenodes)
+	graph.add_route(servicenodes, nodes)
+	task.topology = graph.to_tree(hostname)
+	logging.debug("Topology is\n%s", task.topology)
 
     options=DisplayOptions()
     color = sys.stdout.isatty()
