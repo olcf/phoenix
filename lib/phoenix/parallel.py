@@ -77,6 +77,36 @@ class DisplayOptions(object):
         self.groupsource=None
         self.groupbase=None
 
+def gettopology(nodes, fanout=64):
+    # Use servicenodes only for root to avoid ssh issues
+    if os.getuid() != 0:
+        logging.debug("Topology is currently only enabled for root")
+        return None
+
+    # No point in using topology for tiny requests
+    if len(nodes) < fanout:
+        logging.debug("Skipping topology for small request")
+        return None
+
+    servicenodelist = System.setting('servicenodes')
+    if servicenodelist is None:
+        return None
+
+    servicenodes = NodeSet(servicenodelist)
+    destination = nodes.difference(servicenodes)
+
+    if len(destination) == 0:
+        logging.debug("Skipping topology because no non-service nodes remain")
+        return None
+
+    hostname = socket.gethostname().split('.')[0]
+    graph = TopologyGraph()
+    graph.add_route(NodeSet(hostname), servicenodes)
+    graph.add_route(servicenodes, destination)
+    topology = graph.to_tree(hostname)
+    logging.debug("Topology is\n%s", topology)
+    return topology
+
 def setup(nodes, args):
     sys.excepthook = excepthook
 
@@ -91,16 +121,7 @@ def setup(nodes, args):
     task.set_info('fanout', args.fanout)
     task.set_default("stderr", True)
 
-    servicenodelist = System.setting('servicenodes')
-    # Use servicenodes only for root to avoid ssh issues
-    if os.getuid() == 0 and servicenodelist is not None:
-	servicenodes = NodeSet(servicenodelist)
-	hostname = socket.gethostname().split('.')[0]
-	graph = TopologyGraph()
-	graph.add_route(NodeSet(hostname), servicenodes)
-	graph.add_route(servicenodes, nodes)
-	task.topology = graph.to_tree(hostname)
-	logging.debug("Topology is\n%s", task.topology)
+    task.topology = gettopology(nodes, args.fanout)
 
     options=DisplayOptions()
     color = sys.stdout.isatty()
