@@ -139,7 +139,13 @@ class Node(object):
                         logging.debug("Setting node %s key %s to %s", node, key, value)
                     else:
                         # Deep copy is needed to make sure each node gets its own copy
-                        cls.nodes[node].rawattr[key] = copy.deepcopy(value)
+                        newval = copy.deepcopy(value)
+                        if isinstance(value, dict):
+                            if key not in cls.nodes[node].rawattr:
+                                cls.nodes[node].rawattr[key] = dict()
+                            cls.nodes[node].rawattr[key].update(newval)
+                        else:
+                            cls.nodes[node].rawattr[key] = newval
                         logging.debug("Setting node %s raw key %s to %s (%s)", node, key, value, cls.nodes[node].rawattr[key])
 
         # Mark that nodes have been loaded
