@@ -18,9 +18,7 @@ class NodeCommand(Command):
         parser = argparse.ArgumentParser(description="List info about Phoenix nodes")
         parser.add_argument('nodes', nargs='+', default=None, type=str, help='Nodes to list')
         parser.add_argument('-v', '--verbose', action='count', default=0)
-        parser.add_argument('-f', '--fanout', type=int, default=64, help='Fanout value')
-        parser.add_argument('-t', '--command-timeout', type=int, default=0)
-        parser.add_argument('-T', '--connect-timeout', type=int, default=20)
+        phoenix.parallel.parser_add_arguments_parallel(parser)
         return parser
 
     @classmethod
