@@ -22,6 +22,7 @@ class ConfCommand(Command):
         subparsers = parser.add_subparsers(help='sub-command help', dest='action')
         parser_hosts = subparsers.add_parser('hosts', help='hosts help')
         parser_hosts.add_argument('--interface', '-i', default=[], type=str, action='append', dest='interfaces', help='Interface to include (default: show all)')
+        parser_ips = subparsers.add_parser('ips', help='ip help')
         parser_dhcp = subparsers.add_parser('dhcp', help='dhcp help')
         parser_updatedhcp = subparsers.add_parser('updatedhcp', help='update dhcp help')
         parser_bootfile = subparsers.add_parser('bootfiles', help='bootfile help')
@@ -41,6 +42,7 @@ class ConfCommand(Command):
         nodes = NodeSet(args.nodes)
 
         cmdmap = { 'hosts':      cls.hosts,
+                   'ips':        cls.ips,
                    'bootfiles':  cls.bootfiles,
                    'ethers':     cls.ethers,
                    'dhcp':       cls.dhcp,
@@ -80,6 +82,26 @@ class ConfCommand(Command):
                     continue
                 hostname = iface['hostname'] if 'hostname' in iface else nodename
                 print "%s\t%s\t%s.%s" % (iface['ip'], hostname, hostname, System.config['domain'])
+        return 0
+
+    @classmethod
+    def ips(cls, nodes, args):
+        System.load_config()
+        Node.load_nodes(nodeset=nodes)
+        data = dict()
+        for nodename in nodes:
+            node = Node.find_node(nodename)
+            if 'interfaces' not in node:
+                continue
+            data[node['name']] = { iface: node['interfaces'][iface]['ip'] for iface in node['interfaces'] if 'ip' in node['interfaces'][iface]}
+        interfaces = list(set([ item.keys() for name,item in data.items() ][0]))
+        cols = ["Node"] + interfaces
+        print("|%s|" % "|".join(cols))
+        for node, val in sorted(data.items()):
+            cols = [ val[interface] if interface in val else "<None>" for interface in interfaces ]
+            cols.insert(0, node)
+            print("|%s|" % "|".join(cols))
+
         return 0
 
     @classmethod
