@@ -26,6 +26,7 @@ class CsvfileDatasource(Datasource):
 
         if key in cls.data_freshness:
             if (cls.data_freshness[key] + cls.cachetime) > cur_time:
+                logging.debug("Data is fresh, skipping re-read")
                 return
 
         try:
@@ -36,7 +37,8 @@ class CsvfileDatasource(Datasource):
                     newdata[row[0]] = row[1]
             cls.data[key] = newdata
             cls.data_freshness[key] = time.time()
-        except:
+        except Exception as e:
+            logging.warning("Exception reading datafile: %s", e)
             # Assume if you can't read the file it's blank
             cls.data[key] = {}
             cls.data_freshness[key] = time.time()
