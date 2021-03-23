@@ -223,6 +223,7 @@ class Node(object):
         if 'plugin' in self.attr:
             plugin_name = self.attr['plugin']
         else:
+            self.attr['plugin'] = 'generic'
             plugin_name = 'generic'
 
         logging.info("Running plugins for %s", self['name'])
