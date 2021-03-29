@@ -16,9 +16,7 @@ def get_parser():
     parser.add_argument('action', default='ver', nargs='?', type=str, help='Action')
     parser.add_argument('arguments', nargs=argparse.REMAINDER)
     parser.add_argument('-v', '--verbose', action='count', default=0)
-    parser.add_argument('-f', '--fanout', type=int, default=64, help='Fanout value')
-    parser.add_argument('-t', '--command-timeout', type=int, default=0)
-    parser.add_argument('-T', '--connect-timeout', type=int, default=20)
+    phoenix.parallel.parser_add_arguments_parallel(parser)
     return parser
 
 if __name__ == '__main__':
