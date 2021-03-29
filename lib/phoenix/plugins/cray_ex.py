@@ -32,11 +32,12 @@ def set_node_attrs(node, alias=None):
     #        Hopefully that won't bite us any time soon...
     if node['name'].startswith('x'):
         node['xname'] = node['name']
-    elif alias is not None and alias.startswith('x'):
-        node['xname'] = alias
+    else:
         m = num_regex.match(node['name'])
         if m is not None:
             node['nodeindex'] = int(m.group(1))
+        if alias is not None and alias.startswith('x'):
+            node['xname'] = alias
 
     m = cray_ex_regex.search(node['xname'])
 

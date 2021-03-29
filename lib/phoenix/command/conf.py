@@ -14,6 +14,21 @@ from phoenix.command import Command
 from phoenix.node import Node
 from phoenix.bootloader import write_bootloader_scripts
 
+def appendraw(val, hpcmattr, node, thelist):
+    thelist.append("{}={}".format(hpcmattr, val))
+
+def appendattr(nodeattr, hpcmattr, node, thelist, thedefault=None):
+    if nodeattr in node:
+        thelist.append("{}={}".format(hpcmattr, node[nodeattr]))
+    elif thedefault != None:
+        thelist.append("{}={}".format(hpcmattr, thedefault))
+
+def appendifaceattr(interface, ifaceattr, hpcmattr, node, thelist):
+    try:
+        thelist.append("{}={}".format(hpcmattr, node['interfaces'][interface][ifaceattr]))
+    except KeyError:
+        pass
+
 class ConfCommand(Command):
     @classmethod
     def get_parser(cls):
@@ -150,17 +165,67 @@ class ConfCommand(Command):
     def hpcm(cls, nodes, args):
         System.load_config()
         Node.load_nodes(nodeset=nodes)
-        servicenum=600
         print("[discover]")
         for nodename in nodes:
             n = Node.find_node(nodename)
+            it = list()
+            appendattr('name', 'hostname1', n, it)
             if n['plugin'] == 'cray_ex' and n['type'] == 'nc':
                 print("internal_name={name},hostname1={name},mgmt_bmc_net_macs=\"{mac}\",mgmt_bmc_net_name=hostctrl3000,rack_nr={rack},chassis={chassis},tray={slot},cmm_parent={pdu},username=root,password=initial0,node_controller".format(name=n['name'], mac=n['interfaces']['me0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], pdu=n['pdu']))
             elif n['plugin'] == 'cray_ex' and n['type'] == 'compute':
+                servicenum = 1000 + n['nodeindex']
                 print("internal_name=service{servicenum},mgmt_net_macs=\"{mac}\",mgmt_net_name=hostmgmt2000,rack_nr={rack},chassis={chassis},tray={slot},node_nr={nodenum},controller_nr={board},hostname1={name},node_controller={bmc},network_group=rack{rack},console_device=ttyS0,conserver_logging=yes,rootfs=nfs,nfs_writable_type=tmpfs-overlay,transport=rsync,mgmt_net_bonding_master=bond0,dhcp_bootfile=ipxe-direct,mgmt_net_interfaces=\"enp65s0\",baud_rate=115200,image={image}".format(name=n['name'], mac=n['interfaces']['eth0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], board=n['board'], nodenum=n['nodenum'], bmc=n['bmc'], servicenum=servicenum, image=n['image']))
-                servicenum = servicenum + 1
+            elif n['plugin'] == 'cray_ex' and n['type'] == 'switch':
+                appendraw(n['name'], 'internal_name', n, it)
+                appendraw('head-bmc', 'mgmt_bmc_net_name', n, it)
+                appendifaceattr('eth0', 'mac', 'mgmt_bmc_net_macs', n, it)
+                appendifaceattr('eth0', 'ip', 'mgmt_bmc_net_ip', n, it)
+                appendraw('root', 'username', n, it)
+                appendraw('initial0', 'password', n, it)
+                it.append('external_switch_controller')
             else:
-                print "tbd"
+                if 'hpcm_servicenum' in n:
+                    servicenum = n['hpcm_servicenum']
+                elif 'type' in n:
+                    if n['type'] == 'admin':
+                        servicenum = 100 + n['nodeindex']
+                    elif n['type'] == 'leader':
+                        servicenum = 200 + n['nodeindex']
+                    elif n['type'] == 'service':
+                        servicenum = 300 + n['nodeindex']
+                    elif n['type'] == 'login':
+                        servicenum = 400 + n['nodeindex']
+                    elif n['type'] == 'gateway':
+                        servicenum = 500 + n['nodeindex']
+                    elif n['type'] == 'utility':
+                        servicenum = 600 + n['nodeindex']
+                    elif n['type'] == 'compute':
+                        servicenum = 2000 + n['nodeindex']
+                    else:
+                        servicenum = 700 + n['nodeindex']
+                else:
+                    servicenum = 800 + n['nodeindex']
+                appendraw('service%d' % servicenum, 'internal_name', n, it)
+                appendifaceattr('bmc', 'mac', 'mgmt_bmc_net_macs', n, it)
+                appendifaceattr('bmc', 'ip', 'mgmt_bmc_net_ip', n, it)
+                appendifaceattr('eth0', 'mac', 'mgmt_net_macs', n, it)
+                appendifaceattr('eth0', 'ip', 'mgmt_net_ip', n, it)
+                appendraw('hsn0', 'data1_net_name', n, it)
+                appendraw('hsn0', 'data1_net_interfaces', n, it)
+                appendifaceattr('hsn0', 'ip', 'data1_net_ip', n, it)
+                appendattr('rootfs', 'rootfs', n, it, 'tmpfs')
+                appendattr('arch', 'architecture', n, it, 'x86_64')
+                appendattr('image', 'image', n, it)
+                #appendattr('bmctype', 'card_type', n, it, 'ILO')
+                appendraw('ILO', 'card_type', n, it)
+                appendattr('bmcuser', 'bmc_username', n, it, 'root')
+                appendattr('bmcpassword', 'bmc_password', n, it)
+                appendraw('yes', 'conserver_logging', n, it)
+                appendraw('yes', 'predictable_net_names', n, it)
+                appendraw('ipxe-direct', 'dhcp_bootfile', n, it)
+                appendattr('hpcm_transport', 'transport', n, it, 'rsync')
+                appendattr('console', 'console_device', n, it, 'ttyS0')
+            print ', '.join(it)
         return 0
 
     @classmethod
