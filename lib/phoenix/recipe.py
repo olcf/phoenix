@@ -409,7 +409,7 @@ class ArtifactSquashfs(Artifact):
 
     def run(self, recipe):
         outputdir = os.path.join(phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
-        squashcommand = "mksquashfs %s %s/rootdir.squashfs -o lz4" % (recipe.root, outputdir)
+        squashcommand = "mksquashfs %s %s/rootdir.squashfs -comp lz4" % (recipe.root, outputdir)
         logging.info("Saving image root as squashfs artifact")
         command = [ "/bin/bash",
                     "-c",
@@ -421,6 +421,7 @@ class ArtifactSquashfs(Artifact):
             raise RuntimeError
 
 def runcmd(command, cwd=None):
+    logging.debug("Running command %s", command)
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=os.setpgrp, cwd=cwd)
     while True:
         output = proc.stdout.readline()
