@@ -139,6 +139,8 @@ class Recipe(object):
                                 self.artifacts.append(ArtifactFile(artifact['file']))
                         elif artifacttype == 'initramfs':
                             self.artifacts.append(ArtifactInitramfs())
+                        elif artifacttype == 'squashfs':
+                            self.artifacts.append(ArtifactSquashfs())
                         else:
                             logging.warning('Unknown artifact type %s', artifacttype)
             else:
@@ -396,6 +398,27 @@ class ArtifactInitramfs(Artifact):
             logging.error("Could not create initramfs")
             raise RuntimeError
 
+class ArtifactSquashfs(Artifact):
+    name = 'Squashfs'
+
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return "True"
+
+    def run(self, recipe):
+        outputdir = os.path.join(phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
+        squashcommand = "mksquashfs %s %s/rootdir.squashfs -o lz4" % (recipe.root, outputdir)
+        logging.info("Saving image root as squashfs artifact")
+        command = [ "/bin/bash",
+                    "-c",
+                    squashcommand
+                    ]
+        rc = runcmd(command, cwd=recipe.root)
+        if rc:
+            logging.error("Could not create squashfs")
+            raise RuntimeError
 
 def runcmd(command, cwd=None):
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=os.setpgrp, cwd=cwd)
