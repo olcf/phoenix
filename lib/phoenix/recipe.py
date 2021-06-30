@@ -387,6 +387,10 @@ class ArtifactInitramfs(Artifact):
 
     def run(self, recipe):
         outputdir = os.path.join(phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
+        try:
+            os.makedirs(outputdir)
+        except FileExistsError:
+            pass
         cpiocommand = "find . | cpio --quiet -H newc -o | pigz -9 -n > %s/initramfs.gz" % outputdir
         logging.info("Saving image root as initramfs artifact")
         command = [ "/bin/bash",
@@ -409,6 +413,10 @@ class ArtifactSquashfs(Artifact):
 
     def run(self, recipe):
         outputdir = os.path.join(phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
+        try:
+            os.makedirs(outputdir)
+        except FileExistsError:
+            pass
         squashcommand = "mksquashfs %s %s/rootdir.squashfs -comp lz4" % (recipe.root, outputdir)
         logging.info("Saving image root as squashfs artifact")
         command = [ "/bin/bash",
