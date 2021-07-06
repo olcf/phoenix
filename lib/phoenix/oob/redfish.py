@@ -132,6 +132,14 @@ class Redfish(Oob):
             return 'Systems/Self'
 
     @classmethod
+    def _redfish_path_simpleupdate(cls, node):
+        """Determine the best path the the SimpleUpdate action"""
+        try:
+            return node['redfishsimpleupdate']
+        except KeyError:
+            return 'UpdateService/Actions/UpdateService.SimpleUpdate'
+
+    @classmethod
     def _power_state(cls, node, auth=None):
         redfishpath = cls._redfish_path_system(node)
         logging.debug("Inside _power_state %s", redfishpath)
@@ -202,7 +210,7 @@ class Redfish(Oob):
 
     @classmethod
     def _firmware_upgrade(cls, node, url, fwtype=None, auth=None):
-        path = 'UpdateService/Actions/SimpleUpdate'
+        path = cls._redfish_path_simpleupdate(node)
         target = cls._redfish_target_firmware(node, fwtype)
         default_firmware = False
         if url is None:

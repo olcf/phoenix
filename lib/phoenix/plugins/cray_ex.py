@@ -57,6 +57,9 @@ def set_node_attrs(node, alias=None):
         # Converting it to an int will return a TypeError which we just ignore
         pass
 
+    # This needs to eventually move to models instead of polluting every node
+    node['redfishsimpleupdate'] = 'UpdateService/Actions/SimpleUpdate'
+
     if node['type'] == 'compute':
         node['redfishpath'] = 'Systems/Node%d' % node['nodenum']
         node['firmware_name'] = 'Node%d.BIOS' % node['nodenum']
