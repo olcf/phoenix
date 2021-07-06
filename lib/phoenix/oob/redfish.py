@@ -162,7 +162,7 @@ class Redfish(Oob):
         data = { 'ResetType': resettype }
         headers = { 'Content-Type': 'application/json' }
         response = cls._do_redfish_req(host, path, "post", auth, data, headers)
-        if response.status_code not in [200, 204]:
+        if response.status_code not in [200, 202, 204]:
             try:
                 value = response.json()
                 return (False, value['error']['message'])
@@ -228,7 +228,7 @@ class Redfish(Oob):
         data = {"ImageURI": url, "TransferProtocol":"HTTP"}
         if target:
             data["Targets"] = [target]
-        return cls._post_redfish(node, path, data, status_codes=[200, 204])
+        return cls._post_redfish(node, path, data, status_codes=[200, 202, 204])
 
     inventory_map = {
         'mac': ('EthernetInterfaces/ManagementEthernet', 'MACAddress'),
