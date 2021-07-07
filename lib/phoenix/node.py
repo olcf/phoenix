@@ -290,6 +290,12 @@ class Node(object):
             self.interpolate(None, source=source[key], dest=newdest)
             dest[key] = newdest
             del source[key]
+        elif isinstance(source[key], list):
+            newdest = list()
+            for item in source[key]:
+                newdest.append(self.interpolatevalue(item))
+            dest[key] = newdest
+            del source[key]
         elif type(source[key]) == str:
             # Just interpolate one key in the dict
             dest[key] = self.interpolatevalue(source[key])
@@ -297,3 +303,5 @@ class Node(object):
         elif type(source[key]) == bool:
             dest[key] = source[key]
             del source[key]
+        else:
+            logging.error("Unhandled interpolation for key %s %s", key, type(source[key]))
