@@ -101,19 +101,28 @@ class ConfCommand(Command):
 
     @classmethod
     def ips(cls, nodes, args):
+        red = '\033[1;31m'
+        end = '\033[0;0m'
         System.load_config()
         Node.load_nodes(nodeset=nodes)
         data = dict()
+        ips = dict()
+        dupes = dict()
         for nodename in nodes:
             node = Node.find_node(nodename)
             if 'interfaces' not in node:
                 continue
             data[node['name']] = { iface: node['interfaces'][iface]['ip'] for iface in node['interfaces'] if 'ip' in node['interfaces'][iface]}
+            for ip in data[node['name']].values():
+                if ip in ips:
+                    dupes[ip] = True
+                    logging.error("Duplicate IP %s", ip)
+                ips[ip] = True
         interfaces = list(set([ item.keys() for name,item in data.items() ][0]))
         cols = ["Node"] + interfaces
         print("|%s|" % "|".join(cols))
         for node, val in sorted(data.items()):
-            cols = [ val[interface] if interface in val else "<None>" for interface in interfaces ]
+            cols = [ (red + val[interface] + end if val[interface] in dupes else val[interface]) if interface in val else "<None>" for interface in interfaces ]
             cols.insert(0, node)
             print("|%s|" % "|".join(cols))
 
