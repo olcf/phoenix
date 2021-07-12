@@ -120,11 +120,11 @@ class ConfCommand(Command):
                 ips[ip] = True
         interfaces = list(set([ item.keys() for name,item in data.items() ][0]))
         cols = ["Node"] + interfaces
-        print("|%s|" % "|".join(cols))
+        print("|%s|" % "|".join(['{:<15}'.format(x) for x in cols]))
         for node, val in sorted(data.items()):
             cols = [ (red + val[interface] + end if val[interface] in dupes else val[interface]) if interface in val else "<None>" for interface in interfaces ]
             cols.insert(0, node)
-            print("|%s|" % "|".join(cols))
+            print("|%s|" % "|".join(['{:<15}'.format(x) for x in cols]))
 
         return 0
 
