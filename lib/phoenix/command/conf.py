@@ -5,6 +5,7 @@
 import sys
 import logging
 import argparse
+import socket
 
 from ClusterShell.NodeSet import NodeSet
 import phoenix
@@ -38,6 +39,7 @@ class ConfCommand(Command):
         parser_hosts = subparsers.add_parser('hosts', help='hosts help')
         parser_hosts.add_argument('--interface', '-i', default=[], type=str, action='append', dest='interfaces', help='Interface to include (default: show all)')
         parser_ips = subparsers.add_parser('ips', help='ip help')
+        parser_ips.add_argument('--sort', '-s', default=None, type=str, dest='sort', help='Field to sort by')
         parser_dhcp = subparsers.add_parser('dhcp', help='dhcp help')
         parser_updatedhcp = subparsers.add_parser('updatedhcp', help='update dhcp help')
         parser_bootfile = subparsers.add_parser('bootfiles', help='bootfile help')
@@ -100,6 +102,14 @@ class ConfCommand(Command):
         return 0
 
     @classmethod
+    def _sort_ips(cls, thing):
+        if cls.interface_sort is None:
+            return thing
+        elif cls.interface_sort in thing[1]:
+            return socket.inet_aton(thing[1][cls.interface_sort])
+        return thing
+
+    @classmethod
     def ips(cls, nodes, args):
         red = '\033[1;31m'
         end = '\033[0;0m'
@@ -120,8 +130,17 @@ class ConfCommand(Command):
                 ips[ip] = True
         interfaces = list(set([ item.keys() for name,item in data.items() ][0]))
         cols = ["Node"] + interfaces
+        cls.interface_sort = interfaces[0]
+        if 'sort' in args and args.sort is not None:
+            if args.sort == "name" or args.sort == "node":
+                cls.interface_sort = None
+            else:
+                if args.sort in interfaces:
+                    cls.interface_sort = args.sort
+                else:
+                    logging.error("Could not find interface %s to sort by", args.sort)
         print("|%s|" % "|".join(['{:<15}'.format(x) for x in cols]))
-        for node, val in sorted(data.items()):
+        for node, val in sorted(data.items(), key=cls._sort_ips):
             cols = [ (red + val[interface] + end if val[interface] in dupes else val[interface]) if interface in val else "<None>" for interface in interfaces ]
             cols.insert(0, node)
             print("|%s|" % "|".join(['{:<15}'.format(x) for x in cols]))
