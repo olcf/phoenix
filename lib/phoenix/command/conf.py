@@ -141,9 +141,9 @@ class ConfCommand(Command):
                     logging.error("Could not find interface %s to sort by", args.sort)
         print("|%s|" % "|".join(['{:<15}'.format(x) for x in cols]))
         for node, val in sorted(data.items(), key=cls._sort_ips):
-            cols = [ (red + val[interface] + end if val[interface] in dupes else val[interface]) if interface in val else "<None>" for interface in interfaces ]
-            cols.insert(0, node)
-            print("|%s|" % "|".join(['{:<15}'.format(x) for x in cols]))
+            cols = [ (red + '{:<15}'.format(val[interface]) + end if val[interface] in dupes else '{:<15}'.format(val[interface])) if interface in val else '{:<15}'.format("<None>") for interface in interfaces ]
+            cols.insert(0, '{:<15}'.format(node))
+            print("|%s|" % "|".join(cols))
 
         return 0
 
