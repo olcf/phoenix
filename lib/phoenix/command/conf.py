@@ -122,26 +122,36 @@ class ConfCommand(Command):
             node = Node.find_node(nodename)
             if 'interfaces' not in node:
                 continue
-            data[node['name']] = { iface: node['interfaces'][iface]['ip'] for iface in node['interfaces'] if 'ip' in node['interfaces'][iface]}
-            for ip in data[node['name']].values():
+            nettoipmap = dict()
+            for iface in node['interfaces']:
+                if 'ip' not in node['interfaces'][iface]:
+                    continue
+                if 'network' in node['interfaces'][iface]:
+                    key = node['interfaces'][iface]['network']
+                else:
+                    key = iface
+                ip = node['interfaces'][iface]['ip']
+                nettoipmap[key] = ip
+                # Check to see if this IP is a duplicate
                 if ip in ips:
                     dupes[ip] = True
                     logging.error("Duplicate IP %s", ip)
                 ips[ip] = True
-        interfaces = list(set([ item.keys() for name,item in data.items() ][0]))
-        cols = ["Node"] + interfaces
-        cls.interface_sort = interfaces[0]
+            data[node['name']] = nettoipmap
+        networks = list(set([network for item in data.values() for network in item.keys()]))
+        cols = ["Node"] + networks
+        cls.interface_sort = networks[0]
         if 'sort' in args and args.sort is not None:
             if args.sort == "name" or args.sort == "node":
                 cls.interface_sort = None
             else:
-                if args.sort in interfaces:
+                if args.sort in networks:
                     cls.interface_sort = args.sort
                 else:
                     logging.error("Could not find interface %s to sort by", args.sort)
         print("|%s|" % "|".join(['{:<15}'.format(x) for x in cols]))
         for node, val in sorted(data.items(), key=cls._sort_ips):
-            cols = [ (red + '{:<15}'.format(val[interface]) + end if val[interface] in dupes else '{:<15}'.format(val[interface])) if interface in val else '{:<15}'.format("<None>") for interface in interfaces ]
+            cols = [ (red + '{:<15}'.format(val[network]) + end if val[network] in dupes else '{:<15}'.format(val[network])) if network in val else '{:<15}'.format("<None>") for network in networks ]
             cols.insert(0, '{:<15}'.format(node))
             print("|%s|" % "|".join(cols))
 
