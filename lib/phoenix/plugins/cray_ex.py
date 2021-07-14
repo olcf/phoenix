@@ -38,6 +38,9 @@ def set_node_attrs(node, alias=None):
             node['nodeindex'] = int(m.group(1))
         if alias is not None and alias.startswith('x'):
             node['xname'] = alias
+        else:
+            logging.error("Cray EX component %s does not have an xname", node['name'])
+            return
 
     m = cray_ex_regex.search(node['xname'])
 
