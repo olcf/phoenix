@@ -303,5 +303,8 @@ class Node(object):
         elif type(source[key]) == bool:
             dest[key] = source[key]
             del source[key]
+        elif type(source[key]) == int:
+            dest[key] = source[key]
+            del source[key]
         else:
             logging.error("Unhandled interpolation for key %s %s", key, type(source[key]))
