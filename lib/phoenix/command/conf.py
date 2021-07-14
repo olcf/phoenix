@@ -131,7 +131,8 @@ class ConfCommand(Command):
                 else:
                     key = iface
                 ip = node['interfaces'][iface]['ip']
-                if iface == "bmc":
+                if iface == "bmc" and (node['interfaces']['bmc']['network'] in [node['interfaces'][if2]['network'] for if2 in node['interfaces'] if if2 != "bmc"]):
+                    print([node['interfaces'][if2]['network'] for if2 in node['interfaces'] if if2 != "bmc"])
                     data[node['name'] + "-bmc"] = { key: ip }
                 else:
                     nettoipmap[key] = ip
