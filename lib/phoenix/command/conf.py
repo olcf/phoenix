@@ -131,7 +131,10 @@ class ConfCommand(Command):
                 else:
                     key = iface
                 ip = node['interfaces'][iface]['ip']
-                nettoipmap[key] = ip
+                if iface == "bmc":
+                    data[node['name'] + "-bmc"] = { key: ip }
+                else:
+                    nettoipmap[key] = ip
                 # Check to see if this IP is a duplicate
                 if ip in ips:
                     dupes[ip] = True
