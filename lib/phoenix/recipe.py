@@ -417,7 +417,7 @@ class ArtifactSquashfs(Artifact):
             os.makedirs(outputdir)
         except FileExistsError:
             pass
-        squashcommand = "mksquashfs %s %s/rootdir.squashfs -comp lz4" % (recipe.root, outputdir)
+        squashcommand = "mksquashfs %s %s/rootdir.squashfs" % (recipe.root, outputdir)
         logging.info("Saving image root as squashfs artifact")
         command = [ "/bin/bash",
                     "-c",
