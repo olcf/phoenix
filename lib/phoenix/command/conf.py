@@ -132,7 +132,6 @@ class ConfCommand(Command):
                     key = iface
                 ip = node['interfaces'][iface]['ip']
                 if iface == "bmc" and (node['interfaces']['bmc']['network'] in [node['interfaces'][if2]['network'] for if2 in node['interfaces'] if if2 != "bmc"]):
-                    print([node['interfaces'][if2]['network'] for if2 in node['interfaces'] if if2 != "bmc"])
                     data[node['name'] + "-bmc"] = { key: ip }
                 else:
                     nettoipmap[key] = ip
@@ -250,8 +249,8 @@ class ConfCommand(Command):
                 appendraw('service%d' % servicenum, 'internal_name', n, it)
                 appendifaceattr('bmc', 'mac', 'mgmt_bmc_net_macs', n, it)
                 appendifaceattr('bmc', 'ip', 'mgmt_bmc_net_ip', n, it)
-                appendifaceattr('eth0', 'mac', 'mgmt_net_macs', n, it)
-                appendifaceattr('eth0', 'ip', 'mgmt_net_ip', n, it)
+                appendifaceattr('bond0', 'mac', 'mgmt_net_macs', n, it)
+                appendifaceattr('bond0', 'ip', 'mgmt_net_ip', n, it)
                 appendraw('hsn0', 'data1_net_name', n, it)
                 appendraw('hsn0', 'data1_net_interfaces', n, it)
                 appendifaceattr('hsn0', 'ip', 'data1_net_ip', n, it)
