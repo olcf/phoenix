@@ -236,7 +236,10 @@ class Node(object):
         except KeyError:
             alias = none
 
-        plugin.set_node_attrs(self, alias=alias)
+        try:
+            plugin.set_node_attrs(self, alias=alias)
+        except Exception as E:
+            logging.error("Plugin caught exception: %s", E)
 
     @classmethod
     def ipadd(cls, base, offset):
