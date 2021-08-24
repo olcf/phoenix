@@ -243,11 +243,6 @@ class Node(object):
             logging.error("Plugin caught exception: %s", E)
 
     @classmethod
-    def ipadd(cls, base, offset):
-        logging.debug("Called ipadd with %s and %d", base, offset)
-        return str(Network.find_network(base) + offset)
-        
-    @classmethod
     def data(cls, *args):
         logging.debug("Called data with key %s", args)
         if cls.datasource is None:
@@ -261,7 +256,7 @@ class Node(object):
     def load_functions(cls):
         logging.info("Loading Jinja templates")
         cls.environment = Environment()
-        cls.environment.globals['ipadd'] = Node.ipadd
+        cls.environment.globals['ipadd'] = Network.ipadd
         cls.environment.globals['data'] = Node.data
         #Environment.globals['ipadd'] = Node.ipadd
         cls.loaded_functions = True

@@ -23,9 +23,27 @@ colorado_map = {
     7: { 0: 2,  1: 3  }
 }
 
-settings = None
+# These are defaults for the cray_ex plugin
+settings = {
+    'startnid':     1,
+    'niddigits':    5,
+    'nodesperrack': 256,
+}
+
+
+try:
+    usersettings = System.setting('cray_ex')
+    settings.update(usersettings)
+except:
+    logging.error("cray_shasta section not found in system settings")
+if 'racks' in settings:
+    settings['racknodeset'] = NodeSet(settings['racks'])
+    settings['racklist'] = list(settings['racknodeset'])
+else:
+    logging.error("racks not set in system.yaml cray_shasta section")
 
 def _xname_to_node_attrs(node):
+    global settings
     m = cray_ex_regex.search(node['xname'])
 
     if m is None:
@@ -44,48 +62,26 @@ def _xname_to_node_attrs(node):
         # Converting it to an int will return a TypeError which we just ignore
         pass
 
-    global settings
-    if not settings:
-        logging.error("_nid_to_node_attrs called without settings")
-        return
-
     node['rackidx'] = settings['racklist'].index(node['rack'])
 
 def _nid_to_node_attrs(node):
     ''' If a node has nodeindex set, try to figure out the xname details'''
+    global settings
     logging.debug("Inside _nid_to_node_attrs for node %s", node['name'])
 
     if 'nodeindex' not in node:
         logging.debug("nodeindex not set for node %s", node['name'])
         return
 
-    global settings
-    if not settings:
-        logging.error("_nid_to_node_attrs called without settings")
-        return
-
-    if 'startnid' in settings:
-        startnid = settings['startnid']
-    else:
-        startnid = 1
-    if 'niddigits' in settings:
-        niddigits = settings['niddigits']
-    else:
-        niddigits=5
-    if 'nodesperrack' in settings:
-        nodesperrack = settings['nodesperrack']
-    else:
-        nodesperrack = 256
-
-    # FIXME: Make this configurable
-    nodesperchassis = nodesperrack//8
+    # FIXME: Make this configurable (support Hill)
+    nodesperchassis = settings['nodesperrack']//8
     nodesperslot = nodesperchassis//8
     nodesperboard = nodesperslot//2
 
     nid = node['nodeindex']
     # Python has divmod(), but for small numbers it's actually slower due to function call overhead
-    rackidx=(nid-startnid)//nodesperrack
-    rackoffset=(nid-startnid)%nodesperrack
+    rackidx=(nid-settings['startnid'])//settings['nodesperrack']
+    rackoffset=(nid-settings['startnid'])%settings['nodesperrack']
     chassisidx=rackoffset//nodesperchassis
     chassisoffset=rackoffset%nodesperchassis
     slotidx=chassisoffset//nodesperslot
@@ -94,6 +90,7 @@ def _nid_to_node_attrs(node):
     boardoffset=slotoffset%nodesperboard
     nodeidx=boardoffset
 
+    node['nodeindexinrack'] = rackoffset
     node['rack']    = settings['racklist'][rackidx]
     node['rackidx'] = rackidx
     node['racknum'] = int(node['rack'][1:])
@@ -112,14 +109,6 @@ def set_node_attrs(node, alias=None):
     logging.debug("Running cray_ex plugin for node %s", node['name'])
 
     global settings
-    if settings is None:
-        try:
-            settings = System.setting('cray_ex')
-            settings['racknodeset'] = NodeSet(settings['racks'])
-            settings['racklist'] = list(settings['racknodeset'])
-        except:
-            logging.error("cray_shasta section not found in system settings")
-            settings = False
 
     # FIXME: This won't do the right thing if you system name starts with 'x'
     #        Hopefully that won't bite us any time soon...

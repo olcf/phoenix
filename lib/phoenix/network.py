@@ -65,10 +65,15 @@ class Network(object):
             except:
                 pass
             cls.config[net]['rackaddresses'] = ipaddress.ip_network(netstring).num_addresses
+        else:
+            cls.config[net]['rackaddresses'] = 0
         
     @classmethod
     def find_network(cls, net):
-        """ Returns a network in ipaddress format """
+        """ Returns a tuple including:
+            - ipaddress object responding to the base net
+            - the number of addresses in the rack
+        """
         if not cls.loaded_config:
             cls.load_config()
 
@@ -82,11 +87,18 @@ class Network(object):
             # Attempt to support an ip string instead of a defined network
             # Otherwise just return 0.0.0.0
             if net[0].isnumeric():
-                return ipaddress.ip_address(net) 
+                return ipaddress.ip_address(net), 0
             else:
-                return ipaddress.ip_address(0)
+                return ipaddress.ip_address(0), 0
 
         if 'ipobj' not in cls.config[net]:
             cls._cache_network(net)
 
-        return cls.config[net]['ipobj']
+        return cls.config[net]['ipobj'], cls.config[net]['rackaddresses']
+
+    @classmethod
+    def ipadd(cls, base, offset, rack=0):
+        logging.debug("Called ipadd with %s, offset %d, rack %d", base, offset,
+                      rack)
+        ip, rackaddresses = cls.find_network(base)
+        return str(ip + offset + rack * rackaddresses)
