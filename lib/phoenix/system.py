@@ -51,6 +51,28 @@ class System(object):
             return default
 
     @classmethod
+    def _cache_network(cls, net):
+        """ Cache a network definition """
+        logging.debug("Caching network %s ip", net)
+
+        # This is for python2/python3 compatability
+        try:
+            net2 = cls.config['networks'][net]['network'].decode()
+        except:
+            net2 = cls.config['networks'][net]['network']
+        cls.config['networks'][net]['ipobj'] = ipaddress.ip_address(net2)
+
+        # Cache the rack netmask width if present
+        if 'rackmask' in cls.config['networks'][net]:
+            netstring = "%s/%s" % ('0.0.0.0',
+                                   cls.config['networks'][net]['rackmask'])
+            try:
+                netstring = netstring.decode()
+            except:
+                pass
+            cls.config['networks'][net]['rackaddresses'] = ipaddress.ip_network(netstring).num_addresses
+        
+    @classmethod
     def find_network(cls, net):
         """ Returns a network in ipaddress format """
         if not cls.loaded_config:
@@ -70,13 +92,6 @@ class System(object):
                 return ipaddress.ip_address(0)
 
         if 'ipobj' not in cls.config['networks'][net]:
-            logging.debug("Caching network %s ip", net)
-
-            # This is for python2/python3 compatability
-            try:
-                net2 = cls.config['networks'][net]['network'].decode()
-            except:
-                net2 = cls.config['networks'][net]['network']
-            cls.config['networks'][net]['ipobj'] = ipaddress.ip_address(net2)
+            cls._cache_network(net)
 
         return cls.config['networks'][net]['ipobj']

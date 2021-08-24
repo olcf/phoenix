@@ -44,6 +44,13 @@ def _xname_to_node_attrs(node):
         # Converting it to an int will return a TypeError which we just ignore
         pass
 
+    global settings
+    if not settings:
+        logging.error("_nid_to_node_attrs called without settings")
+        return
+
+    node['rackidx'] = settings['racklist'].index(node['rack'])
+
 def _nid_to_node_attrs(node):
     ''' If a node has nodeindex set, try to figure out the xname details'''
     logging.debug("Inside _nid_to_node_attrs for node %s", node['name'])
@@ -194,6 +201,7 @@ def set_node_attrs(node, alias=None):
         _setinterfaceparam(node, 'me0', 'dhcp', True)
         _setinterfaceparam(node, 'me0', 'hostname', node['name'])
         _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
+        _setinterfaceparam(node, 'me0', 'network', 'hostctrl')
 
     elif node['type'] == 'blade':
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
@@ -213,6 +221,7 @@ def set_node_attrs(node, alias=None):
         _setinterfaceparam(node, 'me0', 'dhcp', True)
         _setinterfaceparam(node, 'me0', 'hostname', node['name'])
         _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0))
+        _setinterfaceparam(node, 'me0', 'network', 'hostctrl')
 
     elif node['type'] == 'switch':
         node['switchtype'] = 'slingshot'
@@ -238,6 +247,7 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, 'eth0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0))
             _setinterfaceparam(node, 'eth0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0))
             _setinterfaceparam(node, 'eth0', 'hostname', node['name'])
+            _setinterfaceparam(node, 'eth0', 'network', 'hostctrl')
         node['firmware_name'] = 'BMC'
 
     elif node['type'] == 'cec':
