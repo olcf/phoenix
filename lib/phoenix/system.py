@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Phoenix class to manage a System (its config and nodes)"""
+"""Phoenix class to manage a System and plugin settings"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
 import logging
@@ -14,7 +14,6 @@ from ClusterShell.NodeSet import NodeSet
 import phoenix
 import re
 import copy
-import ipaddress
 
 class System(object):
     loaded_config = False
@@ -49,49 +48,3 @@ class System(object):
             return cls.config[key]
         except KeyError:
             return default
-
-    @classmethod
-    def _cache_network(cls, net):
-        """ Cache a network definition """
-        logging.debug("Caching network %s ip", net)
-
-        # This is for python2/python3 compatability
-        try:
-            net2 = cls.config['networks'][net]['network'].decode()
-        except:
-            net2 = cls.config['networks'][net]['network']
-        cls.config['networks'][net]['ipobj'] = ipaddress.ip_address(net2)
-
-        # Cache the rack netmask width if present
-        if 'rackmask' in cls.config['networks'][net]:
-            netstring = "%s/%s" % ('0.0.0.0',
-                                   cls.config['networks'][net]['rackmask'])
-            try:
-                netstring = netstring.decode()
-            except:
-                pass
-            cls.config['networks'][net]['rackaddresses'] = ipaddress.ip_network(netstring).num_addresses
-        
-    @classmethod
-    def find_network(cls, net):
-        """ Returns a network in ipaddress format """
-        if not cls.loaded_config:
-            cls.load_config()
-
-        # This is for python2/python3 compatability
-        try:
-            net = net.decode()
-        except:
-            pass
-
-        if net not in cls.config['networks']:
-            # Attempt to support an ip string, otherwise just return 0.0.0.0
-            if net[0].isnumeric():
-                return ipaddress.ip_address(net) 
-            else:
-                return ipaddress.ip_address(0)
-
-        if 'ipobj' not in cls.config['networks'][net]:
-            cls._cache_network(net)
-
-        return cls.config['networks'][net]['ipobj']

@@ -20,6 +20,7 @@ import importlib
 import ipaddress
 import phoenix
 from phoenix.system import System
+from phoenix.network import Network
 
 # Technically, maps in yaml are unordered. We want entries in nodes.yaml
 # to be processed in the order present in the file so that overriding
@@ -244,7 +245,7 @@ class Node(object):
     @classmethod
     def ipadd(cls, base, offset):
         logging.debug("Called ipadd with %s and %d", base, offset)
-        return str(System.find_network(base) + offset)
+        return str(Network.find_network(base) + offset)
         
     @classmethod
     def data(cls, *args):
