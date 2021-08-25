@@ -109,7 +109,7 @@ class Node(object):
         # Read the yaml file
         logging.info("Loading node file '%s'", filename)
         with open(filename) as nodefd:
-            nodedata = yaml.load(nodefd, Loader=Loader)
+            nodedata = yaml.load(nodefd, Loader=Loader) or {}
 
         # Load the data into the node structures
         for noderange, data in nodedata.items():
@@ -167,7 +167,7 @@ class Node(object):
         logging.info("Trying to load nodemap file '%s'", filename)
         try:
             with open(filename) as nodemapfd:
-                nodemapdata = yaml.load(nodemapfd, Loader=Loader)
+                nodemapdata = yaml.load(nodemapfd, Loader=Loader) or {}
 
             cls.nodemap.update(nodemapdata)
             cls.nodemap.update({v: k for k, v in nodemapdata.items()})

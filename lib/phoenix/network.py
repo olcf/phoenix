@@ -33,7 +33,7 @@ class Network(object):
         logging.info("Loading network file '%s'", filename)
         try:
             with open(filename) as networkfd:
-                cls.config = load(networkfd, Loader=Loader)
+                cls.config = load(networkfd, Loader=Loader) or {}
                 cls.loaded_config = True
                 return
         except IOError:

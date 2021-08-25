@@ -92,7 +92,7 @@ class Recipe(object):
         # Read the yaml file
         logging.info("Loading recipe file '%s'", filename)
         with open(filename) as recipefd:
-            recipedata = load(recipefd, Loader=Loader)
+            recipedata = load(recipefd, Loader=Loader) or {}
 
         # Load the data into the recipe structure
         for key, value in recipedata.items():

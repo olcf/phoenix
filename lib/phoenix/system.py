@@ -35,7 +35,7 @@ class System(object):
         # Read the yaml file
         logging.info("Loading system file '%s'", filename)
         with open(filename) as systemfd:
-            systemdata = load(systemfd, Loader=Loader)
+            systemdata = load(systemfd, Loader=Loader) or {}
 
         cls.config = systemdata
         cls.loaded_config = True
