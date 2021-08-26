@@ -56,6 +56,8 @@ class ConfCommand(Command):
         parser_ethers = subparsers.add_parser('ethers', help='ethers help')
         parser_ethers.add_argument('--interface', '-i', default=[], type=str, action='append', dest='interfaces', help='Interface to include (default: show all)')
         parser_hpcm = subparsers.add_parser('hpcm', help='hpcm help')
+        subparser_hpcm = parser_hpcm.add_subparsers(help='sub-command help', dest='action2')
+        parser_hpcm_discover = subparser_hpcm.add_parser('discover', help='Generate a fastdiscover file')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
         return parser
@@ -214,6 +216,11 @@ class ConfCommand(Command):
 
     @classmethod
     def hpcm(cls, nodes, args):
+        if args.action2 == 'discover':
+            cls.hpcm_discover(nodes, args)
+
+    @classmethod
+    def hpcm_discover(cls, nodes, args):
         System.load_config()
         Node.load_nodes(nodeset=nodes)
         print("[discover]")
