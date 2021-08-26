@@ -15,20 +15,30 @@ from phoenix.command import Command
 from phoenix.node import Node
 from phoenix.bootloader import write_bootloader_scripts
 
-def appendraw(val, hpcmattr, node, thelist):
-    thelist.append("{}={}".format(hpcmattr, val))
+class ParamList(object):
+    def __init__(self, node):
+        self.node = node
+        self.paramlist = list()
 
-def appendattr(nodeattr, hpcmattr, node, thelist, thedefault=None):
-    if nodeattr in node:
-        thelist.append("{}={}".format(hpcmattr, node[nodeattr]))
-    elif thedefault != None:
-        thelist.append("{}={}".format(hpcmattr, thedefault))
+    def addraw(self, hpcmattr, val=None):
+        if val is None:
+            self.paramlist.append(hpcmattr)
+            return
+        if ',' in val:
+            val = '"{}"'.format(val)
+        self.paramlist.append("{}={}".format(hpcmattr, val))
 
-def appendifaceattr(interface, ifaceattr, hpcmattr, node, thelist):
-    try:
-        thelist.append("{}={}".format(hpcmattr, node['interfaces'][interface][ifaceattr]))
-    except KeyError:
-        pass
+    def addna(self, hpcmattr, nodeattr, thedefault=None):
+        if nodeattr in self.node:
+            self.paramlist.append("{}={}".format(hpcmattr, self.node[nodeattr]))
+        elif thedefault != None:
+            self.paramlist.append("{}={}".format(hpcmattr, thedefault))
+
+    def addia(self, hpcmattr, interface, ifaceattr):
+        try:
+            self.paramlist.append("{}={}".format(hpcmattr, self.node['interfaces'][interface][ifaceattr]))
+        except KeyError:
+            pass
 
 class ConfCommand(Command):
     @classmethod
@@ -209,21 +219,21 @@ class ConfCommand(Command):
         print("[discover]")
         for nodename in nodes:
             n = Node.find_node(nodename)
-            it = list()
-            appendattr('name', 'hostname1', n, it)
+            it = ParamList(n)
+            it.addna('hostname1', 'name')
             if n['plugin'] == 'cray_ex' and n['type'] == 'nc':
                 print("internal_name={name},hostname1={name},mgmt_bmc_net_macs=\"{mac}\",mgmt_bmc_net_name=hostctrl3000,rack_nr={rack},chassis={chassis},tray={slot},cmm_parent={pdu},username=root,password=initial0,node_controller".format(name=n['name'], mac=n['interfaces']['me0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], pdu=n['pdu']))
             elif n['plugin'] == 'cray_ex' and n['type'] == 'compute':
                 servicenum = 1000 + n['nodeindex']
                 print("internal_name=service{servicenum},mgmt_net_macs=\"{mac}\",mgmt_net_name=hostmgmt2000,rack_nr={rack},chassis={chassis},tray={slot},node_nr={nodenum},controller_nr={board},hostname1={name},node_controller={bmc},network_group=rack{rack},console_device=ttyS0,conserver_logging=yes,rootfs=nfs,nfs_writable_type=tmpfs-overlay,transport=rsync,mgmt_net_bonding_master=bond0,dhcp_bootfile=ipxe-direct,mgmt_net_interfaces=\"enp65s0\",baud_rate=115200,image={image}".format(name=n['name'], mac=n['interfaces']['eth0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], board=n['board'], nodenum=n['nodenum'], bmc=n['bmc'], servicenum=servicenum, image=n['image']))
             elif n['plugin'] == 'cray_ex' and n['type'] == 'switch':
-                appendraw(n['name'], 'internal_name', n, it)
-                appendraw('head-bmc', 'mgmt_bmc_net_name', n, it)
-                appendifaceattr('eth0', 'mac', 'mgmt_bmc_net_macs', n, it)
-                appendifaceattr('eth0', 'ip', 'mgmt_bmc_net_ip', n, it)
-                appendraw('root', 'username', n, it)
-                appendraw('initial0', 'password', n, it)
-                it.append('external_switch_controller')
+                it.addna('internal_name', 'name')
+                it.addraw('mgmt_bmc_net_name', 'head-bmc')
+                it.addna('mgmt_bmc_net_macs', 'eth0', 'mac')
+                it.addna('mgmt_bmc_net_ip', 'eth0', 'ip')
+                it.addraw('username', 'root')
+                it.addraw('password', 'initial0')
+                it.addraw('external_switch_controller')
             else:
                 if 'hpcm_servicenum' in n:
                     servicenum = n['hpcm_servicenum']
@@ -246,27 +256,36 @@ class ConfCommand(Command):
                         servicenum = 700 + n['nodeindex']
                 else:
                     servicenum = 800 + n['nodeindex']
-                appendraw('service%d' % servicenum, 'internal_name', n, it)
-                appendifaceattr('bmc', 'mac', 'mgmt_bmc_net_macs', n, it)
-                appendifaceattr('bmc', 'ip', 'mgmt_bmc_net_ip', n, it)
-                appendifaceattr('bond0', 'mac', 'mgmt_net_macs', n, it)
-                appendifaceattr('bond0', 'ip', 'mgmt_net_ip', n, it)
-                appendraw('hsn0', 'data1_net_name', n, it)
-                appendraw('hsn0', 'data1_net_interfaces', n, it)
-                appendifaceattr('hsn0', 'ip', 'data1_net_ip', n, it)
-                appendattr('rootfs', 'rootfs', n, it, 'tmpfs')
-                appendattr('arch', 'architecture', n, it, 'x86_64')
-                appendattr('image', 'image', n, it)
-                #appendattr('bmctype', 'card_type', n, it, 'ILO')
-                appendraw('ILO', 'card_type', n, it)
-                appendattr('bmcuser', 'bmc_username', n, it, 'root')
-                appendattr('bmcpassword', 'bmc_password', n, it)
-                appendraw('yes', 'conserver_logging', n, it)
-                appendraw('yes', 'predictable_net_names', n, it)
-                appendraw('ipxe-direct', 'dhcp_bootfile', n, it)
-                appendattr('hpcm_transport', 'transport', n, it, 'rsync')
-                appendattr('console', 'console_device', n, it, 'ttyS0')
-            print ', '.join(it)
+                it.addraw('internal_name', 'service%d' % servicenum)
+                it.addia('mgmt_bmc_net_macs', 'bmc', 'mac')
+                it.addia('mgmt_bmc_net_ip', 'bmc', 'ip')
+                it.addia('mgmt_bmc_net_name', 'bmc', 'network')
+                it.addia('mgmt_net_macs', 'bond0', 'mac')
+                it.addia('mgmt_net_ip', 'bond0', 'ip')
+                it.addia('mgmt_net_name', 'bond0', 'network')
+                it.addraw('mgmt_net_bonding_mode', '802.3ad')
+                it.addraw('mgmt_net_bonding_master', 'bond0')
+                try:
+                    bondmembers = ','.join(n['interfaces']['bond0']['bondmembers'])
+                except KeyError:
+                    bondmembers = 'eth0, eth1'
+                it.addraw('mgmt_net_interfaces', bondmembers)
+                it.addraw('data1_net_name', 'hsn0')
+                it.addraw('data1_net_interfaces', 'hsn0')
+                it.addia('data1_net_ip', 'hsn0', 'ip')
+                it.addna('rootfs', 'rootfs', 'tmpfs')
+                it.addna('architecture', 'arch', 'x86_64')
+                it.addna('image', 'image')
+                it.addraw('card_type', 'ILO')
+                it.addna('bmc_username', 'bmcuser', 'root')
+                it.addna('bmc_password', 'bmcpassword', 'initial0')
+                it.addraw('conserver_logging', 'yes')
+                it.addraw('redundant_mgmt_network', 'yes')
+                it.addraw('predictable_net_names', 'yes')
+                it.addna('dhcp_bootfile', 'ipxe-direct')
+                it.addna('transport', 'hpcm_transport', 'rsync')
+                it.addna('console_device', 'console', 'ttyS0')
+            print ', '.join(it.paramlist)
         return 0
 
     @classmethod
