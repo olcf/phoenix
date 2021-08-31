@@ -2,10 +2,19 @@
 """Power management"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
+import os
 import sys
 import logging
 import argparse
 import socket
+import errno
+
+from yaml import load, dump
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    logging.info("Unable to load CLoader and/or CDumper")
+    from yaml import Loader, Dumper
 
 from ClusterShell.NodeSet import NodeSet
 import phoenix
@@ -58,6 +67,7 @@ class ConfCommand(Command):
         parser_hpcm = subparsers.add_parser('hpcm', help='hpcm help')
         subparser_hpcm = parser_hpcm.add_subparsers(help='sub-command help', dest='action2')
         parser_hpcm_discover = subparser_hpcm.add_parser('discover', help='Generate a fastdiscover file')
+        parser_hpcm_repos = subparser_hpcm.add_parser('repos', help='Manage HPCM repos and repo groups')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
         return parser
@@ -218,6 +228,8 @@ class ConfCommand(Command):
     def hpcm(cls, nodes, args):
         if args.action2 == 'discover':
             cls.hpcm_discover(nodes, args)
+        elif args.action2 == 'repos':
+            cls.hpcm_repos(nodes, args)
 
     @classmethod
     def hpcm_discover(cls, nodes, args):
@@ -294,6 +306,69 @@ class ConfCommand(Command):
                 it.addna('console_device', 'console', 'ttyS0')
             print ', '.join(it.paramlist)
         return 0
+
+    @classmethod
+    def _read_metadata(cls):
+        git_checkout_path='/root/hpcm_data'
+        hostname = socket.gethostname()
+        filename = '%s/metadata/%s.yaml' % (git_checkout_path, hostname)
+        try:
+            logging.info("Loading metadata file '%s'", filename)
+            with open(filename) as metadatafd:
+                metadata = load(metadatafd, Loader=Loader) or {}
+                return metadata
+        except Exception as e:
+            logging.error("Could not read metadata: %s", e)
+            return {}
+
+    @classmethod
+    def hpcm_repos(cls, nodes, args):
+        repodir = '/opt/clmgr/repos/cm-repodata'
+        repogroupdir = '/opt/clmgr/repos/cm-repogroups'
+        metadata = cls._read_metadata()
+        try:
+            repos = metadata['repos']
+        except KeyError:
+            logging.error("repos section not found in metadata")
+            return
+        for repo in repos:
+            path = '%s/%s' % (repodir, repo)
+            typefile = '%s/repo-type' % path
+            urlfile = '%s/repo-url' % path
+            try:
+                os.mkdir(path)
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    pass
+                else:
+                    raise
+            with open(typefile, 'w') as filefd:
+                filefd.write('repo-md')
+            with open(urlfile, 'w') as filefd:
+                filefd.write(repos[repo])
+        try:
+            images = metadata['images']
+        except KeyError:
+            logging.error("images section not found in metadata")
+            return
+        for image in images:
+            if 'repos' not in images[image]:
+                logging.error("repos section not found in image %s", image)
+                return
+            path = '%s/%s' % (repogroupdir, image)
+            try:
+                os.mkdir(path)
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    pass
+                else:
+                    raise
+            for file in os.listdir(path):
+                os.unlink('%s/%s' % (path,file))
+            for repo in images[image]['repos']:
+                src = '%s/%s' % (repodir, repo)
+                dst = '%s/%s' % (path, repo)
+                os.symlink(src, dst)
 
     @classmethod
     def run(cls, client):
