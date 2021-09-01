@@ -7,7 +7,7 @@ import re
 from ClusterShell.NodeSet import NodeSet
 from phoenix.system import System
 
-cray_ex_regex = re.compile(r'x(?P<racknum>\d+)[ce](?P<chassis>\d+)([rs](?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
+cray_ex_regex = re.compile(r'x(?P<racknum>\d+)[ce](?P<chassis>\d+)((?P<slottype>[rs])(?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
 num_regex = re.compile(r'.*?(\d+)$')
 ipprefix = 'fc00:0:100:60'
 
@@ -62,6 +62,20 @@ def _xname_to_node_attrs(node):
         # Converting it to an int will return a TypeError which we just ignore
         pass
 
+    if 'type' not in node:
+        if 'nodenum' in node:
+            node['type'] = 'compute'
+        elif 'board' in node:
+            node['type'] = 'nc'
+        elif 'slot' in node:
+            slottype = m.group('slottype')
+            if slottype == 'r':
+                node['type'] = 'switch'
+            else:
+                node['type'] = 'blade'
+        elif 'chassis' in node:
+            node['type'] = 'cc'
+
     node['rackidx'] = settings['racklist'].index(node['rack'])
 
 def _nid_to_node_attrs(node):
@@ -72,6 +86,9 @@ def _nid_to_node_attrs(node):
     if 'nodeindex' not in node:
         logging.debug("nodeindex not set for node %s", node['name'])
         return
+
+    if 'type' not in node:
+        node['type'] = 'compute'
 
     # FIXME: Make this configurable (support Hill)
     nodesperchassis = settings['nodesperrack']//8

@@ -50,7 +50,7 @@ class Node(object):
 
     def __init__(self, name):
         self.rawattr = dict()
-        self.attr = {'name': name, 'type': 'generic'}
+        self.attr = {'name': name}
         self.ran_plugins = False
 
     def __repr__(self):
