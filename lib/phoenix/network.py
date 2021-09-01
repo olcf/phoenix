@@ -22,12 +22,12 @@ class Network(object):
 
     @classmethod
     def load_config(cls, filename=None):
-        """ Reads and processes the network.yaml file """
+        """ Reads and processes the networks.yaml file """
         if cls.loaded_config:
             return
 
         if filename is None:
-            filename = "%s/network.yaml" % phoenix.conf_path
+            filename = "%s/networks.yaml" % phoenix.conf_path
 
         # Read the yaml file
         logging.info("Loading network file '%s'", filename)
