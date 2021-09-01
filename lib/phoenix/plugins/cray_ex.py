@@ -7,7 +7,7 @@ import re
 from ClusterShell.NodeSet import NodeSet
 from phoenix.system import System
 
-cray_ex_regex = re.compile(r'x(?P<racknum>\d+)[ce](?P<chassis>\d+)((?P<slottype>[rs])(?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
+cray_ex_regex = re.compile(r'x(?P<racknum>\d+)(?P<chassistype>[ce])(?P<chassis>\d+)((?P<slottype>[rs])(?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
 num_regex = re.compile(r'.*?(\d+)$')
 ipprefix = 'fc00:0:100:60'
 
@@ -74,7 +74,11 @@ def _xname_to_node_attrs(node):
             else:
                 node['type'] = 'blade'
         elif 'chassis' in node:
-            node['type'] = 'cc'
+            chassistype = m.group('chassistype')
+            if chassistype == 'e':
+                node['type'] = 'cec'
+            else:
+                node['type'] = 'cc'
 
     node['rackidx'] = settings['racklist'].index(node['rack'])
 
