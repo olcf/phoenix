@@ -6,6 +6,7 @@ import logging
 import re
 from ClusterShell.NodeSet import NodeSet
 from phoenix.system import System
+from phoenix.network import Network
 
 cray_ex_regex = re.compile(r'x(?P<racknum>\d+)(?P<chassistype>[ce])(?P<chassis>\d+)((?P<slottype>[rs])(?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
 num_regex = re.compile(r'.*?(\d+)$')
@@ -28,8 +29,9 @@ settings = {
     'startnid':     1,
     'niddigits':    5,
     'nodesperrack': 256,
+    'autoip':       [],
+    'nicspernode':  1,
 }
-
 
 try:
     usersettings = System.setting('cray_ex')
@@ -41,6 +43,8 @@ if 'racks' in settings:
     settings['racklist'] = list(settings['racknodeset'])
 else:
     logging.error("racks not set in system.yaml cray_shasta section")
+if type(settings['autoip']) != list:
+    settings['autoip'] = [settings['autoip']]
 
 def _xname_to_node_attrs(node):
     global settings
@@ -65,12 +69,12 @@ def _xname_to_node_attrs(node):
     if 'type' not in node:
         if 'nodenum' in node:
             node['type'] = 'compute'
-        elif 'board' in node:
-            node['type'] = 'nc'
         elif 'slot' in node:
             slottype = m.group('slottype')
             if slottype == 'r':
                 node['type'] = 'switch'
+            elif 'board' in node:
+                node['type'] = 'nc'
             else:
                 node['type'] = 'blade'
         elif 'chassis' in node:
@@ -169,13 +173,16 @@ def set_node_attrs(node, alias=None):
         node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
         node['bmcuser'] = 'root'
         node['discoverytype'] = 'bmc'
-        _setinterfaceparam(node, 'eth0', 'discoverytype', 'bmc')
+        if 'hostmgmt' in settings['autoip']:
+            _setinterfaceparam(node, 'bond0', 'network', 'hostctrl')
+            _setinterfaceparam(node, 'bond0', 'ip', Network.ipadd("hostmgmt", node['nodeindexinrack'] + 1, node['rackidx']))
+        _setinterfaceparam(node, 'bond0', 'discoverytype', 'bmc')
         node['bmcpassword'] = 'initial0'
         try:
             hsnnics = node['hsnnics']
         except KeyError:
-            node['hsnnics'] = 1
-            hsnnics = 1
+            node['hsnnics'] = settings['nicspernode']
+            hsnnics = settings['nicspernode']
         try:
             hsngroupoffset = node['hsngroupoffset']
         except KeyError:
@@ -195,6 +202,8 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, nic, 'port', port)
             _setinterfaceparam(node, nic, 'switch', _hsnswitchname(node['racknum'], node['chassis'], node['board'], hsnnics, hsnnic))
             _setinterfaceparam(node, nic, 'mac', _hsnalgomac(group, switch, port))
+            if 'hsn' in settings['autoip']:
+                _setinterfaceparam(node, nic, 'ip', Network.ipadd("hsn", (node['nodeindex'] * hsnnics) + hsnnic + 10))
 
     elif node['type'] == 'nc':
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
@@ -212,6 +221,9 @@ def set_node_attrs(node, alias=None):
         _setinterfaceparam(node, 'me0', 'hostname', node['name'])
         _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
         _setinterfaceparam(node, 'me0', 'network', 'hostctrl')
+        if 'hostctrl' in settings['autoip']:
+            offset = node['chassis'] * 16 + node['slot'] * 2 + node['board']
+            _setinterfaceparam(node, 'me0', 'ip', Network.ipadd("hostctrl", offset + 100, node['rackidx']))
 
     elif node['type'] == 'blade':
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
@@ -232,6 +244,8 @@ def set_node_attrs(node, alias=None):
         _setinterfaceparam(node, 'me0', 'hostname', node['name'])
         _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0))
         _setinterfaceparam(node, 'me0', 'network', 'hostctrl')
+        if 'hostctrl' in settings['autoip']:
+            _setinterfaceparam(node, 'me0', 'ip', Network.ipadd("hostctrl", node['chassis'] + 10, node['rackidx']))
 
     elif node['type'] == 'switch':
         node['switchtype'] = 'slingshot'
@@ -258,6 +272,9 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, 'eth0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0))
             _setinterfaceparam(node, 'eth0', 'hostname', node['name'])
             _setinterfaceparam(node, 'eth0', 'network', 'hostctrl')
+            if 'hostctrl' in settings['autoip']:
+                offset = node['chassis'] * 8 + node['slot']
+                _setinterfaceparam(node, 'me0', 'ip', Network.ipadd("hostctrl", offset + 20, node['rackidx']))
         node['firmware_name'] = 'BMC'
 
     elif node['type'] == 'cec':
