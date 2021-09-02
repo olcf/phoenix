@@ -5,6 +5,7 @@
 import logging
 import re
 from phoenix.system import System
+from phoenix.network import Network
 num_regex = re.compile(r'\d+')
 logging.debug("Generic plugin compiled the num_regex")
 
@@ -17,3 +18,15 @@ def set_node_attrs(node, alias=None):
         node['nodeindex'] = int(m[-1])
         if len(m) > 1:
             node['nodenums'] = [ int(x) for x in m ]
+
+    # Support autointerfaces
+    # Format: interface,network,ipoffset[;interface,network,ipoffset]
+    if 'autointerfaces' in node:
+        interfaces = {}
+        entries = node['autointerfaces'].split(';')
+        for entry in entries:
+            components = entry.split(',')
+            interfaces[components[0]] = { 'network': components[1],
+                                          'ip':      Network.ipadd(components[1], node['nodeindex'] + int(components[2])),
+                                        }
+        node['interfaces'] = interfaces
