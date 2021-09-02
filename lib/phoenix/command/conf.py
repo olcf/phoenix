@@ -155,6 +155,8 @@ class ConfCommand(Command):
                 ip = node['interfaces'][iface]['ip']
                 if iface == "bmc" and (node['interfaces']['bmc']['network'] in [node['interfaces'][if2]['network'] for if2 in node['interfaces'] if if2 != "bmc"]):
                     data[node['name'] + "-bmc"] = { key: ip }
+                elif iface == "bond0.float" and (node['interfaces']['bond0.float']['network'] in [node['interfaces'][if2]['network'] for if2 in node['interfaces'] if if2 != "bond0.floar"]):
+                    data[node['name'] + "-float"] = { key: ip }
                 else:
                     nettoipmap[key] = ip
                 # Check to see if this IP is a duplicate
