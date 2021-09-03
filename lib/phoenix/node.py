@@ -5,6 +5,7 @@
 import sys
 import logging
 import platform
+import types
 import yaml
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -62,6 +63,9 @@ class Node(object):
         attrs = ["%s = %s (%s)" % (attr_name, self[attr_name], type(self[attr_name])) for attr_name in sorted(self.attr.keys() + self.rawattr.keys())]
         return "Node(%s)\n\t%s" % (self.attr['name'], "\n\t".join(attrs))
 
+    def setrawitem(self, key, value):
+        self.rawattr[key] = value
+
     def __setitem__(self, key, value):
         self.attr[key] = value
 
@@ -69,6 +73,8 @@ class Node(object):
         if not self.ran_plugins:
             self.run_plugins()
         if key in self.attr:
+            if type(self.attr[key]) is types.LambdaType:
+                return self.attr[key]()
             return self.attr[key]
         if key not in self.rawattr:
             raise KeyError
@@ -304,6 +310,9 @@ class Node(object):
             del source[key]
         elif type(source[key]) == int:
             dest[key] = source[key]
+            del source[key]
+        elif type(source[key]) == types.LambdaType:
+            dest[key] = source[key]()
             del source[key]
         else:
             logging.error("Unhandled interpolation for key %s %s", key, type(source[key]))
