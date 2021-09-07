@@ -176,7 +176,9 @@ class HpcmCommand(Command):
                 it.addia('mgmt_net_name', 'bond0', 'network')
                 it.addraw('mgmt_net_bonding_mode', '802.3ad')
                 it.addraw('mgmt_net_bonding_master', 'bond0')
-                if 'bondmembers' not in n['interfaces']['bond0']:
+                if 'bondmembers' in n['interfaces']['bond0']:
+                    bondmembers = n['interfaces']['bond0']['bondmembers']
+                else:
                     bondmembers = cls._get_bond0_bondmembers(n)
                 if type(bondmembers) == list:
                     bondmembers = ','.join(bondmembers)
@@ -185,6 +187,8 @@ class HpcmCommand(Command):
                 it.addia('ib_0_ip', 'ib0', 'ip')
             elif interface == 'ib1':
                 it.addia('ib_1_ip', 'ib1', 'ip')
+            elif '.' in interface:
+                logging.debug("Skipping vlan interface %s", interface)
             else:
                 dnets = dnets + 1
                 it.addia('data%d_net_name' % dnets, interface, 'network')
