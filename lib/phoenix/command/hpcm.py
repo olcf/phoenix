@@ -104,28 +104,7 @@ class HpcmCommand(Command):
                 it.addraw('password', 'initial0')
                 it.addraw('external_switch_controller')
             else:
-                if 'hpcm_servicenum' in n:
-                    servicenum = n['hpcm_servicenum']
-                elif 'type' in n:
-                    if n['type'] == 'admin':
-                        servicenum = 100 + n['nodeindex']
-                    elif n['type'] == 'leader':
-                        servicenum = 200 + n['nodeindex']
-                    elif n['type'] == 'service':
-                        servicenum = 300 + n['nodeindex']
-                    elif n['type'] == 'login':
-                        servicenum = 400 + n['nodeindex']
-                    elif n['type'] == 'gateway':
-                        servicenum = 500 + n['nodeindex']
-                    elif n['type'] == 'utility':
-                        servicenum = 600 + n['nodeindex']
-                    elif n['type'] == 'compute':
-                        servicenum = 2000 + n['nodeindex']
-                    else:
-                        servicenum = 700 + n['nodeindex']
-                else:
-                    servicenum = 800 + n['nodeindex']
-                it.addraw('internal_name', 'service%d' % servicenum)
+                it.addraw('internal_name', cls._get_internal_name(n))
                 cls._add_interfaces(n, it)
                 it.addna('rootfs', 'rootfs', 'tmpfs')
                 it.addna('architecture', 'arch', 'x86_64')
@@ -149,6 +128,34 @@ class HpcmCommand(Command):
                     it.addraw('network_group', "rack%d" % n['racknum'])
             print ', '.join(it.paramlist)
         return 0
+
+    @classmethod
+    def _get_internal_name(cls, n):
+        if 'hpcm_servicenum' in n:
+            servicenum = n['hpcm_servicenum']
+        elif 'type' in n:
+            nodetype = n['type']
+            if nodetype == 'compute':
+                servicenum = (2000000000 + n['racknum'] * 10000 +
+                              n['chassis'] * 1000 + n['slot'] * 100 +
+                              n['board'] * 10 + n['nodenum'])
+            elif nodetype == 'admin':
+                servicenum = 100 + n['nodeindex']
+            elif nodetype == 'leader':
+                servicenum = 200 + n['nodeindex']
+            elif nodetype == 'service':
+                servicenum = 300 + n['nodeindex']
+            elif nodetype == 'login':
+                servicenum = 400 + n['nodeindex']
+            elif nodetype == 'gateway':
+                servicenum = 500 + n['nodeindex']
+            elif nodetype == 'utility':
+                servicenum = 600 + n['nodeindex']
+            else:
+                servicenum = 700 + n['nodeindex']
+        else:
+            servicenum = 800 + n['nodeindex']
+        return 'service%d' % servicenum
 
     @classmethod
     def _add_interfaces(cls, n, it):
