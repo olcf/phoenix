@@ -84,7 +84,11 @@ def _xname_to_node_attrs(node):
             else:
                 node['type'] = 'cc'
 
-    node['rackidx'] = settings['racklist'].index(node['rack'])
+    try:
+        node['rackidx'] = settings['racklist'].index(node['rack'])
+    except:
+        # This could be a columbia switch, for example
+        pass
 
 def _nid_to_node_attrs(node):
     ''' If a node has nodeindex set, try to figure out the xname details'''
