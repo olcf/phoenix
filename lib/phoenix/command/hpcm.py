@@ -23,6 +23,11 @@ from phoenix.system import System
 from phoenix.command import Command
 from phoenix.node import Node
 
+try:
+    usersettings = System.setting('cray_ex')
+except:
+    usersettings = dict()
+
 class ParamList(object):
     def __init__(self, node):
         self.node = node
@@ -171,12 +176,10 @@ class HpcmCommand(Command):
                 it.addia('mgmt_net_name', 'bond0', 'network')
                 it.addraw('mgmt_net_bonding_mode', '802.3ad')
                 it.addraw('mgmt_net_bonding_master', 'bond0')
-                try:
-                    bondmembers = n['interfaces']['bond0']['bondmembers']
-                    if type(bondmembers) == list:
-                        bondmembers = ','.join(bondmembers)
-                except KeyError:
-                    bondmembers = 'eth0, eth1'
+                if 'bondmembers' not in n['interfaces']['bond0']:
+                    bondmembers = cls._get_bond0_bondmembers(n)
+                if type(bondmembers) == list:
+                    bondmembers = ','.join(bondmembers)
                 it.addraw('mgmt_net_interfaces', bondmembers)
             elif interface == 'ib0':
                 it.addia('ib_0_ip', 'ib0', 'ip')
@@ -187,6 +190,24 @@ class HpcmCommand(Command):
                 it.addia('data%d_net_name' % dnets, interface, 'network')
                 it.addraw('data%d_net_interfaces' % dnets, interface)
                 it.addia('data%d_net_ip' % dnets, interface, 'ip')
+
+    @classmethod
+    def _get_bond0_bondmembers(cls, n):
+        if n['plugin'] != 'cray_ex':
+            return 'eth0'
+        global usersettings
+        boardmap = { 'windom':       'enp65s0',
+                     'grizzly_peak': 'enp195s0',
+                     'bard_peak':    'enp148s0',
+                   }
+        try:
+            if 'bladetype' in n:
+                return boardmap[n['bladetype']]
+            if 'bladetype' in usersettings:
+                return boardmap[usersettings['bladetype']]
+        except KeyError:
+            pass
+        return 'eth0'
 
     @classmethod
     def _read_metadata(cls):
