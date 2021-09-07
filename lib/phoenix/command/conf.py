@@ -244,9 +244,6 @@ class ConfCommand(Command):
             it.addna('hostname1', 'name')
             if n['plugin'] == 'cray_ex' and n['type'] == 'nc':
                 print("internal_name={name},hostname1={name},mgmt_bmc_net_macs=\"{mac}\",mgmt_bmc_net_name=hostctrl3000,rack_nr={rack},chassis={chassis},tray={slot},cmm_parent={pdu},username=root,password=initial0,node_controller".format(name=n['name'], mac=n['interfaces']['me0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], pdu=n['pdu']))
-            elif n['plugin'] == 'cray_ex' and n['type'] == 'compute':
-                servicenum = 1000 + n['nodeindex']
-                print("internal_name=service{servicenum},mgmt_net_macs=\"{mac}\",mgmt_net_name=hostmgmt2000,rack_nr={rack},chassis={chassis},tray={slot},node_nr={nodenum},controller_nr={board},hostname1={name},node_controller={bmc},network_group=rack{rack},console_device=ttyS0,conserver_logging=yes,rootfs=nfs,nfs_writable_type=tmpfs-overlay,transport=rsync,mgmt_net_bonding_master=bond0,dhcp_bootfile=ipxe-direct,mgmt_net_interfaces=\"enp65s0\",baud_rate=115200,image={image}".format(name=n['name'], mac=n['interfaces']['eth0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], board=n['board'], nodenum=n['nodenum'], bmc=n['bmc'], servicenum=servicenum, image=n['image']))
             elif n['plugin'] == 'cray_ex' and n['type'] == 'switch':
                 it.addna('internal_name', 'name')
                 it.addraw('mgmt_bmc_net_name', 'head-bmc')
@@ -278,24 +275,7 @@ class ConfCommand(Command):
                 else:
                     servicenum = 800 + n['nodeindex']
                 it.addraw('internal_name', 'service%d' % servicenum)
-                it.addia('mgmt_bmc_net_macs', 'bmc', 'mac')
-                it.addia('mgmt_bmc_net_ip', 'bmc', 'ip')
-                it.addia('mgmt_bmc_net_name', 'bmc', 'network')
-                it.addia('mgmt_net_macs', 'bond0', 'mac')
-                it.addia('mgmt_net_ip', 'bond0', 'ip')
-                it.addia('mgmt_net_name', 'bond0', 'network')
-                it.addraw('mgmt_net_bonding_mode', '802.3ad')
-                it.addraw('mgmt_net_bonding_master', 'bond0')
-                try:
-                    bondmembers = n['interfaces']['bond0']['bondmembers']
-                    if type(bondmembers) == list:
-                        bondmembers = ','.join(bondmembers)
-                except KeyError:
-                    bondmembers = 'eth0, eth1'
-                it.addraw('mgmt_net_interfaces', bondmembers)
-                #it.addraw('data1_net_name', 'hsn0')
-                #it.addraw('data1_net_interfaces', 'hsn0')
-                #it.addia('data1_net_ip', 'hsn', 'ip')
+                cls._add_interfaces(n, it)
                 it.addna('rootfs', 'rootfs', 'tmpfs')
                 it.addna('architecture', 'arch', 'x86_64')
                 it.addna('image', 'image')
@@ -308,8 +288,47 @@ class ConfCommand(Command):
                 it.addna('dhcp_bootfile', 'ipxe-direct')
                 it.addna('transport', 'hpcm_transport', 'rsync')
                 it.addna('console_device', 'console', 'ttyS0')
+                if n['plugin'] == 'cray_ex' and n['type'] == 'compute':
+                    it.addna('rack_nr', 'racknum')
+                    it.addna('chassis', 'chassis')
+                    it.addna('tray', 'slot')
+                    it.addna('node_nr', 'nodenum')
+                    it.addna('controller_nr', 'board')
+                    it.addna('node_controller', 'bmc')
+                    it.addraw('network_group', "rack%d" % n['racknum'])
             print ', '.join(it.paramlist)
         return 0
+
+    @classmethod
+    def _add_interfaces(cls, n, it):
+        dnets = 0
+        for interface in sorted(n['interfaces']):
+            if interface == 'bmc':
+                it.addia('mgmt_bmc_net_macs', 'bmc', 'mac')
+                it.addia('mgmt_bmc_net_ip', 'bmc', 'ip')
+                it.addia('mgmt_bmc_net_name', 'bmc', 'network')
+            elif interface == 'bond0':
+                it.addia('mgmt_net_macs', 'bond0', 'mac')
+                it.addia('mgmt_net_ip', 'bond0', 'ip')
+                it.addia('mgmt_net_name', 'bond0', 'network')
+                it.addraw('mgmt_net_bonding_mode', '802.3ad')
+                it.addraw('mgmt_net_bonding_master', 'bond0')
+                try:
+                    bondmembers = n['interfaces']['bond0']['bondmembers']
+                    if type(bondmembers) == list:
+                        bondmembers = ','.join(bondmembers)
+                except KeyError:
+                    bondmembers = 'eth0, eth1'
+                it.addraw('mgmt_net_interfaces', bondmembers)
+            elif interface == 'ib0':
+                it.addia('ib_0_ip', 'ib0', 'ip')
+            elif interface == 'ib1':
+                it.addia('ib_1_ip', 'ib1', 'ip')
+            else:
+                dnets = dnets + 1
+                it.addia('data%d_net_name' % dnets, interface, 'network')
+                it.addraw('data%d_net_interfaces' % dnets, interface)
+                it.addia('data%d_net_ip' % dnets, interface, 'ip')
 
     @classmethod
     def _read_metadata(cls):
