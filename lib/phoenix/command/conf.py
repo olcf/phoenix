@@ -287,13 +287,15 @@ class ConfCommand(Command):
                 it.addraw('mgmt_net_bonding_mode', '802.3ad')
                 it.addraw('mgmt_net_bonding_master', 'bond0')
                 try:
-                    bondmembers = ','.join(n['interfaces']['bond0']['bondmembers'])
+                    bondmembers = n['interfaces']['bond0']['bondmembers']
+                    if type(bondmembers) == list:
+                        bondmembers = ','.join(bondmembers)
                 except KeyError:
                     bondmembers = 'eth0, eth1'
                 it.addraw('mgmt_net_interfaces', bondmembers)
-                it.addraw('data1_net_name', 'hsn0')
-                it.addraw('data1_net_interfaces', 'hsn0')
-                it.addia('data1_net_ip', 'hsn0', 'ip')
+                #it.addraw('data1_net_name', 'hsn0')
+                #it.addraw('data1_net_interfaces', 'hsn0')
+                #it.addia('data1_net_ip', 'hsn', 'ip')
                 it.addna('rootfs', 'rootfs', 'tmpfs')
                 it.addna('architecture', 'arch', 'x86_64')
                 it.addna('image', 'image')
