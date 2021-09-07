@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Power management"""
+"""Generate various config files"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
 import os
@@ -24,31 +24,6 @@ from phoenix.command import Command
 from phoenix.node import Node
 from phoenix.bootloader import write_bootloader_scripts
 
-class ParamList(object):
-    def __init__(self, node):
-        self.node = node
-        self.paramlist = list()
-
-    def addraw(self, hpcmattr, val=None):
-        if val is None:
-            self.paramlist.append(hpcmattr)
-            return
-        if ',' in val:
-            val = '"{}"'.format(val)
-        self.paramlist.append("{}={}".format(hpcmattr, val))
-
-    def addna(self, hpcmattr, nodeattr, thedefault=None):
-        if nodeattr in self.node:
-            self.paramlist.append("{}={}".format(hpcmattr, self.node[nodeattr]))
-        elif thedefault != None:
-            self.paramlist.append("{}={}".format(hpcmattr, thedefault))
-
-    def addia(self, hpcmattr, interface, ifaceattr):
-        try:
-            self.paramlist.append("{}={}".format(hpcmattr, self.node['interfaces'][interface][ifaceattr]))
-        except KeyError:
-            pass
-
 class ConfCommand(Command):
     @classmethod
     def get_parser(cls):
@@ -64,10 +39,6 @@ class ConfCommand(Command):
         parser_bootfile = subparsers.add_parser('bootfiles', help='bootfile help')
         parser_ethers = subparsers.add_parser('ethers', help='ethers help')
         parser_ethers.add_argument('--interface', '-i', default=[], type=str, action='append', dest='interfaces', help='Interface to include (default: show all)')
-        parser_hpcm = subparsers.add_parser('hpcm', help='hpcm help')
-        subparser_hpcm = parser_hpcm.add_subparsers(help='sub-command help', dest='action2')
-        parser_hpcm_discover = subparser_hpcm.add_parser('discover', help='Generate a fastdiscover file')
-        parser_hpcm_repos = subparser_hpcm.add_parser('repos', help='Manage HPCM repos and repo groups')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
         return parser
@@ -86,7 +57,6 @@ class ConfCommand(Command):
                    'ethers':     cls.ethers,
                    'dhcp':       cls.dhcp,
                    'updatedhcp': cls.updatedhcp,
-                   'hpcm':       cls.hpcm
                  }
 
         if args.action in cmdmap:
@@ -94,16 +64,6 @@ class ConfCommand(Command):
         else:
             logging.error("Action %s not yet implemented", args.action)
             return 1
-        return rc
-
-        (task, handler) = phoenix.parallel.setup(nodes, args)
-        cmd = ["power", args.action]
-        if args.pdu:
-            cmd.append("pdu")
-        logging.debug("Submitting shell command %s", cmd)
-        task.shell(cmd, nodes=nodes, handler=handler, autoclose=False, stdin=False, tree=True, remote=False)
-        task.resume()
-        rc = 0
         return rc
 
     @classmethod
@@ -225,173 +185,6 @@ class ConfCommand(Command):
         provider = load_dhcp_provider()
         print provider.update_dhcp_reservations()
         return 0
-
-    @classmethod
-    def hpcm(cls, nodes, args):
-        if args.action2 == 'discover':
-            cls.hpcm_discover(nodes, args)
-        elif args.action2 == 'repos':
-            cls.hpcm_repos(nodes, args)
-
-    @classmethod
-    def hpcm_discover(cls, nodes, args):
-        System.load_config()
-        Node.load_nodes(nodeset=nodes)
-        print("[discover]")
-        for nodename in nodes:
-            n = Node.find_node(nodename)
-            it = ParamList(n)
-            it.addna('hostname1', 'name')
-            if n['plugin'] == 'cray_ex' and n['type'] == 'nc':
-                print("internal_name={name},hostname1={name},mgmt_bmc_net_macs=\"{mac}\",mgmt_bmc_net_name=hostctrl3000,rack_nr={rack},chassis={chassis},tray={slot},cmm_parent={pdu},username=root,password=initial0,node_controller".format(name=n['name'], mac=n['interfaces']['me0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], pdu=n['pdu']))
-            elif n['plugin'] == 'cray_ex' and n['type'] == 'switch':
-                it.addna('internal_name', 'name')
-                it.addraw('mgmt_bmc_net_name', 'head-bmc')
-                it.addna('mgmt_bmc_net_macs', 'eth0', 'mac')
-                it.addna('mgmt_bmc_net_ip', 'eth0', 'ip')
-                it.addraw('username', 'root')
-                it.addraw('password', 'initial0')
-                it.addraw('external_switch_controller')
-            else:
-                if 'hpcm_servicenum' in n:
-                    servicenum = n['hpcm_servicenum']
-                elif 'type' in n:
-                    if n['type'] == 'admin':
-                        servicenum = 100 + n['nodeindex']
-                    elif n['type'] == 'leader':
-                        servicenum = 200 + n['nodeindex']
-                    elif n['type'] == 'service':
-                        servicenum = 300 + n['nodeindex']
-                    elif n['type'] == 'login':
-                        servicenum = 400 + n['nodeindex']
-                    elif n['type'] == 'gateway':
-                        servicenum = 500 + n['nodeindex']
-                    elif n['type'] == 'utility':
-                        servicenum = 600 + n['nodeindex']
-                    elif n['type'] == 'compute':
-                        servicenum = 2000 + n['nodeindex']
-                    else:
-                        servicenum = 700 + n['nodeindex']
-                else:
-                    servicenum = 800 + n['nodeindex']
-                it.addraw('internal_name', 'service%d' % servicenum)
-                cls._add_interfaces(n, it)
-                it.addna('rootfs', 'rootfs', 'tmpfs')
-                it.addna('architecture', 'arch', 'x86_64')
-                it.addna('image', 'image')
-                it.addraw('card_type', 'ILO')
-                it.addna('bmc_username', 'bmcuser', 'root')
-                it.addna('bmc_password', 'bmcpassword', 'initial0')
-                it.addraw('conserver_logging', 'yes')
-                it.addraw('redundant_mgmt_network', 'yes')
-                it.addraw('predictable_net_names', 'yes')
-                it.addna('dhcp_bootfile', 'ipxe-direct')
-                it.addna('transport', 'hpcm_transport', 'rsync')
-                it.addna('console_device', 'console', 'ttyS0')
-                if n['plugin'] == 'cray_ex' and n['type'] == 'compute':
-                    it.addna('rack_nr', 'racknum')
-                    it.addna('chassis', 'chassis')
-                    it.addna('tray', 'slot')
-                    it.addna('node_nr', 'nodenum')
-                    it.addna('controller_nr', 'board')
-                    it.addna('node_controller', 'bmc')
-                    it.addraw('network_group', "rack%d" % n['racknum'])
-            print ', '.join(it.paramlist)
-        return 0
-
-    @classmethod
-    def _add_interfaces(cls, n, it):
-        dnets = 0
-        for interface in sorted(n['interfaces']):
-            if interface == 'bmc':
-                it.addia('mgmt_bmc_net_macs', 'bmc', 'mac')
-                it.addia('mgmt_bmc_net_ip', 'bmc', 'ip')
-                it.addia('mgmt_bmc_net_name', 'bmc', 'network')
-            elif interface == 'bond0':
-                it.addia('mgmt_net_macs', 'bond0', 'mac')
-                it.addia('mgmt_net_ip', 'bond0', 'ip')
-                it.addia('mgmt_net_name', 'bond0', 'network')
-                it.addraw('mgmt_net_bonding_mode', '802.3ad')
-                it.addraw('mgmt_net_bonding_master', 'bond0')
-                try:
-                    bondmembers = n['interfaces']['bond0']['bondmembers']
-                    if type(bondmembers) == list:
-                        bondmembers = ','.join(bondmembers)
-                except KeyError:
-                    bondmembers = 'eth0, eth1'
-                it.addraw('mgmt_net_interfaces', bondmembers)
-            elif interface == 'ib0':
-                it.addia('ib_0_ip', 'ib0', 'ip')
-            elif interface == 'ib1':
-                it.addia('ib_1_ip', 'ib1', 'ip')
-            else:
-                dnets = dnets + 1
-                it.addia('data%d_net_name' % dnets, interface, 'network')
-                it.addraw('data%d_net_interfaces' % dnets, interface)
-                it.addia('data%d_net_ip' % dnets, interface, 'ip')
-
-    @classmethod
-    def _read_metadata(cls):
-        git_checkout_path='/root/hpcm_data'
-        hostname = socket.gethostname()
-        filename = '%s/metadata/%s.yaml' % (git_checkout_path, hostname)
-        try:
-            logging.info("Loading metadata file '%s'", filename)
-            with open(filename) as metadatafd:
-                metadata = load(metadatafd, Loader=Loader) or {}
-                return metadata
-        except Exception as e:
-            logging.error("Could not read metadata: %s", e)
-            return {}
-
-    @classmethod
-    def hpcm_repos(cls, nodes, args):
-        repodir = '/opt/clmgr/repos/cm-repodata'
-        repogroupdir = '/opt/clmgr/repos/cm-repogroups'
-        metadata = cls._read_metadata()
-        try:
-            repos = metadata['repos']
-        except KeyError:
-            logging.error("repos section not found in metadata")
-            return
-        for repo in repos:
-            path = '%s/%s' % (repodir, repo)
-            typefile = '%s/repo-type' % path
-            urlfile = '%s/repo-url' % path
-            try:
-                os.mkdir(path)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    pass
-                else:
-                    raise
-            with open(typefile, 'w') as filefd:
-                filefd.write('repo-md')
-            with open(urlfile, 'w') as filefd:
-                filefd.write(repos[repo])
-        try:
-            images = metadata['images']
-        except KeyError:
-            logging.error("images section not found in metadata")
-            return
-        for image in images:
-            if 'repos' not in images[image]:
-                logging.error("repos section not found in image %s", image)
-                return
-            path = '%s/%s' % (repogroupdir, image)
-            try:
-                os.mkdir(path)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    pass
-                else:
-                    raise
-            for file in os.listdir(path):
-                os.unlink('%s/%s' % (path,file))
-            for repo in images[image]['repos']:
-                src = '%s/%s' % (repodir, repo)
-                dst = '%s/%s' % (path, repo)
-                os.symlink(src, dst)
 
     @classmethod
     def run(cls, client):
