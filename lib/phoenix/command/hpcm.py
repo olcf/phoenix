@@ -131,6 +131,8 @@ class HpcmCommand(Command):
                     it.addna('controller_nr', 'board')
                     it.addna('node_controller', 'bmc')
                     it.addraw('network_group', "rack%d" % n['racknum'])
+                    it.addraw('cmcinventory_managed', 'yes')
+                    it.addraw('alias_groups', 'cm-geo-name:%s' % n['xname'])
             print ', '.join(it.paramlist)
         return 0
 
