@@ -8,6 +8,7 @@ import logging
 import argparse
 import socket
 import errno
+import ipaddress
 
 from yaml import load, dump
 try:
@@ -62,6 +63,7 @@ class HpcmCommand(Command):
         parser_hpcm = subparsers.add_parser('hpcm', help='hpcm help')
         parser_discover = subparsers.add_parser('discover', help='Generate a fastdiscover file')
         parser_discover.add_argument('nodes', default=None, type=str, help='Nodes to generate fastdiscover configuration for')
+        parser_discover.add_argument('--fakemacs', default=False, action='store_true', help='Use fake MAC addresses where they are missing')
         parser_repos = subparsers.add_parser('repos', help='Manage HPCM repos and repo groups')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
@@ -93,13 +95,15 @@ class HpcmCommand(Command):
     def discover(cls, nodes, args):
         System.load_config()
         Node.load_nodes(nodeset=nodes)
-        print("[discover]")
+        missingmac = list()
+        output = list()
+        output.append("[discover]")
         for nodename in nodes:
             n = Node.find_node(nodename)
             it = ParamList(n)
             it.addna('hostname1', 'name')
             if n['plugin'] == 'cray_ex' and n['type'] == 'nc':
-                print("internal_name={name},hostname1={name},mgmt_bmc_net_macs=\"{mac}\",mgmt_bmc_net_name=hostctrl3000,rack_nr={rack},chassis={chassis},tray={slot},cmm_parent={pdu},username=root,password=initial0,node_controller".format(name=n['name'], mac=n['interfaces']['me0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], pdu=n['pdu']))
+                output.append("internal_name={name},hostname1={name},mgmt_bmc_net_macs=\"{mac}\",mgmt_bmc_net_name=hostctrl3000,rack_nr={rack},chassis={chassis},tray={slot},cmm_parent={pdu},username=root,password=initial0,node_controller".format(name=n['name'], mac=n['interfaces']['me0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], pdu=n['pdu']))
             elif n['plugin'] == 'cray_ex' and n['type'] == 'switch':
                 it.addna('internal_name', 'name')
                 it.addraw('mgmt_bmc_net_name', 'head-bmc')
@@ -133,8 +137,33 @@ class HpcmCommand(Command):
                     it.addraw('network_group', "rack%d" % n['racknum'])
                     it.addraw('cmcinventory_managed', 'yes')
                     it.addraw('alias_groups', 'cm-geo-name:%s' % n['xname'])
-            print ', '.join(it.paramlist)
+                    if 'mac' not in n['interfaces']['bond0']:
+                        missingmac.append(n['name'])
+                        logging.debug("Node %s is missing a mac", n['name'])
+                        if args.fakemacs == True:
+                            n['interfaces']['bond0']['mac'] = cls._fakemac(n)
+                    if 'mac' in n['interfaces']['bond0']:
+                        it.addraw('mgmt_net_macs', n['interfaces']['bond0']['mac'])
+            output.append(', '.join(it.paramlist))
+        if len(missingmac) > 0 and args.fakemacs == False:
+            logging.error("Nodes %s are missing a mac address. Specify --fakemacs to continue", NodeSet.fromlist(missingmac))
+        else:
+            for line in output:
+                print(line)
         return 0
+
+    @classmethod
+    def _fakemac(cls, n, interface='bond0'):
+        ''' Return a fake mac address. Might need a different algorithm'''
+        racknum = n['racknum']
+        try:
+            ipstr = n['interfaces'][interface]['ip'].decode()
+        except:
+            ipstr = n['interfaces'][interface]['ip']
+        ipint = int(ipaddress.ip_address(ipstr)) + (0x22 << 40)
+        macstr = "%012x" % ipint
+        output = ':'.join([macstr[i:i+2] for i in range(0, len(macstr), 2)])
+        return output
 
     @classmethod
     def _get_internal_name(cls, n):
