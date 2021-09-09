@@ -145,9 +145,19 @@ def set_node_attrs(node, alias=None):
     #        Hopefully that won't bite us any time soon...
     #        Could instead have a lightweight regex, but that might hurt
     #        performance too much
-    if node['name'].startswith('x'):
+    if 'xname' in node:
+        logging.debug("Node has an xname defined on the node attribute")
+        _xname_to_node_attrs(node)
+    elif node['name'].startswith('x'):
         logging.debug("Node name %s is an xname", node['name'])
         node['xname'] = node['name']
+        _xname_to_node_attrs(node)
+        if 'rack' not in node:
+            logging.error("Could not parse xname")
+            return
+    elif alias is not None and alias.startswith('x'):
+        logging.debug("Node alias %s is an xname", alias)
+        node['xname'] = alias
         _xname_to_node_attrs(node)
         if 'rack' not in node:
             logging.error("Could not parse xname")
@@ -158,15 +168,9 @@ def set_node_attrs(node, alias=None):
         if m is not None:
             node['nodeindex'] = int(m.group(1))
             _nid_to_node_attrs(node)
-            logging.debug("test8")
-        logging.debug("test9")
-        if 'xname' not in node and alias is not None and alias.startswith('x'):
-            node['xname'] = alias
-        logging.debug("test10")
         if 'xname' not in node:
             logging.error("Cray EX component %s does not have an xname", node['name'])
             return
-        logging.debug("test11")
 
     # This needs to eventually move to models instead of polluting every node
     node['redfishsimpleupdate'] = 'UpdateService/Actions/SimpleUpdate'
