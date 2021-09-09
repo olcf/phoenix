@@ -69,6 +69,14 @@ class Network(object):
             cls.config[net]['rackaddresses'] = 0
         
     @classmethod
+    def networks(cls):
+        ''' Returns the dict of networks '''
+        if not cls.loaded_config:
+            cls.load_config()
+
+        return cls.config
+
+    @classmethod
     def find_network(cls, net):
         """ Returns a tuple including:
             - ipaddress object responding to the base net
