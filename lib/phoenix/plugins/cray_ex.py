@@ -281,11 +281,11 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, 'eth0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0))
             _setinterfaceparam(node, 'eth0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0))
             _setinterfaceparam(node, 'eth0', 'hostname', node['name'])
-            _setinterfaceparam(node, 'eth0', 'network', 'hostctrl')
             if 'hostctrl' in settings['autoip']:
-                _setinterfaceparam(node, 'me0', 'network', 'hostctrl')
+                _setinterfaceparam(node, 'eth0', 'network', 'hostctrl')
                 offset = node['chassis'] * 8 + node['slot']
-                _setinterfaceparam(node, 'me0', 'ip', Network.ipadd("hostctrl", offset + 20 + settings['autoip']['hostctrl'], node['rackidx']))
+                _setinterfaceparam(node, 'eth0', 'ip', Network.ipadd("hostctrl", offset + 20 + settings['autoip']['hostctrl'], node['rackidx']))
+
         node['firmware_name'] = 'BMC'
 
     elif node['type'] == 'cec':
