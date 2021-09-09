@@ -23,6 +23,7 @@ import phoenix.parallel
 from phoenix.system import System
 from phoenix.command import Command
 from phoenix.node import Node
+from phoenix.network import Network
 
 try:
     usersettings = System.setting('cray_ex')
@@ -61,6 +62,7 @@ class HpcmCommand(Command):
         #parser.add_argument('nodes', default=None, type=str, help='Nodes to generate configuration for')
         subparsers = parser.add_subparsers(help='sub-command help', dest='action')
         parser_hpcm = subparsers.add_parser('hpcm', help='hpcm help')
+        parser_configure = subparsers.add_parser('configure-cluster', help='Generate a configure-cluster input file')
         parser_discover = subparsers.add_parser('discover', help='Generate a fastdiscover file')
         parser_discover.add_argument('nodes', default=None, type=str, help='Nodes to generate fastdiscover configuration for')
         parser_discover.add_argument('--fakemacs', default=False, action='store_true', help='Use fake MAC addresses where they are missing')
@@ -80,8 +82,9 @@ class HpcmCommand(Command):
         else:
             nodes = None
 
-        cmdmap = { 'discover':   cls.discover,
-                   'repos':      cls.repos,
+        cmdmap = { 'configure-cluster': cls.configcluster,
+                   'discover':          cls.discover,
+                   'repos':             cls.repos,
                  }
 
         if args.action in cmdmap:
@@ -92,6 +95,96 @@ class HpcmCommand(Command):
         return rc
 
     @classmethod
+    def configcluster(cls, nodes, args):
+        System.load_config()
+        output = list()
+
+        networks = Network.networks()
+
+        # Discover section for the admin node
+        output.append('[discover]')
+        output.append(cls._node_discover('admin1'))
+        output.append('')
+
+        # Attributes section
+        output.append('[attributes]')
+        attr = {
+            'admin_house_interface':      '',
+            'admin_mgmt_interfaces':      'existing',
+            'admin_mgmt_bmc_interfaces':  'existing',
+            'discover_skip_switchconfig': 'yes',
+            'conserver_logging':          'yes',
+            'conserver_ondemand':         'no',
+            'conserver_timestamp':        'yes',
+            'copy_admin_ssh_config':      'yes',
+            'mcell_network':              'no',
+            'predictable_net_names':      'yes',
+            'redundant_mgmt_network':     'no',
+            'mgmt_net_routing_protocol':  'ospf',
+            'mgmt_net_subnet_selection':  'next-available',
+            'mgmt_vlan_start':            2001,
+            'mgmt_vlan_end':              2999,
+            'mgmt_ctrl_vlan_start':       3001,
+            'mgmt_ctrl_vlan_end':         3999,
+            }
+
+        if 'head' in networks and 'vlan' in networks['head']:
+            attr['head_vlan'] = networks['head']['vlan']
+        #domain_search_path=borg.olcf.ornl.gov,olcf.ornl.gov,ccs.ornl.gov
+
+        # TODO: Pull in other settings from system.yaml
+
+        for key in sorted(attr):
+            output.append("%s=%s" % (key, attr[key]))
+        output.append('')
+
+        # DNS Section
+        output.append('[dns]')
+        try:
+            output.append("cluster_domain=%s" % System.setting('domain'))
+        except:
+            pass
+
+        try:
+            nscount=0
+            for ns in System.setting('nameservers'):
+                nscount = nscount + 1
+                output.append('nameserver%d=%s' % (nscount, ns))
+        except:
+            pass
+        output.append('')
+
+        # Networks section
+        output.append('[networks]')
+        for netname in networks:
+            netentry = list()
+            net = networks[netname]
+            netentry.append('name=%s' % netname)
+            if netname == 'head' or netname == 'hostmgmt':
+                nettype = 'mgmt'
+            elif netname == 'head-bmc' or netname == 'hostctrl':
+                nettype = 'mgmt-bmc'
+            elif netname[0:2] == 'ib':
+                nettype = 'ib'
+            else:
+                nettype = 'data'
+            netentry.append('type=%s' % nettype)
+            if 'vlan' in net:
+                netentry.append('vlan=%d' % net['vlan'])
+            netentry.append('subnet=%s' % net['network'])
+            netentry.append('netmask=%s' % net['netmask'])
+            if 'gateway' in net:
+                netentry.append('gateway=%s' % net['gateway'])
+            output.append(', '.join(netentry))
+        output.append('')
+
+        # Images section
+        output.append('[images]')
+        output.append('image_types=none')
+
+        print('\n'.join(output))
+
+    @classmethod
     def discover(cls, nodes, args):
         System.load_config()
         Node.load_nodes(nodeset=nodes)
@@ -99,58 +192,86 @@ class HpcmCommand(Command):
         output = list()
         output.append("[discover]")
         for nodename in nodes:
-            n = Node.find_node(nodename)
-            it = ParamList(n)
-            it.addna('hostname1', 'name')
-            if n['plugin'] == 'cray_ex' and n['type'] == 'nc':
-                output.append("internal_name={name},hostname1={name},mgmt_bmc_net_macs=\"{mac}\",mgmt_bmc_net_name=hostctrl3000,rack_nr={rack},chassis={chassis},tray={slot},cmm_parent={pdu},username=root,password=initial0,node_controller".format(name=n['name'], mac=n['interfaces']['me0']['mac'], rack=n['racknum'], chassis=n['chassis'], slot=n['slot'], pdu=n['pdu']))
-            elif n['plugin'] == 'cray_ex' and n['type'] == 'switch':
-                it.addna('internal_name', 'name')
-                it.addraw('mgmt_bmc_net_name', 'head-bmc')
-                it.addna('mgmt_bmc_net_macs', 'eth0', 'mac')
-                it.addna('mgmt_bmc_net_ip', 'eth0', 'ip')
-                it.addraw('username', 'root')
-                it.addraw('password', 'initial0')
-                it.addraw('external_switch_controller')
-            else:
-                it.addraw('internal_name', cls._get_internal_name(n))
-                cls._add_interfaces(n, it)
-                it.addna('rootfs', 'rootfs', 'tmpfs')
-                it.addna('architecture', 'arch', 'x86_64')
-                it.addna('image', 'image')
-                it.addraw('card_type', 'ILO')
-                it.addna('bmc_username', 'bmcuser', 'root')
-                it.addna('bmc_password', 'bmcpassword', 'initial0')
-                it.addraw('conserver_logging', 'yes')
-                it.addraw('redundant_mgmt_network', 'yes')
-                it.addraw('predictable_net_names', 'yes')
-                it.addna('dhcp_bootfile', 'ipxe-direct')
-                it.addna('transport', 'hpcm_transport', 'rsync')
-                it.addna('console_device', 'console', 'ttyS0')
-                if n['plugin'] == 'cray_ex' and n['type'] == 'compute':
-                    it.addna('rack_nr', 'racknum')
-                    it.addna('chassis', 'chassis')
-                    it.addna('tray', 'slot')
-                    it.addna('node_nr', 'nodenum')
-                    it.addna('controller_nr', 'board')
-                    it.addna('node_controller', 'bmc')
-                    it.addraw('network_group', "rack%d" % n['racknum'])
-                    it.addraw('cmcinventory_managed', 'yes')
-                    it.addraw('alias_groups', 'cm-geo-name:%s' % n['xname'])
-                    if 'mac' not in n['interfaces']['bond0']:
-                        missingmac.append(n['name'])
-                        logging.debug("Node %s is missing a mac", n['name'])
-                        if args.fakemacs == True:
-                            n['interfaces']['bond0']['mac'] = cls._fakemac(n)
-                    if 'mac' in n['interfaces']['bond0']:
-                        it.addraw('mgmt_net_macs', n['interfaces']['bond0']['mac'])
-            output.append(', '.join(it.paramlist))
+            result = cls._node_discover(nodename, fakemacs=args.fakemacs, missingmac=missingmac)
+            output.append(result)
         if len(missingmac) > 0 and args.fakemacs == False:
             logging.error("Nodes %s are missing a mac address. Specify --fakemacs to continue", NodeSet.fromlist(missingmac))
         else:
             for line in output:
                 print(line)
         return 0
+
+    @classmethod
+    def _node_discover(cls, nodename, fakemacs=False, missingmac=None):
+        n = Node.find_node(nodename)
+        it = ParamList(n)
+        it.addna('hostname1', 'name')
+        if n['plugin'] == 'cray_ex' and n['type'] == 'nc':
+            it.addna('internal_name', 'name')
+            it.addia('mgmt_bmc_net_name', 'me0', 'network')
+            it.addia('mgmt_bmc_net_macs', 'me0', 'mac')
+            it.addna('rack_nr', 'racknum')
+            it.addna('chassis', 'chassis')
+            it.addna('tray', 'slot')
+            it.addna('cmm_parent', 'pdu')
+            it.addraw('username', 'root')
+            it.addraw('password', 'initial0')
+            it.addraw('node_controller')
+        elif n['plugin'] == 'cray_ex' and n['type'] == 'switch':
+            it.addna('internal_name', 'name')
+            it.addia('mgmt_bmc_net_name', 'eth0', 'network')
+            it.addia('mgmt_bmc_net_macs', 'eth0', 'mac')
+            it.addia('mgmt_bmc_net_ip', 'eth0', 'ip')
+            it.addraw('username', 'root')
+            it.addraw('password', 'initial0')
+            if n['switchmodel'] == 'colorado':
+                it.addna('rack_nr', 'racknum')
+                it.addna('chassis', 'chassis')
+                it.addna('tray', 'slot')
+                it.addna('cmm_parent', 'pdu')
+                it.addraw('switch_controller')
+            else:
+                it.addraw('external_switch_controller')
+        else:
+            it.addraw('internal_name', cls._get_internal_name(n))
+            cls._add_interfaces(n, it)
+            if n['type'] == 'admin' or n['type'] == 'leader':
+                it.addna('rootfs', 'rootfs', 'disk')
+            elif n['type'] == 'compute':
+                it.addna('rootfs', 'rootfs', 'nfs')
+                it.addna('nfs_writable_type', 'tmpfs-overlay', 'tmpfs-overlay')
+            else:
+                it.addna('rootfs', 'rootfs', 'tmpfs')
+            it.addna('architecture', 'arch', 'x86_64')
+            it.addna('image', 'image')
+            it.addraw('card_type', 'ILO')
+            it.addna('bmc_username', 'bmcuser', 'root')
+            it.addna('bmc_password', 'bmcpassword', 'initial0')
+            it.addraw('conserver_logging', 'yes')
+            it.addraw('redundant_mgmt_network', 'yes')
+            it.addraw('predictable_net_names', 'yes')
+            it.addna('dhcp_bootfile', 'ipxe-direct')
+            it.addna('transport', 'hpcm_transport', 'rsync')
+            it.addna('console_device', 'console', 'ttyS0')
+            if n['plugin'] == 'cray_ex' and n['type'] == 'compute':
+                it.addna('rack_nr', 'racknum')
+                it.addna('chassis', 'chassis')
+                it.addna('tray', 'slot')
+                it.addna('node_nr', 'nodenum')
+                it.addna('controller_nr', 'board')
+                it.addna('node_controller', 'bmc')
+                it.addraw('network_group', "rack%d" % n['racknum'])
+                it.addraw('cmcinventory_managed', 'yes')
+                it.addraw('alias_groups', 'cm-geo-name:%s' % n['xname'])
+                if 'mac' not in n['interfaces']['bond0']:
+                    if missingmac != None:
+                        missingmac.append(n['name'])
+                    logging.debug("Node %s is missing a mac", n['name'])
+                    if fakemacs == True:
+                        n['interfaces']['bond0']['mac'] = cls._fakemac(n)
+                if 'mac' in n['interfaces']['bond0']:
+                    it.addraw('mgmt_net_macs', n['interfaces']['bond0']['mac'])
+        return ', '.join(it.paramlist)
 
     @classmethod
     def _fakemac(cls, n, interface='bond0'):
@@ -176,7 +297,7 @@ class HpcmCommand(Command):
                               n['chassis'] * 1000 + n['slot'] * 100 +
                               n['board'] * 10 + n['nodenum'])
             elif nodetype == 'admin':
-                servicenum = 100 + n['nodeindex']
+                return 'admin'
             elif nodetype == 'leader':
                 servicenum = 200 + n['nodeindex']
             elif nodetype == 'service':
