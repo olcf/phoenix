@@ -210,7 +210,7 @@ class HpcmCommand(Command):
             it.addna('internal_name', 'name')
             it.addia('mgmt_bmc_net_name', 'me0', 'network')
             it.addia('mgmt_bmc_net_macs', 'me0', 'mac')
-            it.addia('mgmt_bmc_net_macs', 'me0', 'ip')
+            it.addia('mgmt_bmc_net_ip', 'me0', 'ip')
             it.addna('rack_nr', 'racknum')
             it.addna('chassis', 'chassis')
             it.addna('tray', 'slot')
