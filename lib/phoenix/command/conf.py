@@ -32,6 +32,7 @@ class ConfCommand(Command):
         subparsers = parser.add_subparsers(help='sub-command help', dest='action')
         parser_hosts = subparsers.add_parser('hosts', help='hosts help')
         parser_hosts.add_argument('--interface', '-i', default=[], type=str, action='append', dest='interfaces', help='Interface to include (default: show all)')
+        parser_hosts.add_argument('--network', '-n', default=[], type=str, action='append', dest='networks', help='Networks to include (default: show all)')
         parser_ips = subparsers.add_parser('ips', help='ip help')
         parser_ips.add_argument('--sort', '-s', default=None, type=str, dest='sort', help='Field to sort by')
         parser_dhcp = subparsers.add_parser('dhcp', help='dhcp help')
@@ -74,8 +75,11 @@ class ConfCommand(Command):
             node = Node.find_node(nodename)
             if 'interfaces' not in node:
                 continue
-            for ifacename, iface in node['interfaces'].items():
+            for ifacename in sorted(node['interfaces']):
+                iface = node['interfaces'][ifacename]
                 if len(args.interfaces) > 0 and ifacename not in args.interfaces:
+                    continue
+                if len(args.networks) > 0 and ('network' not in iface or iface['network'] not in args.networks):
                     continue
                 if 'ip' not in iface:
                     continue
