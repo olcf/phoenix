@@ -33,6 +33,7 @@ class ConfCommand(Command):
         parser_hosts = subparsers.add_parser('hosts', help='hosts help')
         parser_hosts.add_argument('--interface', '-i', default=[], type=str, action='append', dest='interfaces', help='Interface to include (default: show all)')
         parser_hosts.add_argument('--network', '-n', default=[], type=str, action='append', dest='networks', help='Networks to include (default: show all)')
+        parser_hosts.add_argument('--primary', '-p', default=None, type=str, dest='primary', help='Primary interface to use for the hostname')
         parser_ips = subparsers.add_parser('ips', help='ip help')
         parser_ips.add_argument('--sort', '-s', default=None, type=str, dest='sort', help='Field to sort by')
         parser_dhcp = subparsers.add_parser('dhcp', help='dhcp help')
@@ -83,8 +84,22 @@ class ConfCommand(Command):
                     continue
                 if 'ip' not in iface:
                     continue
-                hostname = iface['hostname'] if 'hostname' in iface else nodename
-                print "%s\t%s\t%s.%s" % (iface['ip'], hostname, hostname, System.config['domain'])
+                components = [iface['ip']]
+                if 'hostname' in iface:
+                    hostname = iface['hostname']
+                    components.append('%s.%s' % (hostname, System.config['domain']))
+                    components.append(hostname)
+                elif ifacename == args.primary:
+                    hostname = nodename
+                    components.append('%s.%s' % (hostname, System.config['domain']))
+                    components.append(hostname)
+                    hostname = "%s%s" % (nodename, ifacename)
+                    components.append(hostname)
+                else:
+                    hostname = "%s%s" % (nodename, ifacename)
+                    components.append('%s.%s' % (hostname, System.config['domain']))
+                    components.append(hostname)
+                print "\t".join(components)
         return 0
 
     @classmethod
