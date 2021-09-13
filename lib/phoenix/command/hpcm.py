@@ -334,7 +334,13 @@ class HpcmCommand(Command):
                 else:
                     bondmembers = cls._get_bond0_bondmembers(n)
                 if type(bondmembers) == list:
+                    if len(bondmembers) > 1:
+                        it.addraw('mgmt_net_bonding_mode', '802.3ad')
+                    else:
+                        it.addraw('mgmt_net_bonding_mode', 'active-backup')
                     bondmembers = ','.join(bondmembers)
+                else:
+                    it.addraw('mgmt_net_bonding_mode', 'active-backup')
                 it.addraw('mgmt_net_interfaces', bondmembers)
             elif interface == 'ib0':
                 it.addia('ib_0_ip', 'ib0', 'ip')
