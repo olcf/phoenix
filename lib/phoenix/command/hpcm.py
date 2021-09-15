@@ -66,6 +66,7 @@ class HpcmCommand(Command):
         parser_discover = subparsers.add_parser('discover', help='Generate a fastdiscover file')
         parser_discover.add_argument('nodes', default=None, type=str, help='Nodes to generate fastdiscover configuration for')
         parser_discover.add_argument('--fakemacs', default=False, action='store_true', help='Use fake MAC addresses where they are missing')
+        parser_discover.add_argument('--image', default=None, type=str, help='Specify an image to use')
         parser_repos = subparsers.add_parser('repos', help='Manage HPCM repos and repo groups')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
@@ -192,7 +193,7 @@ class HpcmCommand(Command):
         output = list()
         output.append("[discover]")
         for nodename in nodes:
-            result = cls._node_discover(nodename, fakemacs=args.fakemacs, missingmac=missingmac)
+            result = cls._node_discover(nodename, image=args.image, fakemacs=args.fakemacs, missingmac=missingmac)
             output.append(result)
         if len(missingmac) > 0 and args.fakemacs == False:
             logging.error("Nodes %s are missing a mac address. Specify --fakemacs to continue", NodeSet.fromlist(missingmac))
@@ -202,7 +203,7 @@ class HpcmCommand(Command):
         return 0
 
     @classmethod
-    def _node_discover(cls, nodename, fakemacs=False, missingmac=None):
+    def _node_discover(cls, nodename, image=None, fakemacs=False, missingmac=None):
         n = Node.find_node(nodename)
         it = ParamList(n)
         it.addna('hostname1', 'name')
@@ -244,7 +245,7 @@ class HpcmCommand(Command):
             else:
                 it.addna('rootfs', 'rootfs', 'tmpfs')
             it.addna('architecture', 'arch', 'x86_64')
-            it.addna('image', 'image')
+            it.addna('image', 'image', image)
             it.addraw('card_type', 'ILO')
             it.addna('bmc_username', 'bmcuser', 'root')
             it.addna('bmc_password', 'bmcpassword', 'initial0')
@@ -270,8 +271,7 @@ class HpcmCommand(Command):
                     logging.debug("Node %s is missing a mac", n['name'])
                     if fakemacs == True:
                         n['interfaces']['bond0']['mac'] = cls._fakemac(n)
-                if 'mac' in n['interfaces']['bond0']:
-                    it.addraw('mgmt_net_macs', n['interfaces']['bond0']['mac'])
+                        it.addraw('mgmt_net_macs', n['interfaces']['bond0']['mac'])
         return ', '.join(it.paramlist)
 
     @classmethod
