@@ -77,7 +77,7 @@ class Node(object):
                 return self.attr[key]()
             return self.attr[key]
         if key not in self.rawattr:
-            raise KeyError
+            raise KeyError(key)
         #self.attr[key] = self.interpolate(key)
         self.interpolate(key)
         #self.attr[key] = self.rawattr[key]
@@ -246,7 +246,7 @@ class Node(object):
         try:
             plugin.set_node_attrs(self, alias=alias)
         except Exception as E:
-            logging.error("Plugin caught exception: %s", E)
+            logging.error("Plugin caught exception: %s", repr(E))
 
     @classmethod
     def data(cls, *args):
