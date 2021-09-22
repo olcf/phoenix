@@ -93,10 +93,11 @@ class ConfCommand(Command):
                     hostname = nodename
                     components.append('%s.%s' % (hostname, System.config['domain']))
                     components.append(hostname)
-                    hostname = "%s%s" % (nodename, ifacename)
+                    hostname = "%s-%s" % (nodename, ifacename)
+                    components.append('%s.%s' % (hostname, System.config['domain']))
                     components.append(hostname)
                 else:
-                    hostname = "%s%s" % (nodename, ifacename)
+                    hostname = "%s-%s" % (nodename, ifacename)
                     components.append('%s.%s' % (hostname, System.config['domain']))
                     components.append(hostname)
                 print "\t".join(components)
