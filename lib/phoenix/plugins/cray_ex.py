@@ -217,8 +217,7 @@ def set_node_attrs(node, alias=None):
         node['bmcuser'] = 'root'
         node['discoverytype'] = 'bmc'
         if 'hostmgmt' in settings['autoip']:
-            #_setinterfaceparam(node, 'bond0', 'network', 'hostctrl%d' % node['racknum'])
-            _setinterfaceparam(node, 'bond0', 'network', 'hostmgmt2000')
+            _setinterfaceparam(node, 'bond0', 'network', 'hostmgmt%d' % (settings['hostmgmtvlanstart'] + node['rackidx']))
             _setinterfaceparam(node, 'bond0', 'ip', Network.ipadd("hostmgmt", node['nodeindexinrack'] + settings['autoip']['hostmgmt'], node['rackidx']))
             _setinterfaceparam(node, 'bond0', 'mac', Data.data('mac', node['name']))
         _setinterfaceparam(node, 'bond0', 'discoverytype', 'bmc')
