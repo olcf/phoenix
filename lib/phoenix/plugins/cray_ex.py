@@ -8,6 +8,7 @@ from ClusterShell.NodeSet import NodeSet
 from phoenix.system import System
 from phoenix.network import Network
 from phoenix.node import Node
+from phoenix.data import Data
 
 cray_ex_regex = re.compile(r'x(?P<racknum>\d+)(?P<chassistype>[ce])(?P<chassis>\d+)((?P<slottype>[rs])(?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
 num_regex = re.compile(r'.*?(\d+)$')
@@ -203,7 +204,7 @@ def set_node_attrs(node, alias=None):
             #_setinterfaceparam(node, 'bond0', 'network', 'hostctrl%d' % node['racknum'])
             _setinterfaceparam(node, 'bond0', 'network', 'hostmgmt2000')
             _setinterfaceparam(node, 'bond0', 'ip', Network.ipadd("hostmgmt", node['nodeindexinrack'] + settings['autoip']['hostmgmt'], node['rackidx']))
-            _setinterfaceparam(node, 'bond0', 'mac', Node.data('mac', node['name']))
+            _setinterfaceparam(node, 'bond0', 'mac', Data.data('mac', node['name']))
         _setinterfaceparam(node, 'bond0', 'discoverytype', 'bmc')
         node['bmcpassword'] = 'initial0'
         globalnicspernode = settings['nicspernode']

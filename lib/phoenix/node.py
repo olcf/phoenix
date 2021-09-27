@@ -22,6 +22,7 @@ import ipaddress
 import phoenix
 from phoenix.system import System
 from phoenix.network import Network
+from phoenix.data import Data
 
 # Technically, maps in yaml are unordered. We want entries in nodes.yaml
 # to be processed in the order present in the file so that overriding
@@ -249,21 +250,11 @@ class Node(object):
             logging.error("Plugin caught exception: %s", repr(E))
 
     @classmethod
-    def data(cls, *args):
-        logging.debug("Called data with key %s", args)
-        if cls.datasource is None:
-            cls.datasource = phoenix.get_component('datasource')
-        logging.debug("calling getkey")
-        output = cls.datasource.getval(*args)
-        logging.debug("got data value %s", output)
-        return output
-
-    @classmethod
     def load_functions(cls):
         logging.info("Loading Jinja templates")
         cls.environment = Environment()
         cls.environment.globals['ipadd'] = Network.ipadd
-        cls.environment.globals['data'] = Node.data
+        cls.environment.globals['data'] = Data.data
         #Environment.globals['ipadd'] = Node.ipadd
         cls.loaded_functions = True
 
