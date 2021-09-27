@@ -68,6 +68,11 @@ class HpcmCommand(Command):
         parser_discover.add_argument('--fakemacs', default=False, action='store_true', help='Use fake MAC addresses where they are missing')
         parser_discover.add_argument('--image', default=None, type=str, help='Specify an image to use')
         parser_discover.add_argument('--disk', default=None, type=str, help='Path to a disk to use for rootfs')
+        parser_leaders = subparsers.add_parser('leaders', help='Generate a su leader config file')
+        parser_leaders.add_argument('nodes', default=None, type=str, help='Nodes to generate leader configuration for')
+        parser_leaders.add_argument('--bmc', default=None, type=str, help='Interface to use for the BMC-in-os IP')
+        parser_leaders.add_argument('--alias', default=None, type=str, help='Interface to use for the alias (floating) IP')
+        parser_leaders.add_argument('--disk', default=None, type=str, help='Path to a disk to use for Gluster')
         parser_repos = subparsers.add_parser('repos', help='Manage HPCM repos and repo groups')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
@@ -86,6 +91,7 @@ class HpcmCommand(Command):
 
         cmdmap = { 'configure-cluster': cls.configcluster,
                    'discover':          cls.discover,
+                   'leaders':           cls.leaders,
                    'repos':             cls.repos,
                  }
 
@@ -390,6 +396,30 @@ class HpcmCommand(Command):
         except Exception as e:
             logging.error("Could not read metadata: %s", e)
             return {}
+
+    @classmethod
+    def leaders(cls, nodes, args):
+        if args.bmc is None:
+            args.bmc = 'bond0.bmc'
+        if args.alias is None:
+            args.alias = 'bond0.head'
+        if args.disk is None:
+            args.disk = '/dev/disk/by-path/pci-0000:06:00.0-scsi-0:1:0:1'
+
+        for nodename in nodes:
+            node = Node.find_node(nodename)
+            try:
+                bmcip = node['interfaces'][args.bmc]['ip']
+            except KeyError:
+                logging.error('Could not find BMC IP for %s', nodename)
+                return 1
+            try:
+                aliasip = node['interfaces'][args.alias]['ip']
+            except KeyError:
+                logging.error('Could not find Alias IP for %s', nodename)
+                return 1
+
+            print "%s,%s,%s,%s" % (node['name'], bmcip, aliasip, args.disk)
 
     @classmethod
     def repos(cls, nodes, args):
