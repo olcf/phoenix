@@ -42,7 +42,7 @@ class NodeCommand(Command):
         rc=0
         try:
             if type(client.command) == list and len(client.command) > 1 and client.command[1] != None:
-                client.output("%s" % client.node[client.command[1]])
+                client.output("%s" % cls.get_node_attr(client.node, client.command[1]))
             else:
                 # Show the whole node as YAML
                 client.output("%s" % client.node)
@@ -50,6 +50,13 @@ class NodeCommand(Command):
             client.output("Exception: %s" % repr(e), stderr=True)
             rc=1
         return rc
+
+    @classmethod
+    def get_node_attr(cls, node, attribute):
+        if '.' in attribute:
+            firstdot = attribute.find('.')
+            return cls.get_node_attr(node[attribute[0:firstdot]], attribute[firstdot+1:])
+        return node[attribute]
 
 if __name__ == '__main__':
     sys.exit(NodeCommand.run())
