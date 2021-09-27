@@ -267,7 +267,7 @@ def set_node_attrs(node, alias=None):
         _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
         if 'hostctrl' in settings['autoip']:
             offset = node['chassis'] * 16 + node['slot'] * 2 + node['board']
-            _setinterfaceparam(node, 'me0', 'network', 'hostctrl3000')
+            _setinterfaceparam(node, 'me0', 'network', 'hostctrl%d' % (settings['hostctrlvlanstart'] + node['rackidx']))
             _setinterfaceparam(node, 'me0', 'ip', Network.ipadd("hostctrl", offset + 100 + settings['autoip']['hostctrl'], node['rackidx']))
 
     elif node['type'] == 'blade':
@@ -317,7 +317,7 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, 'eth0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0))
             _setinterfaceparam(node, 'eth0', 'hostname', node['name'])
             if 'hostctrl' in settings['autoip']:
-                _setinterfaceparam(node, 'eth0', 'network', 'hostctrl3000')
+                _setinterfaceparam(node, 'eth0', 'network', 'hostctrl%d' % (settings['hostmgmtvlanstart'] + node['rackidx']))
                 offset = node['chassis'] * 8 + node['slot']
                 _setinterfaceparam(node, 'eth0', 'ip', Network.ipadd("hostctrl", offset + 20 + settings['autoip']['hostctrl'], node['rackidx']))
 
