@@ -67,6 +67,7 @@ class HpcmCommand(Command):
         parser_discover.add_argument('nodes', default=None, type=str, help='Nodes to generate fastdiscover configuration for')
         parser_discover.add_argument('--fakemacs', default=False, action='store_true', help='Use fake MAC addresses where they are missing')
         parser_discover.add_argument('--image', default=None, type=str, help='Specify an image to use')
+        parser_discover.add_argument('--disk', default=None, type=str, help='Path to a disk to use for rootfs')
         parser_repos = subparsers.add_parser('repos', help='Manage HPCM repos and repo groups')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
@@ -193,7 +194,7 @@ class HpcmCommand(Command):
         output = list()
         output.append("[discover]")
         for nodename in nodes:
-            result = cls._node_discover(nodename, image=args.image, fakemacs=args.fakemacs, missingmac=missingmac)
+            result = cls._node_discover(nodename, image=args.image, fakemacs=args.fakemacs, missingmac=missingmac, disk=args.disk)
             output.append(result)
         if len(missingmac) > 0 and args.fakemacs == False:
             logging.error("Nodes %s are missing a mac address. Specify --fakemacs to continue", NodeSet.fromlist(missingmac))
@@ -203,7 +204,7 @@ class HpcmCommand(Command):
         return 0
 
     @classmethod
-    def _node_discover(cls, nodename, image=None, fakemacs=False, missingmac=None):
+    def _node_discover(cls, nodename, image=None, fakemacs=False, missingmac=None, disk=None):
         n = Node.find_node(nodename)
         it = ParamList(n)
         it.addna('hostname1', 'name')
@@ -239,6 +240,10 @@ class HpcmCommand(Command):
             cls._add_interfaces(n, it)
             if n['type'] == 'admin' or n['type'] == 'leader':
                 it.addna('rootfs', 'rootfs', 'disk')
+                if disk:
+                    it.addraw('force_disk', 'force_disk=%s' % disk)
+                else:
+                    it.addna('force_disk', 'force_disk', '/dev/disk/by-path/pci-0000:06:00.0-scsi-0:1:0:0')
             elif n['type'] == 'compute':
                 it.addna('rootfs', 'rootfs', 'nfs')
                 it.addna('nfs_writable_type', 'tmpfs-overlay', 'tmpfs-overlay')
