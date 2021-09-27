@@ -35,23 +35,27 @@ class ParamList(object):
         self.node = node
         self.paramlist = list()
 
+    def _quote(self, val):
+        if ',' in val:
+            val = '"{}"'.format(val)
+        return val
+
     def addraw(self, hpcmattr, val=None):
         if val is None:
             self.paramlist.append(hpcmattr)
             return
-        if ',' in val:
-            val = '"{}"'.format(val)
-        self.paramlist.append("{}={}".format(hpcmattr, val))
+        self.paramlist.append("{}={}".format(hpcmattr, self._quote(val)))
 
     def addna(self, hpcmattr, nodeattr, thedefault=None):
         if nodeattr in self.node:
-            self.paramlist.append("{}={}".format(hpcmattr, self.node[nodeattr]))
+            self.paramlist.append("{}={}".format(hpcmattr, self._quote(self.node[nodeattr])))
         elif thedefault != None:
-            self.paramlist.append("{}={}".format(hpcmattr, thedefault))
+            self.paramlist.append("{}={}".format(hpcmattr, self._quote(thedefault)))
 
     def addia(self, hpcmattr, interface, ifaceattr):
         try:
-            self.paramlist.append("{}={}".format(hpcmattr, self.node['interfaces'][interface][ifaceattr]))
+            val = self.node['interfaces'][interface][ifaceattr]
+            self.paramlist.append("{}={}".format(hpcmattr, self._quote(val)))
         except KeyError:
             pass
 
