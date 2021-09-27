@@ -7,6 +7,7 @@ import re
 from ClusterShell.NodeSet import NodeSet
 from phoenix.system import System
 from phoenix.network import Network
+from phoenix.network import handleautointerfaces
 from phoenix.node import Node
 from phoenix.data import Data
 
@@ -70,6 +71,15 @@ def _xname_to_node_attrs(node):
         # Converting it to an int will return a TypeError which we just ignore
         pass
 
+    # This is purely convention
+    racknum = node['racknum']
+    if racknum >= 1000 and racknum <= 2999:
+        node['racktype'] = 'mountain'
+    elif racknum >= 3000 and racknum <= 4999:
+        node['racktype'] = 'river'
+    elif racknum >= 9000 and racknum <= 9999:
+        node['racktype'] = 'hill'
+
     if 'type' not in node:
         if 'nodenum' in node:
             node['type'] = 'compute'
@@ -108,6 +118,11 @@ def _xname_to_node_attrs(node):
                              node['nodeindexinrack'] +
                              settings['startnid']
                             )
+
+    if 'nodeindex' not in node and node['racktype'] == 'river':
+        m = num_regex.match(node['name'])
+        if m is not None:
+            node['nodeindex'] = int(m.group(1))
 
 def _nid_to_node_attrs(node):
     ''' If a node has nodeindex set, try to figure out the xname details'''
@@ -190,7 +205,8 @@ def set_node_attrs(node, alias=None):
             return
 
     # This needs to eventually move to models instead of polluting every node
-    node['redfishsimpleupdate'] = 'UpdateService/Actions/SimpleUpdate'
+    if 'racktype' not in node or node['racktype'] != 'river':
+        node['redfishsimpleupdate'] = 'UpdateService/Actions/SimpleUpdate'
 
     if node['type'] == 'compute':
         node['redfishpath'] = 'Systems/Node%d' % node['nodenum']
@@ -312,6 +328,11 @@ def set_node_attrs(node, alias=None):
         node['ip6'] = "%s:0:a%d:%x:0" % (ipprefix, node['chassis'], node['racknum'])
         # The CECs live in a chassis, but remove this for now
         del node['chassis']
+
+    # Autointerfaces currently doesn't support "adding" to interfaces
+    # This will blow away anything defined previously
+    if 'autointerfaces' in node:
+        handleautointerfaces(node)
 
     logging.debug("Done running cray_ex plugin for node %s", node['name'])
 
