@@ -191,12 +191,14 @@ class Redfish(Oob):
 
     @classmethod
     def _redfish_target_firmware(cls, node, fwtype=None):
-        try:
-            return node['firmware_target']
-        except KeyError:
-            if fwtype is not None and fwtype.lower() == "recovery":
-                return '/redfish/v1/UpdateService/FirmwareInventory/Recovery'
-            return None
+        if fwtype is None:
+            try:
+                return node['firmware_target']
+            except KeyError:
+                if fwtype is not None and fwtype.lower() == "recovery":
+                    return '/redfish/v1/UpdateService/FirmwareInventory/Recovery'
+                return None
+        return '/redfish/v1/UpdateService/FirmwareInventory/%s' % fwtype
 
     @classmethod
     def _firmware_state(cls, node, fwtype=None, auth=None):
