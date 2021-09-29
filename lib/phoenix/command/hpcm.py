@@ -218,7 +218,28 @@ class HpcmCommand(Command):
         n = Node.find_node(nodename)
         it = ParamList(n)
         it.addna('hostname1', 'name')
-        if n['plugin'] == 'cray_ex' and n['type'] == 'nc':
+        if n['type'] == 'mgmtsw':
+            if 'internal_name' in n:
+                it.addna('internal_name', 'internal_name')
+            elif 'nodenums' in n:
+                it.addraw('internal_name=mgmtsw{}'.format(''.join([str(x) for x in n['nodenums']])))
+            it.addna('mgmtsw_partner', 'partner')
+            it.addraw('redundant_mgmt_network=yes')
+            it.addraw('type=dual-leaf')
+            it.addraw('ice=no')
+            if 'interfaces' in n:
+                iface = list(n['interfaces'])[0]
+                it.addia('net', iface, 'network')
+                it.addia('mgmt_net_name', iface, 'network')
+                it.addia('mgmt_net_ip', iface, 'ip')
+                if 'mac' not in n['interfaces'][iface]:
+                    if missingmac != None:
+                        missingmac.append(n['name'])
+                    logging.debug("Node %s is missing a mac", n['name'])
+                    if fakemacs == True:
+                        n['interfaces'][iface]['mac'] = cls._fakemac(n, iface)
+                        it.addia('mgmt_net_macs', iface, 'mac')
+        elif n['plugin'] == 'cray_ex' and n['type'] == 'nc':
             it.addna('internal_name', 'name')
             it.addia('mgmt_bmc_net_name', 'me0', 'network')
             it.addia('mgmt_bmc_net_macs', 'me0', 'mac')
@@ -292,7 +313,6 @@ class HpcmCommand(Command):
     @classmethod
     def _fakemac(cls, n, interface='bond0'):
         ''' Return a fake mac address. Might need a different algorithm'''
-        racknum = n['racknum']
         try:
             ipstr = n['interfaces'][interface]['ip'].decode()
         except:
