@@ -459,13 +459,17 @@ class HpcmCommand(Command):
             emptyracks = NodeSet(usersettings['emptyracks'])
         else:
             emptyracks = list()
+        numracks = len(racks)
         for rackidx, rack in enumerate(racks):
             if rack in emptyracks:
                 continue
-            print "cm network add -w hostmgmt%d -T mgmt -b %s -m %s -v %d -G --skip-update-config -a --rack %d" % \
-                (rackidx + hostmgmtstart, hostmgmtnet['ipobj'] + rackidx * hostmgmtnet['rackaddresses'], hostmgmtnet['racknetmask'], rackidx + hostmgmtstart, rackidx + 1)
-            print "cm network add -w hostctrl%d -T mgmt-bmc -b %s -m %s -v %d -G --skip-update-config -a --rack %d" % \
-                (rackidx + hostctrlstart, hostctrlnet['ipobj'] + rackidx * hostctrlnet['rackaddresses'], hostctrlnet['racknetmask'], rackidx + hostctrlstart, rackidx + 1)
+            skip = " --skip-update-config"
+            print "cm network add -w hostmgmt%d -T mgmt -b %s -m %s -v %d -G -a --rack %d%s" % \
+                (rackidx + hostmgmtstart, hostmgmtnet['ipobj'] + rackidx * hostmgmtnet['rackaddresses'], hostmgmtnet['racknetmask'], rackidx + hostmgmtstart, rackidx + 1, skip)
+            if rackidx == numracks - 1:
+                skip = ""
+            print "cm network add -w hostctrl%d -T mgmt-bmc -b %s -m %s -v %d -G -a --rack %d%s" % \
+                (rackidx + hostctrlstart, hostctrlnet['ipobj'] + rackidx * hostctrlnet['rackaddresses'], hostctrlnet['racknetmask'], rackidx + hostctrlstart, rackidx + 1, skip)
 
     @classmethod
     def repos(cls, nodes, args):
