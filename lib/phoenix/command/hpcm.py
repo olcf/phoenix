@@ -36,7 +36,7 @@ class ParamList(object):
         self.paramlist = list()
 
     def _quote(self, val):
-        if ',' in val:
+        if isinstance(val, str) and ',' in val:
             val = '"{}"'.format(val)
         return val
 
