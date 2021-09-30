@@ -77,6 +77,7 @@ class HpcmCommand(Command):
         parser_leaders.add_argument('--bmc', default=None, type=str, help='Interface to use for the BMC-in-os IP')
         parser_leaders.add_argument('--alias', default=None, type=str, help='Interface to use for the alias (floating) IP')
         parser_leaders.add_argument('--disk', default=None, type=str, help='Path to a disk to use for Gluster')
+        parser_racknetworks = subparsers.add_parser('racknetworks', help='Generate commands to add rack networks')
         parser_repos = subparsers.add_parser('repos', help='Manage HPCM repos and repo groups')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
@@ -96,6 +97,7 @@ class HpcmCommand(Command):
         cmdmap = { 'configure-cluster': cls.configcluster,
                    'discover':          cls.discover,
                    'leaders':           cls.leaders,
+                   'racknetworks':      cls.racknetworks,
                    'repos':             cls.repos,
                  }
 
@@ -444,6 +446,20 @@ class HpcmCommand(Command):
                 return 1
 
             print "%s,%s,%s,%s" % (node['name'], bmcip, aliasip, args.disk)
+
+    @classmethod
+    def racknetworks(cls, nodes, args):
+        global usersettings
+        hostmgmtstart = usersettings.get('hostmgmtvlanstart', 2000)
+        hostmgmtnet = Network.find_network('hostmgmt')
+        hostctrlstart = usersettings.get('hostctrlvlanstart', 3000)
+        hostctrlnet = Network.find_network('hostctrl')
+        racks = NodeSet(usersettings['racks'])
+        for rackidx, rack in enumerate(racks):
+            print "cm network add -w hostmgmt%d -T mgmt -b %s -m %s -v %d -G --skip-update-config -a --rack %d" % \
+                (rackidx + hostmgmtstart, hostmgmtnet['ipobj'] + rackidx * hostmgmtnet['rackaddresses'], hostmgmtnet['racknetmask'], rackidx + hostmgmtstart, rackidx + 1)
+            print "cm network add -w hostctrl%d -T mgmt-bmc -b %s -m %s -v %d -G --skip-update-config -a --rack %d" % \
+                (rackidx + hostctrlstart, hostctrlnet['ipobj'] + rackidx * hostctrlnet['rackaddresses'], hostctrlnet['racknetmask'], rackidx + hostctrlstart, rackidx + 1)
 
     @classmethod
     def repos(cls, nodes, args):

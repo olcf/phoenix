@@ -65,7 +65,10 @@ class Network(object):
                 netstring = netstring.decode()
             except:
                 pass
-            cls.config[net]['rackaddresses'] = ipaddress.ip_network(netstring).num_addresses
+            net3 = ipaddress.ip_network(netstring)
+            cls.config[net]['rackaddresses'] = net3.num_addresses
+            cls.config[net]['racknetmask'] = net3.netmask
+            cls.config[net]['rackprefixlen'] = net3.prefixlen
         else:
             cls.config[net]['rackaddresses'] = 0
         
@@ -79,9 +82,9 @@ class Network(object):
 
     @classmethod
     def find_network(cls, net):
-        """ Returns a tuple including:
-            - ipaddress object responding to the base net
-            - the number of addresses in the rack
+        """ Returns a dict including:
+            - ipobj - responding to the base net
+            - rackaddresses - the number of addresses in the rack
         """
         if not cls.loaded_config:
             cls.load_config()
@@ -103,14 +106,16 @@ class Network(object):
         if 'ipobj' not in cls.config[net]:
             cls._cache_network(net)
 
-        return cls.config[net]['ipobj'], cls.config[net]['rackaddresses']
+        #return cls.config[net]['ipobj'], cls.config[net]['rackaddresses']
+        return cls.config[net]
 
     @classmethod
     def ipadd(cls, base, offset, rack=0):
         logging.debug("Called ipadd with %s, offset %d, rack %d", base, offset,
                       rack)
-        ip, rackaddresses = cls.find_network(base)
-        return str(ip + offset + rack * rackaddresses)
+        #ip, rackaddresses = cls.find_network(base)
+        net = cls.find_network(base)
+        return str(net['ipobj'] + offset + rack * net['rackaddresses'])
 
 def handleautointerfaces(node):
     # autointerfaces
