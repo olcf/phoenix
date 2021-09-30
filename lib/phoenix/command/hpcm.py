@@ -455,7 +455,13 @@ class HpcmCommand(Command):
         hostctrlstart = usersettings.get('hostctrlvlanstart', 3000)
         hostctrlnet = Network.find_network('hostctrl')
         racks = NodeSet(usersettings['racks'])
+        if 'emptyracks' in usersettings:
+            emptyracks = NodeSet(usersettings['emptyracks'])
+        else:
+            emptyracks = list()
         for rackidx, rack in enumerate(racks):
+            if rack in emptyracks:
+                continue
             print "cm network add -w hostmgmt%d -T mgmt -b %s -m %s -v %d -G --skip-update-config -a --rack %d" % \
                 (rackidx + hostmgmtstart, hostmgmtnet['ipobj'] + rackidx * hostmgmtnet['rackaddresses'], hostmgmtnet['racknetmask'], rackidx + hostmgmtstart, rackidx + 1)
             print "cm network add -w hostctrl%d -T mgmt-bmc -b %s -m %s -v %d -G --skip-update-config -a --rack %d" % \
