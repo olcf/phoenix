@@ -317,7 +317,7 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, 'eth0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0))
             _setinterfaceparam(node, 'eth0', 'hostname', node['name'])
             if 'hostctrl' in settings['autoip']:
-                _setinterfaceparam(node, 'eth0', 'network', 'hostctrl%d' % (settings['hostmgmtvlanstart'] + node['rackidx']))
+                _setinterfaceparam(node, 'eth0', 'network', 'hostctrl%d' % (settings['hostctrlvlanstart'] + node['rackidx']))
                 offset = node['chassis'] * 8 + node['slot']
                 _setinterfaceparam(node, 'eth0', 'ip', Network.ipadd("hostctrl", offset + 20 + settings['autoip']['hostctrl'], node['rackidx']))
 
