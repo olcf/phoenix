@@ -85,9 +85,18 @@ class Oob(object):
     def firmware(cls, node, client, args):
         # Normalize the requested command
         command = args.pop(0).lower()
-        try:
+
+        fwtype = None
+        url = None
+        if len(args) == 2:
             fwtype = args[0]
-        except IndexError:
+            url = args[1]
+        elif len(args) == 1:
+            if args[0].startswith('http'):
+                url = args[0]
+            else:
+                fwtype = args[0]
+        else:
             fwtype = None
 
         try:
@@ -100,13 +109,6 @@ class Oob(object):
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['up', 'update', 'upgrade']:
-                try:
-                    url = args[1]
-                except IndexError:
-                    if fwtype is not None and fwtype.startswith("http"):
-                        url = fwtype
-                    else:
-                        url = None
                 (ok, state) = cls._firmware_upgrade(node, url, fwtype=fwtype, auth=cls._get_auth(node))
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
