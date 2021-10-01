@@ -30,6 +30,12 @@ try:
 except:
     usersettings = dict()
 
+if 'leaders' in usersettings:
+    usersettings['leadernodeset'] = NodeSet(usersettings['leaders'])
+    usersettings['leaderlist'] = list(usersettings['leadernodeset'])
+if 'startnid' not in usersettings:
+    usersettings['startnid'] = 1
+
 class ParamList(object):
     def __init__(self, node):
         self.node = node
@@ -200,6 +206,7 @@ class HpcmCommand(Command):
 
     @classmethod
     def discover(cls, nodes, args):
+        global usersettings
         System.load_config()
         Node.load_nodes(nodeset=nodes)
         missingmac = list()
@@ -310,6 +317,9 @@ class HpcmCommand(Command):
                     if fakemacs == True:
                         n['interfaces']['bond0']['mac'] = cls._fakemac(n)
                         it.addraw('mgmt_net_macs', n['interfaces']['bond0']['mac'])
+                if 'leaderlist' in usersettings:
+                    leaderidx = (n['nodeindex'] - usersettings['startnid']) % len(usersettings['leaderlist'])
+                    it.addraw('su_leader', (usersettings['leaderlist'][leaderidx]))
         return ', '.join(it.paramlist)
 
     @classmethod
