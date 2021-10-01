@@ -291,7 +291,6 @@ class HpcmCommand(Command):
                 it.addna('rootfs', 'rootfs', 'tmpfs')
             it.addna('architecture', 'arch', 'x86_64')
             it.addna('image', 'image', image)
-            it.addraw('card_type', 'ILO')
             it.addna('bmc_username', 'bmcuser', 'root')
             it.addna('bmc_password', 'bmcpassword', 'initial0')
             it.addraw('conserver_logging', 'yes')
@@ -301,6 +300,7 @@ class HpcmCommand(Command):
             it.addna('transport', 'hpcm_transport', 'rsync')
             it.addna('console_device', 'console', 'ttyS0')
             if n['plugin'] == 'cray_ex' and n['type'] == 'compute':
+                it.addraw('card_type', 'IPMI')
                 it.addna('rack_nr', 'racknum')
                 it.addna('chassis', 'chassis')
                 it.addna('tray', 'slot')
@@ -320,6 +320,8 @@ class HpcmCommand(Command):
                 if 'leaderlist' in usersettings:
                     leaderidx = (n['nodeindex'] - usersettings['startnid']) % len(usersettings['leaderlist'])
                     it.addraw('su_leader', (usersettings['leaderlist'][leaderidx]))
+            else:
+                it.addraw('card_type', 'ILO')
         return ', '.join(it.paramlist)
 
     @classmethod
