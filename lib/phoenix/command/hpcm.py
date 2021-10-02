@@ -340,6 +340,8 @@ class HpcmCommand(Command):
     def _get_internal_name(cls, n):
         if 'hpcm_servicenum' in n:
             servicenum = n['hpcm_servicenum']
+        elif 'racknum' in n and 'slot' in n:
+            servicenum = n['racknum'] * 100 + n['slot']
         elif 'type' in n:
             nodetype = n['type']
             if nodetype == 'compute':
