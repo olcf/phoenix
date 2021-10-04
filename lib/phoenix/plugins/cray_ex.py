@@ -194,19 +194,16 @@ def set_node_attrs(node, alias=None):
         if 'rack' not in node:
             logging.error("Could not parse xname")
             return
-    else:
+    elif 'type' in node and node['type'] == 'compute':
         logging.debug("Node name %s is NOT an xname", node['name'])
         m = num_regex.match(node['name'])
         if m is not None:
             node['nodeindex'] = int(m.group(1))
             _nid_to_node_attrs(node)
-        if 'xname' not in node:
-            logging.error("Cray EX component %s does not have an xname", node['name'])
-            return
 
-    # This needs to eventually move to models instead of polluting every node
-    if 'racktype' not in node or node['racktype'] != 'river':
-        node['redfishsimpleupdate'] = 'UpdateService/Actions/SimpleUpdate'
+    if 'xname' not in node:
+        logging.error("Cray EX component %s does not have an xname", node['name'])
+        return
 
     if node['type'] == 'compute':
         node['redfishpath'] = 'Systems/Node%d' % node['nodenum']
@@ -327,6 +324,10 @@ def set_node_attrs(node, alias=None):
         node['ip6'] = "%s:0:a%d:%x:0" % (ipprefix, node['chassis'], node['racknum'])
         # The CECs live in a chassis, but remove this for now
         del node['chassis']
+
+    # This needs to eventually move to models instead of polluting every node
+    if 'racktype' not in node or node['racktype'] != 'river' or node['type'] == 'switch':
+        node['redfishsimpleupdate'] = 'UpdateService/Actions/SimpleUpdate'
 
     # Autointerfaces currently doesn't support "adding" to interfaces
     # This will blow away anything defined previously
