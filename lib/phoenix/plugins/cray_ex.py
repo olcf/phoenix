@@ -287,7 +287,7 @@ def set_node_attrs(node, alias=None):
         _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0))
         if 'hostctrl' in settings['autoip']:
             _setinterfaceparam(node, 'me0', 'network', 'hostctrl')
-            _setinterfaceparam(node, 'me0', 'ip', Network.ipadd("hostctrl", node['chassis'] + 10 + settings['autoip']['hostctrl'], node['rackidx']))
+            _setinterfaceparam(node, 'me0', 'ip', Network.ipadd("hostctrl", node['chassis'] + settings['autoip']['hostctrl'], node['rackidx']))
 
     elif node['type'] == 'switch':
         node['switchtype'] = 'slingshot'
