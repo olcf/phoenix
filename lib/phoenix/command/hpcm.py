@@ -78,6 +78,8 @@ class HpcmCommand(Command):
         parser_discover.add_argument('--fakemacs', default=False, action='store_true', help='Use fake MAC addresses where they are missing')
         parser_discover.add_argument('--image', default=None, type=str, help='Specify an image to use')
         parser_discover.add_argument('--disk', default=None, type=str, help='Path to a disk to use for rootfs')
+        parser_exgenerate = subparsers.add_parser('exgenerate', help='Generate a cmc-switch-info file')
+        parser_exgenerate.add_argument('nodes', default=None, type=str, help='Chassis to generate for')
         parser_leaders = subparsers.add_parser('leaders', help='Generate a su leader config file')
         parser_leaders.add_argument('nodes', default=None, type=str, help='Nodes to generate leader configuration for')
         parser_leaders.add_argument('--bmc', default=None, type=str, help='Interface to use for the BMC-in-os IP')
@@ -102,6 +104,7 @@ class HpcmCommand(Command):
 
         cmdmap = { 'configure-cluster': cls.configcluster,
                    'discover':          cls.discover,
+                   'exgenerate':        cls.exgenerate,
                    'leaders':           cls.leaders,
                    'racknetworks':      cls.racknetworks,
                    'repos':             cls.repos,
@@ -436,6 +439,41 @@ class HpcmCommand(Command):
         except Exception as e:
             logging.error("Could not read metadata: %s", e)
             return {}
+
+    @classmethod
+    def exgenerate(cls, nodes, args):
+        # mac_address=02:08:34:00:00:00, mgmtsw=d210sw1, vlans=3100, default_vlan=2100, bonding=manual, ports=1/1/1, redundant=yes, cmc_type=cmm, cmc_hostname=x2100c0
+        # vlan=3100, mgmtsw=d210sw1, configured=no, chassis_type=cmm, vlan_type=hostctrl
+        cabs_per_cdu = 3
+        chassis = NodeSet(nodes)
+        racklist = list(NodeSet(usersettings['racks']))
+        vlans_map = dict()
+        for cid in chassis:
+            c = Node.find_node(cid)
+            mac = c['interfaces']['me0']['mac']
+            rack = c['rack']
+            racknum = c['racknum']
+            switch_in_row = (racknum%100)//cabs_per_cdu
+            switch='d%dsw1' % (((racknum//100) * 10) + switch_in_row)
+            cab_in_switch = racknum % cabs_per_cdu
+            ports = '1/1/%d' % (cab_in_switch*10 + c['chassis'] + 1)
+            vlans = usersettings['hostctrlvlanstart'] + racklist.index(rack)
+            if vlans not in vlans_map:
+                vlans_map[vlans] = { 'mgmtsw': switch,
+                                     'configured': 'no',
+                                     'chassis_type': 'cmm',
+                                     'vlan_type': 'hostctrl'
+                                   }
+            default_vlan = usersettings['hostmgmtvlanstart'] + racklist.index(rack)
+            if default_vlan not in vlans_map:
+                vlans_map[default_vlan] = { 'mgmtsw': switch,
+                                            'configured': 'no',
+                                            'chassis_type': 'cmm',
+                                            'vlan_type': 'hostmgmt'
+                                           }
+            print "mac_address=%s, mgmtsw=%s, vlans=%d, default_vlan=%d, bonding=manual, ports=%s, redundant=yes, cmc_type=cmm, cmc_hostname=%s" % (mac, switch, vlans, default_vlan, ports, cid) 
+        for vlan in sorted(vlans_map):
+            print "vlan=%s, %s" % (vlan, ', '.join(['%s=%s' % (k, v) for k, v in vlans_map[vlan].items()]))
 
     @classmethod
     def leaders(cls, nodes, args):
