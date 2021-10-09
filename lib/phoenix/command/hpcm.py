@@ -345,6 +345,8 @@ class HpcmCommand(Command):
             servicenum = n['hpcm_servicenum']
         elif 'racknum' in n and 'slot' in n:
             servicenum = n['racknum'] * 100 + n['slot']
+            if 'board' in n and n['board'] > 0:
+                servicenum = servicenum * 10 + n['board']
         elif 'type' in n:
             nodetype = n['type']
             if nodetype == 'compute':
