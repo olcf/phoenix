@@ -183,8 +183,8 @@ class ConfCommand(Command):
                     continue
                 if 'mac' not in iface:
                     continue
-                hostname = iface['hostname'] if 'hostname' in iface else nodename
-                print "%s\t%s" % (iface['mac'], hostname)
+                ip = iface['ip']
+                print "%s\t%s" % (iface['mac'], ip)
 
         return 0
 
