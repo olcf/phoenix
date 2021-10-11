@@ -4,6 +4,8 @@
 
 import logging
 import re
+import os
+import csv
 from ClusterShell.NodeSet import NodeSet
 from phoenix.system import System
 from phoenix.network import Network
@@ -14,6 +16,9 @@ from phoenix.data import Data
 cray_ex_regex = re.compile(r'x(?P<racknum>\d+)(?P<chassistype>[ce])(?P<chassis>\d+)((?P<slottype>[rs])(?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
 num_regex = re.compile(r'.*?(\d+)$')
 ipprefix = 'fc00:0:100:60'
+
+rosetta_group = dict()
+rosetta_swcnum = dict()
 
 # colorado_map[slot][node]
 colorado_map = {
@@ -50,6 +55,15 @@ if type(settings['autoip']) == str:
     settings['autoip'] = { settings['autoip']: 0 }
 elif type(settings['autoip']) == list:
     settings['autoip'] = dict.fromkeys(settings['autoip'], 0)
+
+def read_rosetta():
+    if not os.path.exists('/etc/phoenix/rosetta_map.csv'):
+        return
+    with open('/etc/phoenix/rosetta_map.csv', 'r') as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        for row in reader:
+            rosetta_group[row[0]] = int(row[1])
+            rosetta_swcnum[row[0]] = int(row[2])
 
 def _xname_to_node_attrs(node):
     global settings
@@ -173,6 +187,8 @@ def set_node_attrs(node, alias=None):
 
     global settings
 
+    read_rosetta()
+
     # FIXME: This won't do the right thing if you system name starts with 'x'
     #        Hopefully that won't bite us any time soon...
     #        Could instead have a lightweight regex, but that might hurt
@@ -232,17 +248,22 @@ def set_node_attrs(node, alias=None):
             hsngroupoffset = 1
         for hsnnic in range(hsnnics):
             nic = 'hsn%d' % hsnnic
-            group = (node['racknum'] % 1000) + hsngroupoffset
+            switchname = _hsnswitchname(node['racknum'], node['chassis'], node['board'], globalnicspernode, hsnnic)
+            if switchname in rosetta_group:
+                group = rosetta_group[switchname]
+            else:
+                group = (node['racknum'] % 1000) + hsngroupoffset
             switch = _hsnswitchnum(node['chassis'], node['board'],
                                    nicspernode=globalnicspernode, nic=hsnnic,
-                                   nodesperboard=1, racktype='zeus')
-            port = _hsnswitchport(node['slot'], node['nodenum'])
+                                   nodesperboard=1, racktype='zeus',
+                                   switchname=switchname)
+            port = _hsnswitchport(node['slot'], node['nodenum'], hsnnics, hsnnic)
 
             _setinterfaceparam(node, nic, 'network', 'hsn')
             _setinterfaceparam(node, nic, 'group', group)
             _setinterfaceparam(node, nic, 'switchnum', switch)
             _setinterfaceparam(node, nic, 'port', port)
-            _setinterfaceparam(node, nic, 'switch', _hsnswitchname(node['racknum'], node['chassis'], node['board'], globalnicspernode, hsnnic))
+            _setinterfaceparam(node, nic, 'switch', switchname)
             _setinterfaceparam(node, nic, 'mac', _hsnalgomac(group, switch, port))
             if 'hsn' in settings['autoip']:
                 _setinterfaceparam(node, nic, 'ip', Network.ipadd("hsn", (node['nodeindex'] * globalnicspernode) + hsnnic + settings['autoip']['hsn']))
@@ -376,14 +397,14 @@ def _hsnswitchchassisoffset(board, nicspernode, nic):
     elif nicspernode == 4:
         if board == 0:
             if nic == 0 or nic == 1:
-                whichswitchslot = 1
-            else:
                 whichswitchslot = 3
+            else:
+                whichswitchslot = 1
         else:
             if nic == 0 or nic == 1:
-                whichswitchslot = 5
-            else:
                 whichswitchslot = 7
+            else:
+                whichswitchslot = 5
     return whichswitchslot
 
 def _hsnswitchname(rack, chassis, board, nicspernode, nic):
@@ -392,9 +413,11 @@ def _hsnswitchname(rack, chassis, board, nicspernode, nic):
     return "x%dc%dr%db0" % (rack, chassis, whichswitchslot)
 
 def _hsnswitchnum(chassis, board, boardsperslot=2, nodesperboard=2,
-                  nicspernode=1, nic=0, racktype='hill'):
+                  nicspernode=1, nic=0, racktype='hill', switchname=None):
     """ Return the (local) switch number
     """
+    if switchname is not None and switchname in rosetta_swcnum:
+        return rosetta_swcnum[switchname]
     switchesperchassis = nicspernode * nodesperboard * boardsperslot / 2
     whichswitchslot = _hsnswitchchassisoffset(board, nicspernode, nic)
     if racktype == 'mountain' or racktype == 'olympus' or racktype == 'zeus':
@@ -415,8 +438,14 @@ def _hsnswitchnum(chassis, board, boardsperslot=2, nodesperboard=2,
         return switchnum
     return 0
 
-def _hsnswitchport(slot, nodenum):
-    return colorado_map[slot][nodenum]
+def _hsnswitchport(slot, nodenum, nicspernode=1, nic=0):
+    if nicspernode == 1:
+        return colorado_map[slot][nodenum]
+    elif nicspernode == 4:
+        if nic == 0 or nic == 3:
+            return colorado_map[slot][1]
+        else:
+            return colorado_map[slot][0]
 
 if __name__ == '__main__':
     print(_hsnalgomac(1, 1, 47))
