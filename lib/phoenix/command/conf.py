@@ -96,10 +96,14 @@ class ConfCommand(Command):
                     hostname = "%s-%s" % (nodename, ifacename)
                     components.append('%s.%s' % (hostname, System.config['domain']))
                     components.append(hostname)
+                    if 'alias' in iface:
+                        components.append(iface['alias'])
                 else:
                     hostname = "%s-%s" % (nodename, ifacename)
                     components.append('%s.%s' % (hostname, System.config['domain']))
                     components.append(hostname)
+                    if 'alias' in iface:
+                        components.append("%s-%s" % (iface['alias'], ifacename))
                 print "\t".join(components)
         return 0
 

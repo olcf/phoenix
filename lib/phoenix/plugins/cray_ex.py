@@ -233,6 +233,7 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, 'bond0', 'network', 'hostmgmt%d' % (settings['hostmgmtvlanstart'] + node['rackidx']))
             _setinterfaceparam(node, 'bond0', 'ip', Network.ipadd("hostmgmt", node['nodeindexinrack'] + settings['autoip']['hostmgmt'], node['rackidx']))
             _setinterfaceparam(node, 'bond0', 'mac', Data.data('mac', node['name']))
+            _setinterfaceparam(node, 'bond0', 'alias', node['xname'])
         _setinterfaceparam(node, 'bond0', 'discoverytype', 'bmc')
         node['bmcpassword'] = 'initial0'
         globalnicspernode = settings['nicspernode']
