@@ -504,8 +504,10 @@ class HpcmCommand(Command):
     @classmethod
     def racknetworks(cls, nodes, args):
         global usersettings
+        hostmgmtvlanmode = usersettings.get('hostmgmtvlanmode', 'rack-based')
         hostmgmtstart = usersettings.get('hostmgmtvlanstart', 2000)
         hostmgmtnet = Network.find_network('hostmgmt')
+        hostctrlvlanmode = usersettings.get('hostctrlvlanmode', 'rack-based')
         hostctrlstart = usersettings.get('hostctrlvlanstart', 3000)
         hostctrlnet = Network.find_network('hostctrl')
         racks = NodeSet(usersettings['racks'])
@@ -514,16 +516,26 @@ class HpcmCommand(Command):
         else:
             emptyracks = list()
         numracks = len(racks)
+        firstrack = int(racks[0][1:])
         for rackidx, rack in enumerate(racks):
             if rack in emptyracks:
                 continue
+            racknum = int(rack[1:])
             skip = " --skip-update-config"
+            if hostmgmtvlanmode == 'sequential':
+                hmvlan = rackidx + hostmgmtstart
+            else:
+                hmvlan = racknum - firstrack + hostmgmtstart
             print "cm network add -w hostmgmt%d -T mgmt -b %s -m %s -v %d -G -a --rack %d%s" % \
-                (rackidx + hostmgmtstart, hostmgmtnet['ipobj'] + rackidx * hostmgmtnet['rackaddresses'], hostmgmtnet['racknetmask'], rackidx + hostmgmtstart, rackidx + 1, skip)
+                (hmvlan, hostmgmtnet['ipobj'] + rackidx * hostmgmtnet['rackaddresses'], hostmgmtnet['racknetmask'], hmvlan, rackidx + 1, skip)
             if rackidx == numracks - 1:
                 skip = ""
+            if hostctrlvlanmode == 'sequential':
+                hcvlan = rackidx + hostctrlstart
+            else:
+                hcvlan = racknum - firstrack + hostctrlstart
             print "cm network add -w hostctrl%d -T mgmt-bmc -b %s -m %s -v %d -G -a --rack %d%s" % \
-                (rackidx + hostctrlstart, hostctrlnet['ipobj'] + rackidx * hostctrlnet['rackaddresses'], hostctrlnet['racknetmask'], rackidx + hostctrlstart, rackidx + 1, skip)
+                (hcvlan, hostctrlnet['ipobj'] + rackidx * hostctrlnet['rackaddresses'], hostctrlnet['racknetmask'], hcvlan, rackidx + 1, skip)
 
     @classmethod
     def repos(cls, nodes, args):
