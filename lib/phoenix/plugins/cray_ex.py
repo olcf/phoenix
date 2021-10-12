@@ -65,6 +65,20 @@ def read_rosetta():
             rosetta_group[row[0]] = int(row[1])
             rosetta_swcnum[row[0]] = int(row[2])
 
+def _hostctrl_network(node):
+    global settings
+    if settings.get('hostctrlvlanmode', 'rack-based') == 'sequential':
+        return settings['hostctrlvlanstart'] + node['rackidx']
+    else:
+        return node['racknum'] - int(settings['racklist'][0][1:]) + settings['hostctrlvlanstart']
+
+def _hostmgmt_network(node):
+    global settings
+    if settings.get('hostmgmtvlanmode', 'rack-based') == 'sequential':
+        return settings['hostmgmtvlanstart'] + node['rackidx']
+    else:
+        return node['racknum'] - int(settings['racklist'][0][1:]) + settings['hostmgmtvlanstart']
+
 def _xname_to_node_attrs(node):
     global settings
     m = cray_ex_regex.search(node['xname'])
@@ -230,7 +244,7 @@ def set_node_attrs(node, alias=None):
         node['bmcuser'] = 'root'
         node['discoverytype'] = 'bmc'
         if 'hostmgmt' in settings['autoip']:
-            _setinterfaceparam(node, 'bond0', 'network', 'hostmgmt%d' % (settings['hostmgmtvlanstart'] + node['rackidx']))
+            _setinterfaceparam(node, 'bond0', 'network', 'hostmgmt%d' % _hostmgmt_network(node))
             _setinterfaceparam(node, 'bond0', 'ip', Network.ipadd("hostmgmt", node['nodeindexinrack'] + settings['autoip']['hostmgmt'], node['rackidx']))
             _setinterfaceparam(node, 'bond0', 'mac', Data.data('mac', node['name']))
             _setinterfaceparam(node, 'bond0', 'alias', node['xname'])
@@ -286,7 +300,7 @@ def set_node_attrs(node, alias=None):
         _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
         if 'hostctrl' in settings['autoip']:
             offset = node['chassis'] * 16 + node['slot'] * 2 + node['board']
-            _setinterfaceparam(node, 'me0', 'network', 'hostctrl%d' % (settings['hostctrlvlanstart'] + node['rackidx']))
+            _setinterfaceparam(node, 'me0', 'network', 'hostctrl%d' % _hostctrl_network(node))
             _setinterfaceparam(node, 'me0', 'ip', Network.ipadd("hostctrl", offset + 100 + settings['autoip']['hostctrl'], node['rackidx']))
 
     elif node['type'] == 'blade':
@@ -336,7 +350,7 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, 'eth0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0))
             _setinterfaceparam(node, 'eth0', 'hostname', node['name'])
             if 'hostctrl' in settings['autoip']:
-                _setinterfaceparam(node, 'eth0', 'network', 'hostctrl%d' % (settings['hostctrlvlanstart'] + node['rackidx']))
+                _setinterfaceparam(node, 'eth0', 'network', 'hostctrl%d' % _hostctrl_network(node))
                 offset = node['chassis'] * 8 + node['slot']
                 _setinterfaceparam(node, 'eth0', 'ip', Network.ipadd("hostctrl", offset + 20 + settings['autoip']['hostctrl'], node['rackidx']))
 
