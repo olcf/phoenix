@@ -450,6 +450,9 @@ class HpcmCommand(Command):
         chassis = NodeSet(nodes)
         racklist = list(NodeSet(usersettings['racks']))
         vlans_map = dict()
+        hostmgmtvlanmode = usersettings.get('hostmgmtvlanmode', 'rack-based')
+        hostctrlvlanmode = usersettings.get('hostctrlvlanmode', 'rack-based')
+        firstrack = int(racklist[0][1:])
         for cid in chassis:
             c = Node.find_node(cid)
             mac = c['interfaces']['me0']['mac']
@@ -459,14 +462,20 @@ class HpcmCommand(Command):
             switch='d%dsw1' % (((racknum//100) * 10) + switch_in_row)
             cab_in_switch = racknum % cabs_per_cdu
             ports = '1/1/%d' % (cab_in_switch*10 + c['chassis'] + 1)
-            vlans = usersettings['hostctrlvlanstart'] + racklist.index(rack)
+            if hostctrlvlanmode == 'sequential':
+                vlans = usersettings['hostctrlvlanstart'] + racklist.index(rack)
+            else:
+                vlans = racknum - firstrack + usersettings['hostctrlvlanstart']
             if vlans not in vlans_map:
                 vlans_map[vlans] = { 'mgmtsw': switch,
                                      'configured': 'no',
                                      'chassis_type': 'cmm',
                                      'vlan_type': 'hostctrl'
                                    }
-            default_vlan = usersettings['hostmgmtvlanstart'] + racklist.index(rack)
+            if hostmgmtvlanmode == 'sequential':
+                default_vlan = usersettings['hostmgmtvlanstart'] + racklist.index(rack)
+            else:
+                default_vlan = racknum - firstrack + usersettings['hostmgmtvlanstart']
             if default_vlan not in vlans_map:
                 vlans_map[default_vlan] = { 'mgmtsw': switch,
                                             'configured': 'no',
