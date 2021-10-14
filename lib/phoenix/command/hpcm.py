@@ -460,7 +460,7 @@ class HpcmCommand(Command):
             racknum = c['racknum']
             switch_in_row = (racknum%100)//cabs_per_cdu
             switch='d%dsw1' % (((racknum//100) * 10) + switch_in_row)
-            cab_in_switch = racknum % cabs_per_cdu
+            cab_in_switch = (racknum % 100) % cabs_per_cdu
             ports = '1/1/%d' % (cab_in_switch*10 + c['chassis'] + 1)
             if hostctrlvlanmode == 'sequential':
                 vlans = usersettings['hostctrlvlanstart'] + racklist.index(rack)
