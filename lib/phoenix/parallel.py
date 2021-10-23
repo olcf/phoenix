@@ -77,7 +77,7 @@ class DisplayOptions(object):
         self.groupsource=None
         self.groupbase=None
 
-def gettopology(nodes, fanout=64):
+def gettopology(nodes, fanout=128):
     # Use servicenodes only for root to avoid ssh issues
     if os.getuid() != 0:
         logging.debug("Topology is currently only enabled for root")
