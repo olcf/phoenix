@@ -138,7 +138,7 @@ def setup(nodes, args):
     return (task, handler)
 
 def parser_add_arguments_parallel(parser):
-    parser.add_argument('-f', '--fanout', type=int, default=System.setting('fanout', 64), help='Fanout value')
+    parser.add_argument('-f', '--fanout', type=int, default=System.setting('fanout', 128), help='Fanout value')
     parser.add_argument('-t', '--command-timeout', type=int, default=System.setting('command-timeout', 0))
     parser.add_argument('-T', '--connect-timeout', type=int, default=System.setting('connect-timeout', 20))
     parser.add_argument('-l', '--local', default=False, action='store_true', dest='local')
