@@ -250,6 +250,11 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, 'bond0', 'alias', node['xname'])
         _setinterfaceparam(node, 'bond0', 'discoverytype', 'bmc')
         node['bmcpassword'] = 'initial0'
+        node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
+        node['pdutype'] = 'redfish'
+        node['pduuser'] = 'root'
+        node['pdupassword'] = 'initial0'
+        node['pduredfishpath'] = 'Chassis/Blade%d' % node['slot']
         globalnicspernode = settings['nicspernode']
         try:
             hsnnics = node['hsnnics']
