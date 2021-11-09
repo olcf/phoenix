@@ -119,7 +119,7 @@ def setup(nodes, args):
     # https://github.com/cea-hpc/clustershell/pull/439
     task.set_info('tree_default:local_workername', 'phoenix.parallel')
     task.set_info('fanout', args.fanout)
-    task.set_default("stderr", True)
+    task.set_default("stderr", False)
 
     if args.local == False:
         task.topology = gettopology(nodes, args.fanout)
