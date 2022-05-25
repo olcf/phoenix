@@ -183,7 +183,9 @@ class HpcmCommand(Command):
             netentry = list()
             net = networks[netname]
             netentry.append('name=%s' % netname)
-            if netname == 'head' or netname == 'hostmgmt':
+            if 'type' in net:
+                nettype = net['type']
+            elif netname == 'head' or netname == 'hostmgmt':
                 nettype = 'mgmt'
             elif netname == 'head-bmc' or netname == 'hostctrl':
                 nettype = 'mgmt-bmc'
