@@ -295,7 +295,10 @@ class HpcmCommand(Command):
             else:
                 it.addna('rootfs', 'rootfs', 'tmpfs')
             it.addna('architecture', 'arch', 'x86_64')
-            it.addna('image', 'image', image)
+            if image:
+                it.addraw('image', image)
+            else:
+                it.addna('image', 'image', 'unknown')
             it.addna('bmc_username', 'bmcuser', 'root')
             it.addna('bmc_password', 'bmcpassword', 'initial0')
             it.addraw('conserver_logging', 'yes')
