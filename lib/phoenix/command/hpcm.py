@@ -348,6 +348,8 @@ class HpcmCommand(Command):
     def _get_internal_name(cls, n):
         if 'hpcm_servicenum' in n:
             servicenum = n['hpcm_servicenum']
+        elif 'type' in n and n['type'] == 'admin':
+            return 'admin'
         elif 'type' in n and n['type'] == 'compute':
             servicenum = (2000000000 + n['racknum'] * 10000 +
                           n['chassis'] * 1000 + n['slot'] * 100 +
@@ -358,9 +360,7 @@ class HpcmCommand(Command):
                 servicenum = servicenum * 10 + n['board']
         elif 'type' in n:
             nodetype = n['type']
-            if nodetype == 'admin':
-                return 'admin'
-            elif nodetype == 'leader':
+            if nodetype == 'leader':
                 servicenum = 200 + n['nodeindex']
             elif nodetype == 'service':
                 servicenum = 300 + n['nodeindex']
