@@ -49,6 +49,10 @@ except:
 if 'racks' in settings:
     settings['racknodeset'] = NodeSet(settings['racks'])
     settings['racklist'] = list(settings['racknodeset'])
+    if 'emptyracks' in settings:
+        settings['racklistnonempty'] = list(settings['racknodeset'].difference(NodeSet(settings['emptyracks'])))
+    else:
+        settings['racklistnonempty'] = settings['racklist']
 else:
     logging.error("racks not set in system.yaml cray_shasta section")
 if type(settings['autoip']) == str:
@@ -128,6 +132,7 @@ def _xname_to_node_attrs(node):
 
     try:
         node['rackidx'] = settings['racklist'].index(node['rack'])
+        node['rackidxnonempty'] = settings['racklistnonempty'].index(node['rack'])
     except:
         # This could be a columbia switch, for example
         pass
@@ -183,6 +188,8 @@ def _nid_to_node_attrs(node):
 
     node['nodeindexinrack'] = rackoffset
     node['rack']    = settings['racklist'][rackidx]
+    if 'racklistnonempty' in settings:
+        node['rackidxnonempty'] = settings['racklistnonempty'].index(node['rack'])
     node['rackidx'] = rackidx
     node['racknum'] = int(node['rack'][1:])
     node['chassis'] = chassisidx
@@ -272,7 +279,10 @@ def set_node_attrs(node, alias=None):
             if switchname in rosetta_group:
                 group = rosetta_group[switchname]
             else:
-                group = (node['racknum'] % 1000) + hsngroupoffset
+                if 'rackidxnonempty' in node:
+                    group = node['rackidxnonempty'] + hsngroupoffset
+                else:
+                    group = node['rackidx'] + hsngroupoffset
             switch = _hsnswitchnum(node['chassis'], node['board'],
                                    nicspernode=globalnicspernode, nic=hsnnic,
                                    nodesperboard=1, racktype='zeus',
