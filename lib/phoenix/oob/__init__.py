@@ -44,6 +44,10 @@ class Oob(object):
                 (ok, state) = cls._power_off(node, cls._get_auth(node))
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
+            elif command in ['forceoff']:
+                (ok, state) = cls._power_forceoff(node, cls._get_auth(node))
+                client.output(state, stderr=not ok)
+                return 0 if ok else 1
             elif command in ['reset', 'restart']:
                 try:
                     (ok, state) = cls._power_reset(node, cls._get_auth(node))
