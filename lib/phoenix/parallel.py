@@ -76,6 +76,9 @@ class DisplayOptions(object):
         self.regroup=False
         self.groupsource=None
         self.groupbase=None
+        self.outdir=None
+        self.errdir=None
+        self.whencolor=None
 
 def gettopology(nodes, fanout=128):
     # Use servicenodes only for root to avoid ssh issues
