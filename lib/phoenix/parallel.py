@@ -74,11 +74,9 @@ class DisplayOptions(object):
         self.line_mode=False
         self.label=True
         self.regroup=False
-        self.groupsource=None
-        self.groupbase=None
-        self.outdir=None
-        self.errdir=None
-        self.whencolor=None
+
+    def __getattr__(self, key):
+        return None
 
 def gettopology(nodes, fanout=128):
     # Use servicenodes only for root to avoid ssh issues
