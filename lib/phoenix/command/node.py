@@ -5,6 +5,14 @@
 import logging
 import sys
 import argparse
+
+import yaml
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    logging.info("Unable to load CLoader and/or CDumper")
+    from yaml import Loader, Dumper
+
 from ClusterShell.NodeSet import NodeSet
 
 import phoenix
@@ -42,7 +50,11 @@ class NodeCommand(Command):
         rc=0
         try:
             if type(client.command) == list and len(client.command) > 1 and client.command[1] != None:
-                client.output("%s" % cls.get_node_attr(client.node, client.command[1]))
+                val = cls.get_node_attr(client.node, client.command[1])
+                if type(val) == str:
+                    client.output(val)
+                else:
+                    client.output(yaml.dump(val))
             else:
                 # Show the whole node as YAML
                 client.output("%s" % client.node)
