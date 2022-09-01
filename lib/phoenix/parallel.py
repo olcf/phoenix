@@ -126,6 +126,8 @@ def setup(nodes, args):
         task.topology = gettopology(nodes, args.fanout)
 
     options=DisplayOptions()
+    if len(nodes) == 1:
+        options.label = False
     color = sys.stdout.isatty()
 
     display = Display(options, None, color)
