@@ -22,6 +22,8 @@ import threading
 import signal
 import socket
 
+from collections import Counter, defaultdict
+
 import phoenix
 from phoenix.node import Node
 from phoenix.command import Command
@@ -35,7 +37,7 @@ from ClusterShell.Engine.Engine import E_READ, E_WRITE
 from ClusterShell.Event import EventHandler
 from ClusterShell.CLI.Display import Display
 from ClusterShell.CLI.Error import GENERIC_ERRORS, handle_generic_error
-from ClusterShell.CLI.Clush import DirectOutputHandler, DirectProgressOutputHandler, GatherOutputHandler
+from ClusterShell.CLI.Clush import OutputHandler, DirectOutputHandler, DirectProgressOutputHandler, GatherOutputHandler, RunTimer
 from ClusterShell.Topology import TopologyGraph
 
 def getThread():
@@ -65,6 +67,73 @@ def excepthook(exception_type, exception_value, traceback):
 
     # Error not handled
     task_self().default_excepthook(exception_type, exception_value, traceback)
+
+class PopulationRunTimer(RunTimer):
+    def __init__(self, task, total, prog=None, handler=None):
+        self.handler = handler
+        super(PopulationRunTimer, self).__init__(task, total, prog=prog)
+
+    def update(self):
+        statevalues = self.handler.nodemap.values()
+        known = len(statevalues)
+        if known < self.total:
+            pending = '  Pending:{}'.format(self.total - known)
+        else:
+            pending = ''
+        towrite = "  ".join(['{}:{}'.format(k,v) for k,v in Counter(statevalues).items()]) + '{}\r'.format(pending)
+        self.erase_line()
+        self.wholelen = len(towrite)
+        sys.stderr.write(towrite)
+        self.started = True
+
+class PopulationOutputHandler(GatherOutputHandler):
+    def __init__(self, display, prog=None):
+        OutputHandler.__init__(self, prog=prog)
+        self._display = display
+        self.nodemap = dict()
+
+    def runtimer_init(self, task, ntotal=0):
+        """Init timer for live command-completed progressmeter."""
+        thandler = PopulationRunTimer(task, ntotal, prog=self._prog, handler=self)
+        self._runtimer = task.timer(1.33, thandler, interval=1./3.,
+                                    autoclose=True)
+
+    def ev_read(self, worker, node, sname, msg):
+        if sname == worker.SNAME_STDOUT:
+            self.nodemap[node] = worker.current_msg
+        elif sname == worker.SNAME_STDERR:
+            self._runtimer_clean()
+            self._display.print_line_error(node, msg)
+            self._runtimer_set_dirty()
+
+    def ev_close(self, worker, timedout):
+        # Worker is closing -- it's time to gather results...
+        self._runtimer_finalize(worker)
+        # Display command output, try to order buffers by rc
+        nodesetify = lambda v: (v[0], NodeSet._fromlist1(v[1]))
+        cleaned = False
+        for rc, nodelist in sorted(worker.iter_retcodes()):
+            ns_remain = NodeSet._fromlist1(nodelist)
+            val_map = defaultdict(list)
+            for k,v in self.nodemap.items():
+                if k not in nodelist:
+                    continue
+                val_map[v].append(k)
+            for buf, nodeset in map(nodesetify, val_map.items()):
+                if not cleaned:
+                    # clean runtimer line before printing first result
+                    self._runtimer_clean()
+                    cleaned = True
+                self._display.print_gather(nodeset, buf)
+                ns_remain.difference_update(nodeset)
+            if ns_remain:
+                self._display.print_gather_finalize(ns_remain)
+        self._display.flush()
+
+        self._close_common(worker)
+
+        # Notify main thread to update its prompt
+        self.update_prompt(worker)
 
 class DisplayOptions(object):
     def __init__(self):
@@ -133,7 +202,10 @@ def setup(nodes, args):
     display = Display(options, None, color)
 
     # TODO: Figure out the best way to pick a handler
-    if len(nodes) > 10:
+    if 'wait' in args and args.wait:
+        logging.debug("Using wait handler")
+        handler=PopulationOutputHandler(display)
+    elif len(nodes) > 10:
         handler=GatherOutputHandler(display)
     else:
         handler=DirectProgressOutputHandler(display)
@@ -162,6 +234,7 @@ class PhoenixClient(EngineClient):
         self.retries = 0
         self.rc = 0
         self.node = None
+        self.state = None
 
         if stderr:
             self._stderr = os.pipe()
@@ -229,6 +302,10 @@ class PhoenixClient(EngineClient):
         # very talkative. Skip that here for simplicity
         for msg in self._readlines(sname):
             self.worker._on_node_msgline(self.key, msg, sname) 
+
+    def set_state(self, state):
+        logging.debug("Node %s setting state to %s", self.key, state)
+        self.state = state
 
 class PhoenixWorker(DistantWorker):
     SHELL_CLASS = PhoenixClient

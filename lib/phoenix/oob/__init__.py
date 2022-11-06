@@ -34,23 +34,28 @@ class Oob(object):
         try:
             if command in ['stat', 'state', 'status', 'query']:
                 (ok, state) = cls._power_state(node, auth=cls._get_auth(node))
+                client.set_state(state)
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['on']:
                 (ok,state) = cls._power_on(node, cls._get_auth(node))
+                client.set_state(state)
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['off']:
                 (ok, state) = cls._power_off(node, cls._get_auth(node))
+                client.set_state(state)
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['forceoff']:
                 (ok, state) = cls._power_forceoff(node, cls._get_auth(node))
+                client.set_state(state)
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
             elif command in ['reset', 'restart']:
                 try:
                     (ok, state) = cls._power_reset(node, cls._get_auth(node))
+                    client.set_state(state)
                     client.output(state, stderr=not ok)
                     return 0 if ok else 1
                 except NotImplementedError:
@@ -59,8 +64,10 @@ class Oob(object):
                     time.sleep(60)
                     cls._power_on(node, cls._get_auth(node))
                     client.output("Ok")
+                    client.set_state("Ok")
                     return 1
             else:
+                state = 'Error'
                 client.output("Invalid requested node state command (%s)" % command, stderr=True)
                 return -1
         except OOBTimeoutError as e:
