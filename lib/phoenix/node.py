@@ -7,6 +7,7 @@ import logging
 import platform
 import types
 import yaml
+import os
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -247,7 +248,9 @@ class Node(object):
         try:
             plugin.set_node_attrs(self, alias=alias)
         except Exception as E:
-            logging.error("Plugin caught exception: %s", repr(E))
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            logging.error("Plugin caught exception: %s. %s:%d", repr(E), fname, exc_tb.tb_lineno)
 
     @classmethod
     def load_functions(cls):
