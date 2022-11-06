@@ -249,6 +249,8 @@ class Node(object):
             plugin.set_node_attrs(self, alias=alias)
         except Exception as E:
             exc_type, exc_obj, exc_tb = sys.exc_info()
+            while exc_tb.tb_next != None:
+                exc_tb = exc_tb.tb_next 
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             logging.error("Plugin caught exception: %s. %s:%d", repr(E), fname, exc_tb.tb_lineno)
 
