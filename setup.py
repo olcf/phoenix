@@ -86,7 +86,7 @@ if basedir == "":
 sys.path.insert(0,"%s/lib" % basedir)
 
 scripts = [x for x in os.listdir('bin') if os.path.isfile('bin/%s' % x)]
-requires = [ 'clustershell' ]
+requires = [ 'clustershell', 'python3-Jinja2' ]
 
 try:
     ver=subprocess.check_output(["git", "describe"]).decode().strip().split('-')
@@ -116,6 +116,5 @@ setup(name = 'phoenix',
                    ('/var/opt/phoenix/data', []),
                    ('/etc/clustershell/groups.conf.d', ['contrib/clustershell/phoenix.conf']),
                    ('/usr/lib/systemd/system', ['contrib/pxbootfile.service'])
-                 ]
-    #install_requires= [ 'clustershell' ]
+                 ],
     )
