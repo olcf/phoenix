@@ -35,7 +35,7 @@ class GenerateMan(Command):
             module = imp.load_source(scriptname, script)
             parser = module.get_parser()
             sys.dont_write_bytecode = False
-            print "Running generate man for ", script
+            print("Running generate man for ", script)
             if not os.path.exists('man/man1'):
                 os.makedirs('man/man1')
             with gzip.open('man/man1/%s.1.gz' % scriptname, 'w') as mpage:
@@ -89,7 +89,7 @@ scripts = [x for x in os.listdir('bin') if os.path.isfile('bin/%s' % x)]
 requires = [ 'clustershell' ]
 
 try:
-    ver=subprocess.check_output(["git", "describe"]).strip().split('-')
+    ver=subprocess.check_output(["git", "describe"]).decode().strip().split('-')
 except:
     ver=['0.1']
 

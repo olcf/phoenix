@@ -487,9 +487,9 @@ class HpcmCommand(Command):
                                             'chassis_type': 'cmm',
                                             'vlan_type': 'hostmgmt'
                                            }
-            print "mac_address=%s, mgmtsw=%s, vlans=%d, default_vlan=%d, bonding=manual, ports=%s, redundant=yes, cmc_type=cmm, cmc_hostname=%s" % (mac, switch, vlans, default_vlan, ports, cid) 
+            print("mac_address=%s, mgmtsw=%s, vlans=%d, default_vlan=%d, bonding=manual, ports=%s, redundant=yes, cmc_type=cmm, cmc_hostname=%s" % (mac, switch, vlans, default_vlan, ports, cid))
         for vlan in sorted(vlans_map):
-            print "vlan=%s, %s" % (vlan, ', '.join(['%s=%s' % (k, v) for k, v in vlans_map[vlan].items()]))
+            print("vlan=%s, %s" % (vlan, ', '.join(['%s=%s' % (k, v) for k, v in vlans_map[vlan].items()])))
 
     @classmethod
     def leaders(cls, nodes, args):
@@ -513,7 +513,7 @@ class HpcmCommand(Command):
                 logging.error('Could not find Alias IP for %s', nodename)
                 return 1
 
-            print "%s,%s,%s,%s" % (node['name'], bmcip, aliasip, args.disk)
+            print("%s,%s,%s,%s" % (node['name'], bmcip, aliasip, args.disk))
 
     @classmethod
     def racknetworks(cls, nodes, args):
@@ -540,16 +540,16 @@ class HpcmCommand(Command):
                 hmvlan = rackidx + hostmgmtstart
             else:
                 hmvlan = racknum - firstrack + hostmgmtstart
-            print "cm network add -w hostmgmt%d -T mgmt -b %s -m %s -v %d -G -a --rack %d%s" % \
-                (hmvlan, hostmgmtnet['ipobj'] + rackidx * hostmgmtnet['rackaddresses'], hostmgmtnet['racknetmask'], hmvlan, rackidx + 1, skip)
+            print("cm network add -w hostmgmt%d -T mgmt -b %s -m %s -v %d -G -a --rack %d%s" % \
+                (hmvlan, hostmgmtnet['ipobj'] + rackidx * hostmgmtnet['rackaddresses'], hostmgmtnet['racknetmask'], hmvlan, rackidx + 1, skip))
             if rackidx == numracks - 1:
                 skip = ""
             if hostctrlvlanmode == 'sequential':
                 hcvlan = rackidx + hostctrlstart
             else:
                 hcvlan = racknum - firstrack + hostctrlstart
-            print "cm network add -w hostctrl%d -T mgmt-bmc -b %s -m %s -v %d -G -a --rack %d%s" % \
-                (hcvlan, hostctrlnet['ipobj'] + rackidx * hostctrlnet['rackaddresses'], hostctrlnet['racknetmask'], hcvlan, rackidx + 1, skip)
+            print("cm network add -w hostctrl%d -T mgmt-bmc -b %s -m %s -v %d -G -a --rack %d%s" % \
+                (hcvlan, hostctrlnet['ipobj'] + rackidx * hostctrlnet['rackaddresses'], hostctrlnet['racknetmask'], hcvlan, rackidx + 1, skip))
 
     @classmethod
     def repos(cls, nodes, args):
@@ -567,7 +567,7 @@ class HpcmCommand(Command):
             urlfile = '%s/repo-url' % path
             try:
                 os.mkdir(path)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.EEXIST:
                     pass
                 else:
@@ -588,7 +588,7 @@ class HpcmCommand(Command):
             path = '%s/%s' % (repogroupdir, image)
             try:
                 os.mkdir(path)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.EEXIST:
                     pass
                 else:

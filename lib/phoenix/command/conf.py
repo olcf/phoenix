@@ -105,7 +105,7 @@ class ConfCommand(Command):
                     if 'alias' in iface:
                         components.append(iface['alias'])
                         components.append("%s-%s" % (iface['alias'], ifacename))
-                print "\t".join(components)
+                print("\t".join(components))
         return 0
 
     @classmethod
@@ -189,7 +189,7 @@ class ConfCommand(Command):
                 if 'mac' not in iface:
                     continue
                 ip = iface['ip']
-                print "%s\t%s" % (iface['mac'], ip)
+                print("%s\t%s" % (iface['mac'], ip))
 
         return 0
 
@@ -199,7 +199,7 @@ class ConfCommand(Command):
         # NOTE: it doesn't really make sense to include a nodeset here...
         Node.load_nodes()
         provider = load_dhcp_provider()
-        print provider.get_dhcp_conf()
+        print(provider.get_dhcp_conf())
         return 0
 
     @classmethod
@@ -208,7 +208,7 @@ class ConfCommand(Command):
         # NOTE: it doesn't really make sense to include a nodeset here...
         Node.load_nodes()
         provider = load_dhcp_provider()
-        print provider.update_dhcp_reservations()
+        print(provider.update_dhcp_reservations())
         return 0
 
     @classmethod

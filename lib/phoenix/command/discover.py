@@ -69,7 +69,7 @@ class DiscoverCommand(Command):
             task.resume()
             for buf, nodes in task.iter_buffers():
                 for node in nodes:
-                    print "%s is %s" % (node, buf)
+                    print("%s is %s" % (node, buf))
                     data.setval('mac', node, buf)
 
         switchdata = dict()
@@ -109,7 +109,7 @@ class DiscoverCommand(Command):
                     logging.debug(e)
                     logging.error("No mac address found for %s", nodename)
                     continue
-                print "Node %s mac is %s" % (node['name'], mac)
+                print("Node %s mac is %s" % (node['name'], mac))
                 data.setval('mac', nodename, mac)
 
         rc = 0
