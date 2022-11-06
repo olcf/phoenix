@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Phoenix bootloader support for iPXE"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 

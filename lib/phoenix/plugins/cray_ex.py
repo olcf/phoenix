@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Plugin for HPE Cray EX machines"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
@@ -448,7 +448,7 @@ def _hsnswitchnum(chassis, board, boardsperslot=2, nodesperboard=2,
     """
     if switchname is not None and switchname in rosetta_swcnum:
         return rosetta_swcnum[switchname]
-    switchesperchassis = nicspernode * nodesperboard * boardsperslot / 2
+    switchesperchassis = nicspernode * nodesperboard * boardsperslot // 2
     whichswitchslot = _hsnswitchchassisoffset(board, nicspernode, nic)
     if racktype == 'mountain' or racktype == 'olympus' or racktype == 'zeus':
         if switchesperchassis == 2:

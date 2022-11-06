@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Phoenix group to node mapping utility"""
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 

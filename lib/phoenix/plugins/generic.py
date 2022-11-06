@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Generic Plugin run on systems/nodes without an explicit plugin defined"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 

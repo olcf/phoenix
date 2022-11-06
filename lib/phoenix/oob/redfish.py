@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Redfish BMC Functions"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 

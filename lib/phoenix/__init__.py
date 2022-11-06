@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Phoenix system management"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 

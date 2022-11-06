@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Custom Plugin for the IBM machines at ORNL"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 

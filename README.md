@@ -5,7 +5,7 @@ Phoenix is currently pre-alpha.  It should be considered a prototype that may si
 
 ## Building Phoenix as an RPM
 From the git checkout, run:
-	python setup.py bdist_rpm
+	python3 setup.py bdist_rpm
 
 ## Running Phoenix from a git checkout
 For development, it is easier to use a local checkout than building an RPM.  If you checkout the repo at `$HOME/phoenix`, setup the following environment:

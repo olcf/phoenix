@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Generic Data Source Functions"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
