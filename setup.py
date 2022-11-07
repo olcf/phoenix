@@ -86,7 +86,7 @@ if basedir == "":
 sys.path.insert(0,"%s/lib" % basedir)
 
 scripts = [x for x in os.listdir('bin') if os.path.isfile('bin/%s' % x)]
-requires = [ 'clustershell', 'python3-Jinja2' ]
+requires = [ 'python3-clustershell', 'python3-Jinja2' ]
 
 try:
     ver=subprocess.check_output(["git", "describe"]).decode().strip().split('-')
