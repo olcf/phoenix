@@ -6,7 +6,6 @@ import sys
 import argparse
 import logging
 from ClusterShell.NodeSet import NodeSet
-from ClusterShell.CLI.Utils import bufnodeset_cmpkey
 import phoenix
 import phoenix.parallel
 from phoenix.node import Node
@@ -20,14 +19,6 @@ def get_parser():
     phoenix.parallel.parser_add_arguments_parallel(parser)
     return parser
 
-def print_remaining(task, nodes):
-    ns_ok = NodeSet()
-    for rc, nodelist in task.iter_retcodes():
-        ns_ok.add(NodeSet._fromlist1(nodelist))
-    uncompleted_nodes = nodes - ns_ok
-    print("Remaining nodes: %s (%d)" % (uncompleted_nodes, len(uncompleted_nodes)))
-    return uncompleted_nodes
-    
 if __name__ == '__main__':
     parser = get_parser()
     args = parser.parse_args()
@@ -49,8 +40,5 @@ if __name__ == '__main__':
         task.resume()
     except KeyboardInterrupt as kbe:
         print()
-        nodesetify = lambda v: (v[0], NodeSet._fromlist1(v[1]))
-        for buf, nodeset in sorted(map(nodesetify, task.iter_buffers()), key=bufnodeset_cmpkey):
-            handler._display.print_gather(nodeset, buf)
-        print_remaining(task, nodes)
+        phoenix.parallel.print_remaining(task, nodes, handler)
     sys.exit(0)

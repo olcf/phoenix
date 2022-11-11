@@ -46,8 +46,12 @@ class PowerCommand(Command):
         if args.wait:
             cmd.append("wait")
         logging.debug("Submitting shell command %s", cmd)
-        task.shell(cmd, nodes=nodes, handler=handler, autoclose=False, stdin=False, tree=True, remote=False)
-        task.resume()
+        try:
+            task.shell(cmd, nodes=nodes, handler=handler, autoclose=False, stdin=False, tree=True, remote=False)
+            task.resume()
+        except KeyboardInterrupt as kbe:
+            print()
+            phoenix.parallel.print_remaining(task, nodes, handler)
         rc = 0
         return rc
 

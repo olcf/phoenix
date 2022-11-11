@@ -38,6 +38,7 @@ from ClusterShell.Event import EventHandler
 from ClusterShell.CLI.Display import Display
 from ClusterShell.CLI.Error import GENERIC_ERRORS, handle_generic_error
 from ClusterShell.CLI.Clush import OutputHandler, DirectOutputHandler, DirectProgressOutputHandler, GatherOutputHandler, RunTimer
+from ClusterShell.CLI.Utils import bufnodeset_cmpkey
 from ClusterShell.Topology import TopologyGraph
 
 def getThread():
@@ -211,6 +212,17 @@ def setup(nodes, args):
         handler=DirectProgressOutputHandler(display)
     handler.runtimer_init(task, len(nodes))
     return (task, handler)
+
+def print_remaining(task, nodes, handler):
+    nodesetify = lambda v: (v[0], NodeSet._fromlist1(v[1]))
+    for buf, nodeset in sorted(map(nodesetify, task.iter_buffers()), key=bufnodeset_cmpkey):
+        handler._display.print_gather(nodeset, buf)
+    ns_ok = NodeSet()
+    for rc, nodelist in task.iter_retcodes():
+        ns_ok.add(NodeSet._fromlist1(nodelist))
+    uncompleted_nodes = nodes - ns_ok
+    print("Remaining nodes: %s (%d)" % (uncompleted_nodes, len(uncompleted_nodes)))
+    return uncompleted_nodes
 
 def parser_add_arguments_parallel(parser):
     parser.add_argument('-f', '--fanout', type=int, default=System.setting('fanout', 128), help='Fanout value')
