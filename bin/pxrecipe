@@ -36,14 +36,14 @@ if __name__ == '__main__':
     if args.action == 'list':
         recipes = Recipe.list_recipes()
         if len(recipes) == 0:
-            print "No recipes found"
+            print("No recipes found")
             rc = 1
         else:
-            print "\n".join(recipes)
+            print("\n".join(recipes))
     elif args.action == 'show':
         for name in args.name:
             recipe = Recipe(name)
-            print recipe
+            print(recipe)
     elif args.action == 'build':
         recipe = Recipe(args.name)
         try:

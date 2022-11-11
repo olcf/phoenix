@@ -23,13 +23,13 @@ if __name__ == '__main__':
 
     if args.list:
         if args.bare:
-            print '\n'.join(Group.list_groups())
+            print('\n'.join(Group.list_groups()))
         else:
-            print '\n'.join([ '@%s' % x for x in Group.list_groups() ])
+            print('\n'.join([ '@%s' % x for x in Group.list_groups() ]))
         sys.exit(0)
 
     if args.group is None:
         parser.print_usage(sys.stderr)
         sys.exit(2)
 
-    print Group.find_group(args.group)
+    print(Group.find_group(args.group))
