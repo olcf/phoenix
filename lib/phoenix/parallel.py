@@ -21,6 +21,7 @@ import concurrent.futures
 import threading
 import signal
 import socket
+import traceback
 
 from collections import Counter, defaultdict
 
@@ -68,6 +69,13 @@ def excepthook(exception_type, exception_value, traceback):
 
     # Error not handled
     task_self().default_excepthook(exception_type, exception_value, traceback)
+
+def tb_signal_handler(signum, frame):
+    logging.debug("Got signal %s" % signum)
+    for th in threading.enumerate():
+      print(th)
+      traceback.print_stack(sys._current_frames()[th.ident])
+      print()
 
 class PopulationRunTimer(RunTimer):
     def __init__(self, task, total, prog=None, handler=None):
@@ -181,6 +189,7 @@ def gettopology(nodes, fanout=128):
 def setup(nodes, args):
     sys.excepthook = excepthook
 
+    signal.signal(signal.SIGUSR2, tb_signal_handler)
     if type(nodes) is not NodeSet:
         nodes=NodeSet(nodes)
     task = task_self()
@@ -191,6 +200,9 @@ def setup(nodes, args):
     task.set_info('tree_default:local_workername', 'phoenix.parallel')
     task.set_info('fanout', args.fanout)
     task.set_default("stderr", False)
+
+    if args.verbose:
+        task.set_info('debug', True)
 
     if args.local == False:
         task.topology = gettopology(nodes, args.fanout)
@@ -328,6 +340,8 @@ class PhoenixWorker(DistantWorker):
         self._clients_timeout_count = 0
         self._clients_closed_count = 0
         self._clients = []
+
+        signal.signal(signal.SIGUSR2, tb_signal_handler)
 
         self.nodes = NodeSet(nodes)
         self.command = kwargs.get('command')
