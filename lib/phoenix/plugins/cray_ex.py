@@ -219,6 +219,82 @@ def _name_to_nodeindex(node):
         return True
     return False
 
+def _node_info_by_layout(node):
+    ''' Iterate the nodegroups and build node object
+        Return breaks out as soon as it is found
+        Should only be called for when a specific node layout
+        is defined in system.yaml for cases like AFW
+        where the node location cannot be reliably calculated
+    '''
+    racklist = settings['racklist']
+    for group in settings['nodegroups']:
+        startnum           = settings['nodegroups'][group]['startnodenum']
+        endnum             = settings['nodegroups'][group]['endnodenum']
+        controllersperslot = settings['nodegroups'][group]['controllersperslot']
+        nodespercontroller = settings['nodegroups'][group]['nodespercontroller']
+        layout             = settings['nodegroups'][group]['nodelayout']
+        index              = node['nodeindex']
+
+        # Does this group apply to this node?
+        if startnum <= index and index <= endnum:
+            # count up the nodes within the group
+            counter = startnum
+
+            for rack in layout:
+                # keep track of which node it is inside rack
+                # default to start at zero unless explicitly
+                # set for the rack in the nodegroup in system.yaml
+                # allows for case where rack has multiple nodegroups
+                # and they can't all start at zero
+                nodeindexinrack = 0
+
+                # Get the index from zero for this rack within the list
+                rack_idx        = racklist.index(rack)
+
+                for rackdata in layout[rack]:
+                    # rackdata is either a integer defining which chassis in the rack
+                    # or it is a variable with data for the specific rack
+                    if rackdata == 'start_rackidx':
+                        nodeindexinrack = settings['nodegroups'][group]['nodelayout'][rack]['start_rackidx']
+
+                        # Go to next line of rackinfo after handling this option
+                        continue
+                    chassisidx = rackdata
+
+                    chassis = "c" + str(chassisidx)
+                    slot_ctr   = 0
+                    for slot in layout[rack][chassisidx]:
+                        # Keep track of which controller in the slot
+                        ctrl_ctr = 0
+                        while ctrl_ctr < controllersperslot:
+                            # Keep track of which node inside the controller
+                            node_ctr = 0
+                            while node_ctr < nodespercontroller:
+                                logging.debug("rackidx %s, counter %s, chassis %s, slot %s, controller %s, node %s", str(nodeindexinrack), str(counter), str(chassis), str(slot), str(ctrl_ctr),  str(node_ctr))
+                                if counter == index:
+                                    # Found the right node, update the node object with the info and break out
+                                    node['nodeindexinrack'] = nodeindexinrack
+                                    node['rack']            = rack
+                                    node['rackidx']         = rack_idx
+                                    node['racknum']         = int(node['rack'][1:])
+                                    node['chassis']         = chassisidx
+                                    node['slot']            = slot
+                                    node['board']           = ctrl_ctr
+                                    node['nodenum']         = node_ctr
+                                    node['xname']           = "%sc%ds%db%dn%d"%(node['rack'], chassisidx, slot, ctrl_ctr, node_ctr)
+                                    return
+                                # Update all the node level counters and go on to the next one
+                                node_ctr        = node_ctr + 1
+                                counter         = counter + 1
+                                nodeindexinrack = nodeindexinrack + 1
+                            # Go on to next controller
+                            ctrl_ctr    = ctrl_ctr + 1
+                        # Go on to next slot
+                        slot_ctr = slot_ctr + 1
+        logging.debug("Node index <%s> not in nodegroup <%s>", str(index), str(group) )
+    # Should not get here
+    logging.error("Node index <%s> not found in nodegroups defined by layout in system.yaml", str(index) )
+
 def _nid_to_node_attrs(node):
     ''' If a node has nodeindex set, try to figure out the xname details'''
     global settings
@@ -230,6 +306,13 @@ def _nid_to_node_attrs(node):
 
     if 'type' not in node:
         node['type'] = 'compute'
+
+    # nodegroups supersede the logic below
+    # For systems with multiple blade types, missing blades, or other "weird"
+    # layouts
+    if 'nodegroups' in settings:
+        _node_info_by_layout(node)
+        return
 
     # FIXME: Make this configurable (support Hill and grizzly peak)
     nodesperchassis = settings['nodesperrack']//8
@@ -270,6 +353,7 @@ def _nid_to_node_attrs(node):
     node['xname']   = "%sc%ds%db%dn%d"%(node['rack'], node['chassis'], slotidx,
                                         boardidx, nodeidx)
 
+# Main entry point called from Node.run_plugins
 def set_node_attrs(node, alias=None):
     ''' Sets attributes for nodes in the system
         Note that a "node" in this context could be a
