@@ -26,7 +26,7 @@ from phoenix.node import Node
 from phoenix.network import Network
 
 try:
-    usersettings = System.setting('cray_ex')
+    usersettings = System.setting('cray_ex', default=dict())
 except:
     usersettings = dict()
 

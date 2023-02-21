@@ -42,7 +42,7 @@ settings = {
 }
 
 try:
-    usersettings = System.setting('cray_ex')
+    usersettings = System.setting('cray_ex', default=dict())
     settings.update(usersettings)
 except:
     logging.error("cray_shasta section not found in system settings")
