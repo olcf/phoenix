@@ -431,7 +431,7 @@ class HpcmCommand(Command):
                 return boardmap[usersettings['bladetype']]
         except KeyError:
             pass
-        return 'eth0'
+        return 'eno1'
 
     @classmethod
     def _read_metadata(cls):
