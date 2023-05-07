@@ -430,10 +430,10 @@ class ArtifactSquashfs(Artifact):
 
 def runcmd(command, cwd=None):
     logging.debug("Running command %s", command)
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=os.setpgrp, cwd=cwd)
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=os.setpgrp, cwd=cwd, encoding='utf-8')
     while True:
         output = proc.stdout.readline()
-        if output == '':
+        if output == '' or output == b'':
             rc = proc.poll()
             if rc is not None:
                 break
