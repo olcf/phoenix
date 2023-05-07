@@ -295,6 +295,7 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, nic, 'port', port)
             _setinterfaceparam(node, nic, 'switch', switchname)
             _setinterfaceparam(node, nic, 'mac', _hsnalgomac(group, switch, port))
+            _setinterfaceparam(node, nic, 'nid', _hsnnid(group, switch, port))
             if 'hsn' in settings['autoip']:
                 _setinterfaceparam(node, nic, 'ip', Network.ipadd("hsn", (node['nodeindex'] * globalnicspernode) + hsnnic + settings['autoip']['hsn']))
 
@@ -407,6 +408,10 @@ def _mgmtalgomac(rack, chassis, slot, idx, prefix=2):
 def _mgmtalgoipv6addr(rack, chassis, slot, idx, prefix='fc00:0:100:60'):
     """ Returns the EUI64 IP as a string """
     return "%s:%02x:%02xff:fe%02x:%02x%02x" % (prefix, rack >> 8, rack & 0xFF, chassis, slot, idx << 4)
+
+def _hsnnid(group, switch, port):
+    """ Returns the NID of of a HSN port """
+    return (group << 11) + (switch << 6) + port
 
 def _hsnalgomac(group, switch, port):
     """ Returns the string representation of an algorithmic mac address """
