@@ -150,8 +150,8 @@ class Recipe(object):
         name = "%s-%s" % (self.name, tag)
         # FIXME add more error handling here
         try:
-            self.container = subprocess.check_output(["buildah", "from", "--name", name, self.initfrom], stderr=subprocess.STDOUT).rstrip()
-            self.root = subprocess.check_output(["buildah", "mount", self.container], stderr=subprocess.STDOUT).rstrip()
+            self.container = subprocess.check_output(["buildah", "from", "--name", name, self.initfrom], stderr=subprocess.STDOUT).decode().rstrip()
+            self.root = subprocess.check_output(["buildah", "mount", self.container], stderr=subprocess.STDOUT).decode().rstrip()
         except subprocess.CalledProcessError as cpe:
             logging.error("Command failed: %s", cpe.output)
             raise RuntimeError
