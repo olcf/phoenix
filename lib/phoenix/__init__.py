@@ -6,6 +6,7 @@ import os
 import logging
 import sys
 import imp
+import resource
 
 logging.basicConfig(format="%(levelname)s: %(message)s")
 
@@ -19,6 +20,12 @@ def setup_logging(level=0):
     levels = [logging.WARNING, logging.INFO, logging.DEBUG]
     level = levels[min(len(levels)-1,level)]
     logging.getLogger().setLevel(level)
+
+def adjust_limits():
+    try:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (80000, 80000))
+    except:
+        pass
 
 #default_providers = { 'dhcp'      : 'dnsmasq',
 #                      'bootloader': 'ipxe'

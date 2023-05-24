@@ -38,6 +38,8 @@ class PowerCommand(Command):
         args = parser.parse_args()
 
         phoenix.setup_logging(args.verbose)
+        phoenix.adjust_limits()
+
         nodes = NodeSet(args.nodes)
         (task, handler) = phoenix.parallel.setup(nodes, args)
         cmd = ["power", args.action]

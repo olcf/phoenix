@@ -24,6 +24,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     phoenix.setup_logging(args.verbose)
+    phoenix.adjust_limits()
 
     try:
         nodes = NodeSet(args.nodes)
