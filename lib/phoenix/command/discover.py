@@ -69,8 +69,9 @@ class DiscoverCommand(Command):
             task.resume()
             for buf, nodes in task.iter_buffers():
                 for node in nodes:
-                    print("%s is %s" % (node, buf))
-                    data.setval('mac', node, buf)
+                    mac = buf.message().decode()
+                    print("%s is %s" % (node, mac))
+                    data.setval('mac', node, mac)
 
         switchdata = dict()
         if len(group_nodes) > 0:
@@ -81,8 +82,9 @@ class DiscoverCommand(Command):
             task.resume()
             for buf, nodes in task.iter_buffers():
                 for node in nodes:
-                    logging.debug("Got buffer %s", buf)
-                    switchdata[node] = json.loads(str(buf))
+                    content = buf.message().decode()
+                    logging.debug("Got buffer %s", content)
+                    switchdata[node] = json.loads(content)
 
         logging.debug("group_nodes is %s", group_nodes)
         for nodename in group_nodes:
