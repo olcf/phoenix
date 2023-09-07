@@ -237,6 +237,10 @@ class HpcmCommand(Command):
                 it.addna('internal_name', 'internal_name')
             elif 'nodenums' in n:
                 it.addraw('internal_name=mgmtsw{}'.format(''.join([str(x) for x in n['nodenums']])))
+            elif 'nodeindex' in n:
+                it.addraw('internal_name=mgmtsw{}'.format(n['nodeindex']))
+            else:
+                it.addraw('internal_name=mgmtsw')
             it.addna('mgmtsw_partner', 'partner')
             it.addraw('redundant_mgmt_network=yes')
             it.addraw('type=dual-leaf')
