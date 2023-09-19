@@ -355,7 +355,7 @@ def set_node_attrs(node, alias=None):
         node['bmc'] = node['name'] # Technically this is a switch controller
         node['bmcuser'] = 'root'
         node['bmcpassword'] = 'initial0'
-        if node['switchmodel'] is 'colorado':
+        if node['switchmodel'] == 'colorado':
             node['pdutype'] = 'redfish'
             node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
             node['pduuser'] = 'root'
