@@ -29,12 +29,14 @@ try:
     usersettings = System.setting('cray_ex', default=dict())
 except:
     usersettings = dict()
-
-if 'leaders' in usersettings:
-    usersettings['leadernodeset'] = NodeSet(usersettings['leaders'])
-    usersettings['leaderlist'] = list(usersettings['leadernodeset'])
-if 'startnid' not in usersettings:
-    usersettings['startnid'] = 1
+try:
+    usersettings
+except:
+    if 'leaders' in usersettings:
+        usersettings['leadernodeset'] = NodeSet(usersettings['leaders'])
+        usersettings['leaderlist'] = list(usersettings['leadernodeset'])
+    if 'startnid' not in usersettings:
+        usersettings['startnid'] = 1
 
 class ParamList(object):
     def __init__(self, node):

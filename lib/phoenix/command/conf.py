@@ -113,8 +113,13 @@ class ConfCommand(Command):
         if cls.interface_sort is None:
             return thing
         elif cls.interface_sort in thing[1]:
-            return socket.inet_aton(thing[1][cls.interface_sort])
-        return thing
+            ip_str = thing[1][cls.interface_sort]
+            try:
+                ip_bytes = socket.inet_aton(ip_str)
+                return (ip_bytes, thing)
+            except socket.error:
+                return (b'', thing)
+        return (b'', thing)
 
     @classmethod
     def ips(cls, nodes, args):
