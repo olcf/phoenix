@@ -292,7 +292,7 @@ class HpcmCommand(Command):
             if n['type'] == 'admin' or n['type'] == 'leader':
                 it.addna('rootfs', 'rootfs', 'disk')
                 if disk:
-                    it.addraw('force_disk', 'force_disk=%s' % disk)
+                    it.addraw('force_disk', '%s' % disk)
                 else:
                     it.addna('force_disk', 'force_disk', '/dev/disk/by-path/pci-0000:06:00.0-scsi-0:1:0:0')
             elif n['type'] == 'compute':
