@@ -427,6 +427,7 @@ class HpcmCommand(Command):
             return 'eth0'
         global usersettings
         boardmap = { 'windom':       'enp65s0',
+                     'antero':       'enp65s0',
                      'grizzly_peak': 'enp195s0',
                      'bard_peak':    'enp148s0',
                    }
