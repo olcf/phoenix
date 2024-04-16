@@ -276,7 +276,9 @@ def set_node_attrs(node, alias=None):
         for hsnnic in range(hsnnics):
             nic = 'hsn%d' % hsnnic
             switchname = _hsnswitchname(node['racknum'], node['chassis'], node['board'], globalnicspernode, hsnnic)
-            if switchname in rosetta_group:
+            if 'hsngroup' in node:
+                group = node['hsngroup']
+            elif switchname in rosetta_group:
                 group = rosetta_group[switchname]
             else:
                 if 'rackidxnonempty' in node:
