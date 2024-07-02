@@ -284,6 +284,7 @@ class StepCommand(Step):
         logging.info("Running command '%s' against %s", self.command, recipe.root)
         command = ["buildah",
                    "run",
+                   "--net=host",
                    recipe.container,
                    "/bin/bash",
                    "-c",
@@ -310,6 +311,7 @@ class StepPackage(Step):
         logging.info("Installing packages %s in %s", self.packages, recipe.root)
         command = ["buildah",
                    "run",
+                   "--net-host",
                    recipe.container,
                    "zypper",
                    "--non-interactive",
