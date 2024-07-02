@@ -311,7 +311,7 @@ class StepPackage(Step):
         logging.info("Installing packages %s in %s", self.packages, recipe.root)
         command = ["buildah",
                    "run",
-                   "--net-host",
+                   "--net=host",
                    recipe.container,
                    "zypper",
                    "--non-interactive",
