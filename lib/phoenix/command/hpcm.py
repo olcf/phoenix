@@ -9,6 +9,7 @@ import argparse
 import socket
 import errno
 import ipaddress
+import urllib.request
 
 from yaml import load, dump
 try:
@@ -569,6 +570,7 @@ class HpcmCommand(Command):
             path = '%s/%s' % (repodir, repo)
             typefile = '%s/repo-type' % path
             urlfile = '%s/repo-url' % path
+            rpmfile = '%s/cm.rpmlist' % path
             try:
                 os.mkdir(path)
             except OSError as e:
@@ -580,6 +582,16 @@ class HpcmCommand(Command):
                 filefd.write('repo-md')
             with open(urlfile, 'w') as filefd:
                 filefd.write(repos[repo])
+            try:
+                os.unlink(rpmfile)
+            except:
+                pass
+            try:
+                response = urllib.request.urlopen('%s/clusters/cm.rpmlist' % repos[repo], timeout=5).read().decode('utf-8')
+                with open(rpmfile, 'w') as filefd:
+                    filefd.write(response)
+            except:
+                pass
         try:
             images = metadata['images']
         except KeyError:
@@ -603,6 +615,7 @@ class HpcmCommand(Command):
                 src = '%s/%s' % (repodir, repo)
                 dst = '%s/%s' % (path, repo)
                 os.symlink(src, dst)
+        os.system("crepo --recreate-rpmlists")
 
     @classmethod
     def run(cls, client):
