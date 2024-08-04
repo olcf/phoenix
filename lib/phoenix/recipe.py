@@ -156,7 +156,7 @@ class Recipe(object):
                         elif artifacttype == 'initramfs':
                             self.artifacts.append(ArtifactInitramfs())
                         elif artifacttype == 'squashfs':
-                            self.artifacts.append(ArtifactSquashfs())
+                            self.artifacts.append(ArtifactSquashfs(artifact['squashfs']))
                         else:
                             logging.warning('Unknown artifact type %s', artifacttype)
             else:
@@ -423,8 +423,18 @@ class ArtifactInitramfs(Artifact):
 class ArtifactSquashfs(Artifact):
     name = 'Squashfs'
 
-    def __init__(self):
-        pass
+    def __init__(self, params):
+        if 'output' in params:
+            self.output = params['output']
+        else:
+            self.output = 'rootdir.squashfs'
+        self.include = list()
+        if 'include' in params:
+            for path in params['include']:
+                if path.startswith('/'):
+                    self.include.append('.' + path)
+                else:
+                    slef.include.append(path)
 
     def __str__(self):
         return "True"
@@ -435,7 +445,10 @@ class ArtifactSquashfs(Artifact):
             os.makedirs(outputdir)
         except FileExistsError:
             pass
-        squashcommand = "mksquashfs %s %s/rootdir.squashfs" % (recipe.root, outputdir)
+        if len(self.include) > 0:
+            squashcommand = "mksquashfs %s %s/%s -no-strip" % (" ".join(self.include), outputdir, self.output)
+        else:
+            squashcommand = "mksquashfs %s %s/%s" % (recipe.root, outputdir, self.output)
         logging.info("Saving image root as squashfs artifact")
         command = [ "/bin/bash",
                     "-c",
@@ -445,6 +458,8 @@ class ArtifactSquashfs(Artifact):
         if rc:
             logging.error("Could not create squashfs")
             raise RuntimeError
+        else:
+            logging.info("Created %s/%s" % (outputdir, self.output))
 
 def runcmd(command, cwd=None):
     logging.debug("Running command %s", command)
