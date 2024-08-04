@@ -19,9 +19,11 @@ import datetime
 import glob
 import shutil
 import phoenix
+import jinja2
+from jinja2 import Template
 
 class Recipe(object):
-    def __init__(self, name=None):
+    def __init__(self, name=None, variables=None):
         self.name = name
         self.root = None
         self.tag = None
@@ -33,6 +35,9 @@ class Recipe(object):
         self.repos = dict()
         self.steps = list()
         self.artifacts = list()
+        self.variables = dict()
+        if variables is not None:
+            self.variables = dict(variables)
         if name is not None:
             self.load_recipe(name)
 
@@ -92,7 +97,18 @@ class Recipe(object):
         # Read the yaml file
         logging.info("Loading recipe file '%s'", filename)
         with open(filename) as recipefd:
-            recipedata = load(recipefd, Loader=Loader) or {}
+            recipestr = recipefd.read()
+
+        # Process any variables
+        template = Template(recipestr, undefined=jinja2.StrictUndefined)
+        try:
+            recipestr = template.render(**self.variables)
+        except jinja2.exceptions.UndefinedError as e:
+            print("Error: %s - use --define on the command line" % e)
+            sys.exit(1)
+
+        # Load the yaml file
+        recipedata = load(recipestr, Loader=Loader) or {}
 
         # Load the data into the recipe structure
         for key, value in recipedata.items():

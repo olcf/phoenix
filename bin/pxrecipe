@@ -16,11 +16,13 @@ def get_parser():
 
     parser_show = subparsers.add_parser('show', help='show help')
     parser_show.add_argument('name', nargs='+', help='Image name')
+    parser_show.add_argument('--define', '-d', nargs=2, action='append', dest='variables', help='Variables to substitute')
 
     parser_list = subparsers.add_parser('list', help='list help')
 
     parser_build = subparsers.add_parser('build', help='build help')
     parser_build.add_argument('name', type=str, help='Recipe name')
+    parser_build.add_argument('--define', '-d', nargs=2, action='append', dest='variables', help='Variables to substitute')
     parser_build.add_argument('--tag', '-t', type=str, default=None, help='Build Tag (default: current datetime)')
 
     return parser
@@ -42,10 +44,10 @@ if __name__ == '__main__':
             print("\n".join(recipes))
     elif args.action == 'show':
         for name in args.name:
-            recipe = Recipe(name)
+            recipe = Recipe(name, args.variables)
             print(recipe)
     elif args.action == 'build':
-        recipe = Recipe(args.name)
+        recipe = Recipe(args.name, args.variables)
         try:
             recipe.build(args.tag)
         except RuntimeError:
