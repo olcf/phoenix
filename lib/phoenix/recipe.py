@@ -424,17 +424,17 @@ class ArtifactSquashfs(Artifact):
     name = 'Squashfs'
 
     def __init__(self, params):
-        if 'output' in params:
-            self.output = params['output']
-        else:
-            self.output = 'rootdir.squashfs'
+        self.output = 'rootdir.squashfs'
         self.include = list()
-        if 'include' in params:
-            for path in params['include']:
-                if path.startswith('/'):
-                    self.include.append('.' + path)
-                else:
-                    slef.include.append(path)
+        if type(params) is dict:
+            if 'output' in params:
+                self.output = params['output']
+            if 'include' in params:
+                for path in params['include']:
+                    if path.startswith('/'):
+                        self.include.append('.' + path)
+                    else:
+                        self.include.append(path)
 
     def __str__(self):
         return "True"
