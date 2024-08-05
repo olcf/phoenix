@@ -234,9 +234,14 @@ class Recipe(object):
             return
 
     def docleanup(self):
-        logging.info("Cleaning up build environment - not yet implemented")
+        try:
+            subprocess.check_output(["buildah", "umount", self.container])
+            subprocess.check_output(["buildah", "rm", self.container])
+        except subprocess.CalledProcessError as cpe:
+            logging.error("Command failed: %s", cpe.output)
+            raise RuntimeError
 
-    def build(self, tag=None):
+    def build(self, tag=None, keep=False):
         if self.initfrom == "scratch" and len(self.initpackages) == 0:
             logging.error("You must specify initpackages when building from scratch")
             return
@@ -253,7 +258,10 @@ class Recipe(object):
                 step.run(self)
             for artifact in self.artifacts:
                 artifact.run(self)
-            self.docleanup()
+            if keep:
+                print("Keeping build root at %s" % self.root)
+            else:
+                self.docleanup()
         print("Successfully built %s/%s" % (self.name, self.tag))
 
 class ConfirmKeyboardInterrupt(object):
