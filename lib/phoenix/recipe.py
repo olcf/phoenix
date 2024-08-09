@@ -248,6 +248,7 @@ class Recipe(object):
         if tag == None:
             tag = datetime.datetime.now().strftime("%Y%m%d%H%M")
         self.tag = tag
+        self.variables['tag'] = tag
         logging.info("Building recipe %s with tag %s", self.name, tag)
 
         with ConfirmKeyboardInterrupt():
