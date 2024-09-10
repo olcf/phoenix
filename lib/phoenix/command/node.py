@@ -51,8 +51,8 @@ class NodeCommand(Command):
         try:
             if type(client.command) == list and len(client.command) > 1 and client.command[1] != None:
                 val = cls.get_node_attr(client.node, client.command[1])
-                if type(val) == str:
-                    client.output(val)
+                if type(val) == str or type(val) == int:
+                    client.output(str(val))
                 else:
                     client.output(yaml.dump(val))
             else:
