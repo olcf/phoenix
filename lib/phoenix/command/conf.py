@@ -41,6 +41,8 @@ class ConfCommand(Command):
         parser_bootfile = subparsers.add_parser('bootfiles', help='bootfile help')
         parser_ethers = subparsers.add_parser('ethers', help='ethers help')
         parser_ethers.add_argument('--interface', '-i', default=[], type=str, action='append', dest='interfaces', help='Interface to include (default: show all)')
+        parser_slingshot = subparsers.add_parser('slingshot', help='slingshot help')
+        parser_slingshot.add_argument('--interface', '-i', default=[], type=str, action='append', dest='interfaces', help='Interface to include (default: show all)')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
         return parser
@@ -59,6 +61,7 @@ class ConfCommand(Command):
                    'ethers':     cls.ethers,
                    'dhcp':       cls.dhcp,
                    'updatedhcp': cls.updatedhcp,
+                   'slingshot':  cls.slingshot,
                  }
 
         if args.action in cmdmap:
@@ -195,6 +198,26 @@ class ConfCommand(Command):
                     continue
                 ip = iface['ip']
                 print("%s\t%s" % (iface['mac'], ip))
+
+        return 0
+
+    @classmethod
+    def slingshot(cls, nodes, args):
+        System.load_config()
+        Node.load_nodes(nodeset=nodes)
+        for nodename in nodes:
+            node = Node.find_node(nodename)
+            if 'interfaces' not in node:
+                continue
+            for ifacename, iface in node['interfaces'].items():
+                if len(args.interfaces) > 0 and ifacename not in args.interfaces:
+                    continue
+                if 'mac' not in iface:
+                    continue
+                if 'nid' not in iface:
+                    continue
+                ip = iface['ip']
+                print("%s-%s\t%s\t%s\t%s\t%s\t%d\t%d\t%d" % (node['name'], ifacename, iface['nid'], iface['mac'], ip, iface['switch'], iface['group'], iface['switchnum'], iface['port']))
 
         return 0
 
