@@ -50,9 +50,11 @@ class Node(object):
     plugins = dict()
     nodes = dict()
     nodemap = dict()
+    nodeset_cache = dict()
 
     def __init__(self, name):
         self.rawattr = dict()
+        self.rawattr_nodeset_index = dict()
         self.attr = {'name': name}
         self.ran_plugins = False
 
@@ -123,19 +125,14 @@ class Node(object):
         for noderange, data in nodedata.items():
             ns1 = NodeSet(noderange)
 
-            # Optimization to skip nodes we don't care about
-            if nodeset is not None:
-                ns1.intersection_update(nodeset)
-
-            # If no nodes remain, move on to next section
-            if ns1 is None or len(ns1) == 0:
-                continue
-
             # This is where we should split out the keys between
             # simple values and complex ones (including needing interpolation)
             # Instead just do it below...
 
-            for node in ns1:
+            for node_nodeset_index, node in enumerate(ns1):
+                # Optimization to skip nodes we don't care about
+                if nodeset is not None and node not in nodeset:
+                    continue
                 if node not in cls.nodes:
                     cls.nodes[node] = Node(node)
                 for key, value in data.items():
@@ -155,7 +152,8 @@ class Node(object):
                             cls.nodes[node].rawattr[key].update(newval)
                         else:
                             cls.nodes[node].rawattr[key] = newval
-                        logging.debug("Setting node %s raw key %s to %s (%s)", node, key, value, cls.nodes[node].rawattr[key])
+                        cls.nodes[node].rawattr_nodeset_index[key] = node_nodeset_index
+                        logging.debug("Setting node %s raw key %s to %s (%s) - offset %d", node, key, value, cls.nodes[node].rawattr[key], node_nodeset_index)
 
         # Mark that nodes have been loaded
         cls.loaded_nodes = True
@@ -256,17 +254,18 @@ class Node(object):
 
     @classmethod
     def load_functions(cls):
+        if cls.loaded_functions:
+            return
         logging.info("Loading Jinja templates")
         cls.environment = Environment()
         cls.environment.globals['ipadd'] = Network.ipadd
         cls.environment.globals['data'] = Data.data
+        cls.environment.globals['nodeset_offset'] = Node.nodeset_offset
         #Environment.globals['ipadd'] = Node.ipadd
         cls.loaded_functions = True
 
     def interpolatevalue(self, value):
         logging.debug("Interpolating value %s" % value)
-        if not Node.loaded_functions:
-            Node.load_functions()
         #return str(Template(value).render(**self.attr))
         output = str(Node.environment.from_string(value).render(**self.attr))
         logging.debug("Interpolated value %s as %s", value, output)
@@ -277,6 +276,9 @@ class Node(object):
             Key of None means interpolate all keys in the dict.
             Defaults to interpolating from the Node rawattr to attr
         """
+        logging.debug("Interpolating %s", key)
+        if not Node.loaded_functions:
+            Node.load_functions()
         if source is None:
             source = self.rawattr
         if dest is None:
@@ -285,7 +287,10 @@ class Node(object):
             # Interpolate everything in this dict
             for newkey in list(source.keys()):
                 self.interpolate(newkey, source, dest)
-        elif isinstance(source[key], dict):
+            return
+        if source is self.rawattr:
+            Node.environment.globals['offset'] = self.rawattr_nodeset_index[key]
+        if isinstance(source[key], dict):
             newdest = dict()
             # This is a hierarchial value, recursively interpolate
             self.interpolate(None, source=source[key], dest=newdest)
@@ -312,3 +317,12 @@ class Node(object):
             del source[key]
         else:
             logging.error("Unhandled interpolation for key %s %s", key, type(source[key]))
+        del Node.environment.globals['offset']
+
+    @classmethod
+    def nodeset_offset(cls, nodesetstr, offset=0):
+        logging.debug("Called nodeset_offset with %s, offset %d", nodesetstr, offset)
+        if nodesetstr not in cls.nodeset_cache:
+            cls.nodeset_cache[nodesetstr] = NodeSet(nodesetstr)
+        ns = cls.nodeset_cache[nodesetstr]
+        return ns[offset]
