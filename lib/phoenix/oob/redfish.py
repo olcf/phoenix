@@ -58,6 +58,8 @@ class Redfish(Oob):
         response = cls._do_redfish_req(node[cls.oobtype], path, request_type, auth)
         if status_codes is not None and response.status_code not in status_codes:
             return (False, "Redfish response returned status %d" % response.status_code)
+        if len(response.content) == 0:
+            return(False, "Redfish returned a blank response")
         value = response.json()
         if type(attr) is not list:
             attr = attr.split('.')
