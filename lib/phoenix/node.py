@@ -323,6 +323,7 @@ class Node(object):
     def nodeset_offset(cls, nodesetstr, offset=0):
         logging.debug("Called nodeset_offset with %s, offset %d", nodesetstr, offset)
         if nodesetstr not in cls.nodeset_cache:
-            cls.nodeset_cache[nodesetstr] = NodeSet(nodesetstr)
+            cls.nodeset_cache[nodesetstr] = list(NodeSet(nodesetstr))
+            cls.nodeset_cache[nodesetstr].sort()
         ns = cls.nodeset_cache[nodesetstr]
         return ns[offset]
