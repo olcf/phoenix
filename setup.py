@@ -13,6 +13,12 @@ from distutils.core import setup
 from distutils.command.sdist import sdist
 from distutils.command.bdist_rpm import bdist_rpm
 
+try:
+    import distro
+except:
+    print("Please install python3-distro")
+    sys.exit(1)
+
 class GenerateMan(Command):
     """Custom command to generate man pages"""
     description = 'Generate man pages'
@@ -74,7 +80,7 @@ class bdist_rpm_custom(bdist_rpm):
     """bdist_rpm that sets custom options: release, requires"""
     def finalize_package_data (self):
         if self.release is None:
-            self.release = release+"%{?dist}"
+            self.release = release+releasedist
         if self.requires is None:
             self.requires = requires
         bdist_rpm.finalize_package_data(self)
@@ -86,7 +92,24 @@ if basedir == "":
 sys.path.insert(0,"%s/lib" % basedir)
 
 scripts = [x for x in os.listdir('bin') if os.path.isfile('bin/%s' % x)]
-requires = [ 'python3-clustershell', 'python3-Jinja2' ]
+
+# These RPM names are equivalent between RHEL and SLES
+# Differences are added below
+requires = [ 'python3-clustershell',
+             'python3-requests',
+             'python3-distro'
+           ]
+distros = [distro.id()]
+distros.extend(distro.like().split(' '))
+if "rhel" in distros or "fedora" in distros:
+    requires.extend(['python3-jinja2'])
+    releasedist = "%{?dist}"
+elif "sles" in distros or "suse" in distros:
+    requires.extend(['python3-Jinja2'])
+    releasedist = ".%s%s" % (distros[0], distro.version())
+else:
+    print("Error: distro undetected - please add support")
+    sys.exit(1)
 
 try:
     ver=subprocess.check_output(["git", "describe"]).decode().strip().split('-')
