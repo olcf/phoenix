@@ -147,15 +147,21 @@ def _xname_to_node_attrs(node):
                                    nodesperboard * node['board'] +
                                    node['nodenum']
                                   )
-        node['nodeindex'] = (settings['nodesperrack'] * node['rackidx'] +
-                             node['nodeindexinrack'] +
-                             settings['startnid']
-                            )
+        if 'nodeindex' not in node:
+            node['nodeindex'] = (settings['nodesperrack'] * node['rackidx'] +
+                                 node['nodeindexinrack'] +
+                                 settings['startnid']
+                                )
 
     if 'nodeindex' not in node and node['racktype'] == 'river':
-        m = num_regex.match(node['name'])
-        if m is not None:
-            node['nodeindex'] = int(m.group(1))
+        _name_to_nodeindex(node)
+
+def _name_to_nodeindex(node):
+    m = num_regex.match(node['name'])
+    if m is not None:
+        node['nodeindex'] = int(m.group(1))
+        return True
+    return False
 
 def _nid_to_node_attrs(node):
     ''' If a node has nodeindex set, try to figure out the xname details'''
@@ -210,6 +216,7 @@ def set_node_attrs(node, alias=None):
 
     read_rosetta()
 
+    _name_to_nodeindex(node)
     # FIXME: This won't do the right thing if you system name starts with 'x'
     #        Hopefully that won't bite us any time soon...
     #        Could instead have a lightweight regex, but that might hurt
@@ -233,9 +240,7 @@ def set_node_attrs(node, alias=None):
             return
     elif 'type' in node and node['type'] == 'compute':
         logging.debug("Node name %s is NOT an xname", node['name'])
-        m = num_regex.match(node['name'])
-        if m is not None:
-            node['nodeindex'] = int(m.group(1))
+        if _name_to_nodeindex(node):
             _nid_to_node_attrs(node)
 
     if 'xname' not in node:
