@@ -12,6 +12,7 @@ from phoenix.network import Network
 from phoenix.network import handleautointerfaces
 from phoenix.node import Node
 from phoenix.data import Data
+import phoenix
 
 cray_ex_regex = re.compile(r'x(?P<racknum>\d+)(?P<chassistype>[ce])(?P<chassis>\d+)((?P<slottype>[rs])(?P<slot>\d+)(b(?P<board>\d+)(n(?P<nodenum>\d+))?)?)?')
 num_regex = re.compile(r'.*?(\d+)$')
@@ -61,9 +62,10 @@ elif type(settings['autoip']) == list:
     settings['autoip'] = dict.fromkeys(settings['autoip'], 0)
 
 def read_rosetta():
-    if not os.path.exists('/etc/phoenix/rosetta_map.csv'):
+    filename = "%s/rosetta_map.csv" % phoenix.conf_path
+    if not os.path.exists(filename):
         return
-    with open('/etc/phoenix/rosetta_map.csv', 'r') as csvfile:
+    with open(filename, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
         for row in reader:
             rosetta_group[row[0]] = int(row[1])
