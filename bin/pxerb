@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'yaml'
+require 'erb'
+
+args = {}
+oparser = OptionParser.new do |opt|
+	opt.on('-d destfile', '--destfile=destfile', 'The destination to write the output to') do |o|
+		args[:dest] = o
+	end
+	opt.on('-m metadatafile', '--matadata=metadatafile', 'The hiera conf file') do |o|
+		args[:metadata] = o
+	end
+	opt.on('-s sourcefile', '--source=sourcefile', 'The source file to template') do |o|
+		args[:source] = o
+	end
+end
+oparser.parse!
+
+if args[:dest].nil? || args[:metadata].nil? || args[:source].nil?
+	puts oparser.help
+	exit 1
+end
+
+@variables = YAML.load_file(args[:metadata])
+b_copy = binding.clone
+@variables.each{ |k, v| b_copy.local_variable_set(k,v) }
+curmode = File.stat(args[:source]).mode
+renderer = ERB.new(File.read(args[:source]), nil, '-')
+File.open(args[:dest], "w", curmode) { |f| f.write renderer.result(b_copy) }
+#File.chmod(curmode, args[:dest])
