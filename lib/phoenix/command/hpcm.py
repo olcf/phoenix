@@ -566,6 +566,8 @@ class HpcmCommand(Command):
         except KeyError:
             logging.error("repos section not found in metadata")
             return
+        if not os.path.exists(repogroupdir):
+            os.mkdir(repogroupdir)
         for repo in repos:
             path = '%s/%s' % (repodir, repo)
             typefile = '%s/repo-type' % path
