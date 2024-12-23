@@ -70,6 +70,10 @@ class Node(object):
     def setrawitem(self, key, value):
         self.rawattr[key] = value
 
+    def setifblank(self, key, value):
+        if key not in self:
+            self.attr[key] = value
+
     def __setitem__(self, key, value):
         self.attr[key] = value
 

@@ -263,11 +263,11 @@ def set_node_attrs(node, alias=None):
             _setinterfaceparam(node, 'bond0', 'mac', Data.data('mac', node['name']))
             _setinterfaceparam(node, 'bond0', 'alias', node['xname'])
         _setinterfaceparam(node, 'bond0', 'discoverytype', 'bmc')
-        node['bmcpassword'] = 'initial0'
+        node.setifblank('bmcpassword', 'initial0')
         node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
         node['pdutype'] = 'redfish'
         node['pduuser'] = 'root'
-        node['pdupassword'] = 'initial0'
+        node.setifblank('pdupassword', 'initial0') 
         node['pduredfishpath'] = 'Chassis/Blade%d' % node['slot']
         globalnicspernode = settings['nicspernode']
         try:
@@ -314,11 +314,11 @@ def set_node_attrs(node, alias=None):
         node['bmctype'] = 'redfish'
         node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
         node['bmcuser'] = 'root'
-        node['bmcpassword'] = 'initial0'
+        node.setifblank('bmcpassword', 'initial0')
         node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
         node['pdutype'] = 'redfish'
         node['pduuser'] = 'root'
-        node['pdupassword'] = 'initial0'
+        node.setifblank('pdupassword', 'initial0') 
         _setinterfaceparam(node, 'me0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
         _setinterfaceparam(node, 'me0', 'dhcp', True)
         _setinterfaceparam(node, 'me0', 'hostname', node['name'])
@@ -333,7 +333,7 @@ def set_node_attrs(node, alias=None):
         node['bmctype'] = 'redfish'
         node['bmc'] = "x{racknum}c{chassis}".format(**node.attr)
         node['bmcuser'] = 'root'
-        node['bmcpassword'] = 'initial0'
+        node.setifblank('bmcpassword', 'initial0')
 
     elif node['type'] == 'cc':
         node['redfishpath'] = 'Chassis/Enclosure'
@@ -341,7 +341,7 @@ def set_node_attrs(node, alias=None):
         node['bmctype'] = 'redfish'
         node['bmc'] = node['name']
         node['bmcuser'] = 'root'
-        node['bmcpassword'] = 'initial0'
+        node.setifblank('bmcpassword', 'initial0')
         _setinterfaceparam(node, 'me0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], 0, 0))
         _setinterfaceparam(node, 'me0', 'dhcp', True)
         _setinterfaceparam(node, 'me0', 'hostname', node['name'])
@@ -363,12 +363,12 @@ def set_node_attrs(node, alias=None):
         node['bmctype'] = 'redfish'
         node['bmc'] = node['name'] # Technically this is a switch controller
         node['bmcuser'] = 'root'
-        node['bmcpassword'] = 'initial0'
+        node.setifblank('bmcpassword', 'initial0')
         if node['switchmodel'] == 'colorado':
             node['pdutype'] = 'redfish'
             node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
             node['pduuser'] = 'root'
-            node['pdupassword'] = 'initial0'
+            node.setifblank('pdupassword', 'initial0') 
             node['pduredfishpath'] = 'Chassis/Perif%d' % node['slot']
             _setinterfaceparam(node, 'eth0', 'dhcp', True)
             _setinterfaceparam(node, 'eth0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0))
