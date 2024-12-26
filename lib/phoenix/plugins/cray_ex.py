@@ -133,14 +133,15 @@ def _xname_to_node_attrs(node):
         # Converting it to an int will return a TypeError which we just ignore
         pass
 
-    # This is purely convention
-    racknum = node['racknum']
-    if racknum >= 1000 and racknum <= 2999:
-        node['racktype'] = 'mountain'
-    elif racknum >= 3000 and racknum <= 4999:
-        node['racktype'] = 'river'
-    elif racknum >= 9000 and racknum <= 9999:
-        node['racktype'] = 'hill'
+    if 'racktype' not in node:
+        # This is purely convention
+        racknum = node['racknum']
+        if racknum >= 1000 and racknum <= 2999:
+            node['racktype'] = 'mountain'
+        elif racknum >= 3000 and racknum <= 4999:
+            node['racktype'] = 'river'
+        elif racknum >= 9000 and racknum <= 9999:
+            node['racktype'] = 'hill'
 
     if 'type' not in node:
         if 'nodenum' in node:
