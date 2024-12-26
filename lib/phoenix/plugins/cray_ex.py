@@ -33,6 +33,34 @@ colorado_map = {
     7: { 0: 2,  1: 3  }
 }
 
+Node.models['ex235a'] = {
+    'ncsperblade':      2,
+    'nodesperblade':    2,
+    'nodespernc':       1,
+    'nicspernode':      4,
+}
+
+Node.models['ex235n'] = {
+    'ncsperblade':      2,
+    'nodesperblade':    2,
+    'nodespernc':       1,
+    'nicspernode':      4,
+}
+
+Node.models['ex425'] = {
+    'ncsperblade':      2,
+    'nodesperblade':    4,
+    'nodespernc':       2,
+    'nicspernode':      1,
+}
+
+Node.models['ex4252'] = {
+    'ncsperblade':      1,
+    'nodesperblade':    4,
+    'nodespernc':       4,
+    'nicspernode':      1,
+}
+
 # These are defaults for the cray_ex plugin
 settings = {
     'startnid':     1,

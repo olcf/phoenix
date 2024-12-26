@@ -51,6 +51,7 @@ class Node(object):
     nodes = dict()
     nodemap = dict()
     nodeset_cache = dict()
+    models = dict()
 
     def __init__(self, name):
         self.rawattr = dict()
@@ -84,13 +85,13 @@ class Node(object):
             if type(self.attr[key]) is types.LambdaType:
                 return self.attr[key]()
             return self.attr[key]
-        if key not in self.rawattr:
+        if key in self.rawattr:
+            self.interpolate(key)
+            return self.attr[key]
+        try:
+            return Node.models[self.attr['model']][key]
+        except:
             raise KeyError(key)
-        #self.attr[key] = self.interpolate(key)
-        self.interpolate(key)
-        #self.attr[key] = self.rawattr[key]
-        #del self.rawattr[key]
-        return self.attr[key]
 
     def __delitem__(self, key):
         del self.attr[key]
@@ -102,6 +103,8 @@ class Node(object):
             self.run_plugins()
             if key in self.attr or key in self.rawattr:
                 return True
+        if 'model' in self.attr and self.attr['model'] in Node.models and key in Node.models[self.attr['model']]:
+            return True
         return False
 
     @classmethod
