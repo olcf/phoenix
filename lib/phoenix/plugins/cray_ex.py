@@ -332,6 +332,7 @@ def set_node_attrs(node, alias=None):
         node['pduuser'] = 'root'
         node.setifblank('pdupassword', 'initial0') 
         node['pduredfishpath'] = 'Chassis/Blade%d' % node['slot']
+        _identify_partners(node)
         globalnicspernode = settings['nicspernode']
         try:
             hsnnics = node['hsnnics']
@@ -565,6 +566,26 @@ def _chassisoffset(node, chassis=None):
             return 1
     else:
         return chassis
+
+def _identify_partners(node):
+    """ Attempt to return the blade partner(s) of a node """
+    partners = list()
+    if 'model' not in node:
+        return
+    nodesperblade = Node.models[node['model']]['nodesperblade']
+    nodespernc = Node.models[node['model']]['nodespernc']
+    offset = node['board'] * nodespernc + node['nodenum']
+    for i in range(nodesperblade):
+        if i == offset:
+            continue
+        nid = node['nodeindex'] - offset + i
+        partner = "{cluster}{nid:0{width}}".format(
+            cluster=System.setting('system'),
+            nid=nid,
+            width=settings['niddigits']
+            )
+        partners.append(partner)
+    node['partners'] = ",".join(partners)
 
 if __name__ == '__main__':
     print(_hsnalgomac(1, 1, 47))
