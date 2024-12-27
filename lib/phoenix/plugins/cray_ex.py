@@ -33,32 +33,49 @@ colorado_map = {
     7: { 0: 2,  1: 3  }
 }
 
+# Bard peak
 Node.models['ex235a'] = {
     'ncsperblade':      2,
     'nodesperblade':    2,
     'nodespernc':       1,
     'nicspernode':      4,
+    'arch':             'x86_64',
 }
 
+# Grizzly peak
 Node.models['ex235n'] = {
     'ncsperblade':      2,
     'nodesperblade':    2,
     'nodespernc':       1,
     'nicspernode':      4,
+    'arch':             'x86_64',
 }
 
+# Grace hopper
+Node.models['ex254n'] = {
+    'ncsperblade':      2,
+    'nodesperblade':    2,
+    'nodespernc':       1,
+    'nicspernode':      4,
+    'arch':             'aarch64',
+}
+
+# Windom
 Node.models['ex425'] = {
     'ncsperblade':      2,
     'nodesperblade':    4,
     'nodespernc':       2,
     'nicspernode':      1,
+    'arch':             'x86_64',
 }
 
+# Antero
 Node.models['ex4252'] = {
     'ncsperblade':      1,
     'nodesperblade':    4,
     'nodespernc':       4,
     'nicspernode':      1,
+    'arch':             'x86_64',
 }
 
 # These are defaults for the cray_ex plugin
