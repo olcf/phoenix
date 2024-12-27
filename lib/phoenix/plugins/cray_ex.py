@@ -130,6 +130,20 @@ def _hostmgmt_network(node):
     else:
         return node['racknum'] - int(settings['racklist'][0][1:]) + settings['hostmgmtvlanstart']
 
+def _racktype(node, racknum=None):
+    ''' Guess racktype based on rack number - this is purely convention '''
+    if racknum is None:
+        if 'racknum' not in node:
+            return 'unknown'
+        racknum = node['racknum']
+    if racknum >= 1000 and racknum <= 2999:
+        node['racktype'] = 'mountain'
+    elif racknum >= 3000 and racknum <= 4999:
+        node['racktype'] = 'river'
+    elif racknum >= 9000 and racknum <= 9999:
+        node['racktype'] = 'hill'
+    return node['racktype']
+
 def _xname_to_node_attrs(node):
     global settings
     m = cray_ex_regex.search(node['xname'])
@@ -151,14 +165,7 @@ def _xname_to_node_attrs(node):
         pass
 
     if 'racktype' not in node:
-        # This is purely convention
-        racknum = node['racknum']
-        if racknum >= 1000 and racknum <= 2999:
-            node['racktype'] = 'mountain'
-        elif racknum >= 3000 and racknum <= 4999:
-            node['racktype'] = 'river'
-        elif racknum >= 9000 and racknum <= 9999:
-            node['racktype'] = 'hill'
+        _racktype(node)
 
     if 'type' not in node:
         if 'nodenum' in node:
@@ -186,15 +193,16 @@ def _xname_to_node_attrs(node):
         pass
 
     if 'type' in node and node['type'] == 'compute':
-        # FIXME: Make this configurable (support Hill and grizzly peak)
-        nodesperchassis = settings['nodesperrack']//8
-        nodesperslot = nodesperchassis//8
-        nodesperboard = nodesperslot//2
-        node['nodeindexinrack'] = (nodesperchassis * node['chassis'] +
-                                   nodesperslot * node['slot'] +
-                                   nodesperboard * node['board'] +
-                                   node['nodenum']
-                                  )
+        if 'nodeindexinrack' not in node:
+            nodesperchassis = settings['nodesperrack']//8
+            nodesperslot = nodesperchassis//8
+            nodesperboard = nodesperslot//2
+            chassisoffset = _chassisoffset(node)
+            node['nodeindexinrack'] = (nodesperchassis * chassisoffset +
+                                       nodesperslot * node['slot'] +
+                                       nodesperboard * node['board'] +
+                                       node['nodenum']
+                                      )
         if 'nodeindex' not in node:
             node['nodeindex'] = (settings['nodesperrack'] * node['rackidx'] +
                                  node['nodeindexinrack'] +
@@ -246,11 +254,20 @@ def _nid_to_node_attrs(node):
         node['rackidxnonempty'] = settings['racklistnonempty'].index(node['rack'])
     node['rackidx'] = rackidx
     node['racknum'] = int(node['rack'][1:])
-    node['chassis'] = chassisidx
+
+    # Attempt to set the rack type
+    if 'racktype' not in node:
+        _racktype(node)
+
+    # Special handling for Hill cabinet that only has chassis 1,3
+    if 'racktype' in node and node['racktype'] == 'hill':
+        node['chassis'] = chassisidx * 2 + 1
+    else:
+        node['chassis'] = chassisidx
     node['slot']    = slotidx
     node['board']   = boardidx
     node['nodenum'] = nodeidx
-    node['xname']   = "%sc%ds%db%dn%d"%(node['rack'], chassisidx, slotidx,
+    node['xname']   = "%sc%ds%db%dn%d"%(node['rack'], node['chassis'], slotidx,
                                         boardidx, nodeidx)
 
 def set_node_attrs(node, alias=None):
@@ -536,6 +553,18 @@ def _hsnswitchport(slot, nodenum, nicspernode=1, nic=0):
             return colorado_map[slot][1]
         else:
             return colorado_map[slot][0]
+
+def _chassisoffset(node, chassis=None):
+    """ Hill cabinets only have chassis 1,3. EX2500=0,1,2 EX4000=0-7 """
+    if chassis is None:
+        chassis = node['chassis']
+    if 'racktype' in node and node['racktype'] == 'hill':
+        if chassis == 1:
+            return 0
+        elif chassis == 3:
+            return 1
+    else:
+        return chassis
 
 if __name__ == '__main__':
     print(_hsnalgomac(1, 1, 47))
