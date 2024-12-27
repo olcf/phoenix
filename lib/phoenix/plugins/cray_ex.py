@@ -496,7 +496,7 @@ def _hsnalgomac(group, switch, port):
     return "%s:%s:%s:%s:%s:%s" % (macstr[0:2], macstr[2:4], macstr[4:6], macstr[6:8], macstr[8:10], macstr[10:12])
 
 def _hsnswitchchassisoffset(board, nicspernode, nic):
-    if nicspernode == 1:
+    if nicspernode == 1 or nicspernode ==  or nicspernode == 2:
         if board == 0:
             whichswitchslot = 3
         elif board == 1:
@@ -546,7 +546,7 @@ def _hsnswitchnum(chassis, board, boardsperslot=2, nodesperboard=2,
     return 0
 
 def _hsnswitchport(slot, nodenum, nicspernode=1, nic=0):
-    if nicspernode == 1:
+    if nicspernode == 1 or nicspernode == 2:
         return colorado_map[slot][nodenum]
     elif nicspernode == 4:
         if nic == 0 or nic == 3:
