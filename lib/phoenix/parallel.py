@@ -22,6 +22,7 @@ import threading
 import signal
 import socket
 import traceback
+import resource
 
 from collections import Counter, defaultdict
 
@@ -186,14 +187,27 @@ def gettopology(nodes, fanout=128):
     logging.debug("Topology is\n%s", topology)
     return topology
 
+def increase_nofile():
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    logging.debug("Attempting to increase RLIMIT_NOFILE from %d to %d", soft, hard)
+    if hard > soft:
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+        except:
+            logging.error("Could not increase RLIMIT_NOFILE")
+
 def setup(nodes, args):
     sys.excepthook = excepthook
 
     signal.signal(signal.SIGUSR2, tb_signal_handler)
     if type(nodes) is not NodeSet:
         nodes=NodeSet(nodes)
-    task = task_self()
 
+    # Attempt to increase the number of open files
+    if len(nodes) > 500:
+        increase_nofile()
+
+    task = task_self()
     task.set_default('local_worker', PhoenixWorker)
     # Defaults are not sent to gateways, but info is.
     # https://github.com/cea-hpc/clustershell/pull/439
