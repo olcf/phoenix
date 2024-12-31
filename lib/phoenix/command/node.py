@@ -5,6 +5,7 @@
 import logging
 import sys
 import argparse
+import traceback
 
 import yaml
 try:
@@ -59,7 +60,10 @@ class NodeCommand(Command):
                 # Show the whole node as YAML
                 client.output("%s" % client.node)
         except Exception as e:
-            client.output("Exception: %s" % repr(e), stderr=True)
+            if logging.getLogger().getEffectiveLevel() < logging.WARNING:
+                client.output(traceback.format_exc(), stderr=True)
+            else:
+                client.output("Exception: %s" % repr(e), stderr=True)
             rc=1
         return rc
 
