@@ -295,7 +295,7 @@ class Node(object):
             for newkey in list(source.keys()):
                 self.interpolate(newkey, source, dest)
             return
-        if source is self.rawattr:
+        if source is self.rawattr and key in self.rawattr_nodeset_index:
             Node.environment.globals['offset'] = self.rawattr_nodeset_index[key]
         if isinstance(source[key], dict):
             newdest = dict()
@@ -324,7 +324,8 @@ class Node(object):
             del source[key]
         else:
             logging.error("Unhandled interpolation for key %s %s", key, type(source[key]))
-        del Node.environment.globals['offset']
+        if 'offset' in Node.environment.globals:
+            del Node.environment.globals['offset']
 
     @classmethod
     def nodeset_offset(cls, nodesetstr, offset=0):
