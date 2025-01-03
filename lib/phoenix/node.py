@@ -88,10 +88,10 @@ class Node(object):
         if key in self.rawattr:
             self.interpolate(key)
             return self.attr[key]
-        try:
-            return Node.models[self.attr['model']][key]
-        except:
-            raise KeyError(key)
+        if 'model' in self.attr and self.attr['model'] in Node.models:
+            if key in Node.models[self.attr['model']]:
+                return Node.models[self.attr['model']][key]
+        raise KeyError("Node %s does not have attribute \"%s\"" % (self.attr['name'], key))
 
     def __delitem__(self, key):
         del self.attr[key]
