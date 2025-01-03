@@ -430,7 +430,7 @@ def set_node_attrs(node, alias=None):
             hsngroupoffset = 1
         for hsnnic in range(hsnnics):
             nic = 'hsn%d' % hsnnic
-            switchname = _hsnswitchname(node['racknum'], node['chassis'], node['board'], globalnicspernode, hsnnic)
+            switchname = _hsnswitchname(node, hsnnic)
             if 'hsngroup' in node:
                 group = node['hsngroup']
             elif switchname in rosetta_group:
@@ -440,11 +440,8 @@ def set_node_attrs(node, alias=None):
                     group = node['rackidxnonempty'] + hsngroupoffset
                 else:
                     group = node['rackidx'] + hsngroupoffset
-            switch = _hsnswitchnum(node['chassis'], node['board'],
-                                   nicspernode=globalnicspernode, nic=hsnnic,
-                                   nodesperboard=1, racktype='zeus',
-                                   switchname=switchname)
-            port = _hsnswitchport(node['slot'], node['nodenum'], hsnnics, hsnnic)
+            switch = _hsnswitchnum(node, nic=hsnnic, switchname=switchname)
+            port = _hsnswitchport(node, hsnnic)
 
             _setinterfaceparam(node, nic, 'network', 'hsn')
             _setinterfaceparam(node, nic, 'group', group)
@@ -580,14 +577,21 @@ def _hsnalgomac(group, switch, port):
     macstr = "%012x" % mac
     return "%s:%s:%s:%s:%s:%s" % (macstr[0:2], macstr[2:4], macstr[4:6], macstr[6:8], macstr[8:10], macstr[10:12])
 
-def _hsnswitchchassisoffset(board, nicspernode, nic):
+def _hsnswitchchassisoffset(node, nic):
+    nicspernode = node['hsnnics']
+    if (('bladetype' in node and node['bladetype'] == 'antero') or
+        ('model' in node and node['model'] == 'ex4252')) and nicspernode == 1:
+        if node['nodenum'] == 0 or node['nodenum'] == 1:
+            whichswitchslot=3
+        else:
+            whichswitchslot=7
     if nicspernode == 1 or nicspernode == 2:
-        if board == 0:
+        if node['board'] == 0:
             whichswitchslot = 3
-        elif board == 1:
+        elif node['board'] == 1:
             whichswitchslot = 7
     elif nicspernode == 4:
-        if board == 0:
+        if node['board'] == 0:
             if nic == 0 or nic == 1:
                 whichswitchslot = 3
             else:
@@ -599,20 +603,23 @@ def _hsnswitchchassisoffset(board, nicspernode, nic):
                 whichswitchslot = 5
     return whichswitchslot
 
-def _hsnswitchname(rack, chassis, board, nicspernode, nic):
+def _hsnswitchname(node, nic):
     """ Determines the name of the HSN switch """
-    whichswitchslot = _hsnswitchchassisoffset(board, nicspernode, nic)
-    return "x%dc%dr%db0" % (rack, chassis, whichswitchslot)
+    whichswitchslot = _hsnswitchchassisoffset(node, nic)
+    return "x%dc%dr%db0" % (node['racknum'], node['chassis'], whichswitchslot)
 
-def _hsnswitchnum(chassis, board, boardsperslot=2, nodesperboard=2,
-                  nicspernode=1, nic=0, racktype='hill', switchname=None):
+def _hsnswitchnum(node, nic=0, switchname=None):
     """ Return the (local) switch number
     """
     if switchname is not None and switchname in rosetta_swcnum:
         return rosetta_swcnum[switchname]
-    switchesperchassis = nicspernode * nodesperboard * boardsperslot // 2
-    whichswitchslot = _hsnswitchchassisoffset(board, nicspernode, nic)
-    if racktype == 'mountain' or racktype == 'olympus' or racktype == 'zeus':
+    if 'nodesperblade' in node:
+        nodesperblade = node['nodesperblade']
+    else:
+        nodesperblade = 2
+    switchesperchassis = node['hsnnics'] * nodesperblade // 2
+    whichswitchslot = _hsnswitchchassisoffset(node, nic)
+    if 'racktype' in node and node['racktype'] in ['mountain', 'olympus', 'zeus', 'ex4000', 'ex2500']:
         if switchesperchassis == 2:
             offset = [3, 7].index(whichswitchslot)
         elif switchesperchassis == 4:
@@ -621,23 +628,27 @@ def _hsnswitchnum(chassis, board, boardsperslot=2, nodesperboard=2,
             offset = whichswitchslot
         else:
             offset = 0
-        return chassis * switchesperchassis + offset
-    elif racktype == 'hill':
+        return node['chassis'] * switchesperchassis + offset
+    else:
         # Hill cabinets only have 2 chassis labeled 1 and 3
-        switchnum = board
-        if chassis == 3:
+        switchnum = node['board']
+        if node['chassis'] == 3:
             switchnum = switchnum + 2
         return switchnum
     return 0
 
-def _hsnswitchport(slot, nodenum, nicspernode=1, nic=0):
-    if nicspernode == 1 or nicspernode == 2:
-        return colorado_map[slot][nodenum]
-    elif nicspernode == 4:
+def _hsnswitchport(node, nic=0):
+    hsnnics = node['hsnnics']
+    if (('bladetype' in node and node['bladetype'] == 'antero') or
+        ('model' in node and node['model'] == 'ex4252')) and hsnnics == 1:
+        return colorado_map[node['slot']][1 - (node['nodenum'] % 2)]
+    elif hsnnics == 1 or hsnnics == 2:
+        return colorado_map[node['slot']][node['nodenum']]
+    elif hsnnics == 4:
         if nic == 0 or nic == 3:
-            return colorado_map[slot][1]
+            return colorado_map[node['slot']][1]
         else:
-            return colorado_map[slot][0]
+            return colorado_map[node['slot']][0]
 
 def _chassisoffset(node, chassis=None):
     """ Hill cabinets only have chassis 1,3. EX2500=0,1,2 EX4000=0-7 """
