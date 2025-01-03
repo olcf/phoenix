@@ -287,6 +287,8 @@ def _node_info_by_layout(node):
                                     node['board']           = ctrl_ctr
                                     node['nodenum']         = node_ctr
                                     node['xname']           = "%sc%ds%db%dn%d"%(node['rack'], chassisidx, slot, ctrl_ctr, node_ctr)
+                                    if 'model' in settings['nodegroups'][group]:
+                                        node['model'] = settings['nodegroups'][group]['model']
                                     return
                                 # Update all the node level counters and go on to the next one
                                 node_ctr        = node_ctr + 1
