@@ -423,6 +423,9 @@ class HpcmCommand(Command):
     def _get_bond0_bondmembers(cls, n):
         if n['plugin'] != 'cray_ex':
             return 'eth0'
+        if 'mgmtinterface' in n:
+            return n['mgmtinterface']
+
         global usersettings
         boardmap = { 'windom':       'enp65s0',
                      'antero':       'enp65s0',

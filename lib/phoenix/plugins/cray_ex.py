@@ -39,6 +39,7 @@ Node.models['ex235a'] = {
     'nodesperblade':    2,
     'nodespernc':       1,
     'nicspernode':      4,
+    'mgmtinterface':    'enp148s0',
     'arch':             'x86_64',
 }
 
@@ -48,6 +49,7 @@ Node.models['ex235n'] = {
     'nodesperblade':    2,
     'nodespernc':       1,
     'nicspernode':      4,
+    'mgmtinterface':    'enp195s0',
     'arch':             'x86_64',
 }
 
@@ -57,6 +59,7 @@ Node.models['ex254n'] = {
     'nodesperblade':    2,
     'nodespernc':       1,
     'nicspernode':      4,
+    'mgmtinterface':    'unknown',
     'arch':             'aarch64',
 }
 
@@ -66,6 +69,7 @@ Node.models['ex425'] = {
     'nodesperblade':    4,
     'nodespernc':       2,
     'nicspernode':      1,
+    'mgmtinterface':    'enp65s0',
     'arch':             'x86_64',
 }
 
@@ -75,6 +79,7 @@ Node.models['ex4252'] = {
     'nodesperblade':    4,
     'nodespernc':       4,
     'nicspernode':      1,
+    'mgmtinterface':    'enp65s0',
     'arch':             'x86_64',
 }
 
