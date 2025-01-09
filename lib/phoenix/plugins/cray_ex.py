@@ -291,9 +291,9 @@ def _node_info_by_layout(node):
                                     node['xname']           = "%sc%ds%db%dn%d"%(node['rack'], chassisidx, slot, ctrl_ctr, node_ctr)
                                     if 'model' in settings['nodegroups'][group]:
                                         node['model'] = settings['nodegroups'][group]['model']
-                                    return
                                     if 'racktype' not in node:
                                         _racktype(node)
+                                    return
                                 # Update all the node level counters and go on to the next one
                                 node_ctr        = node_ctr + 1
                                 counter         = counter + 1
