@@ -145,6 +145,8 @@ def _racktype(node, racknum=None):
         node['racktype'] = 'mountain'
     elif racknum >= 3000 and racknum <= 4999:
         node['racktype'] = 'river'
+    elif racknum >= 8000 and racknum <= 8999:
+        node['racktype'] = 'ex2500'
     elif racknum >= 9000 and racknum <= 9999:
         node['racktype'] = 'hill'
     return node['racktype']
@@ -290,6 +292,8 @@ def _node_info_by_layout(node):
                                     if 'model' in settings['nodegroups'][group]:
                                         node['model'] = settings['nodegroups'][group]['model']
                                     return
+                                    if 'racktype' not in node:
+                                        _racktype(node)
                                 # Update all the node level counters and go on to the next one
                                 node_ctr        = node_ctr + 1
                                 counter         = counter + 1
@@ -592,7 +596,7 @@ def _hsnswitchchassisoffset(node, nic):
             whichswitchslot=3
         else:
             whichswitchslot=7
-    if nicspernode == 1 or nicspernode == 2:
+    elif nicspernode == 1 or nicspernode == 2:
         if node['board'] == 0:
             whichswitchslot = 3
         elif node['board'] == 1:
