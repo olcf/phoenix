@@ -59,7 +59,7 @@ Node.models['ex254n'] = {
     'nodesperblade':    2,
     'nodespernc':       1,
     'nicspernode':      4,
-    'mgmtinterface':    'unknown',
+    'mgmtinterface':    'enP5p1s0',
     'arch':             'aarch64',
 }
 
