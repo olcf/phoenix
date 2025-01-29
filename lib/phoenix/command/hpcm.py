@@ -354,11 +354,11 @@ class HpcmCommand(Command):
             servicenum = n['hpcm_servicenum']
         elif 'type' in n and n['type'] == 'admin':
             return 'admin'
-        elif 'type' in n and n['type'] == 'compute':
+        elif 'type' in n and n['type'] == 'compute' and n['plugin'] == 'cray_ex':
             servicenum = (2000000000 + n['racknum'] * 10000 +
                           n['chassis'] * 1000 + n['slot'] * 100 +
                           n['board'] * 10 + n['nodenum'])
-        elif 'racknum' in n and 'slot' in n:
+        elif 'racknum' in n and 'slot' in n and n['plugin'] == 'cray_ex':
             servicenum = n['racknum'] * 100 + n['slot']
             if 'board' in n and n['board'] > 0:
                 servicenum = servicenum * 10 + n['board']
