@@ -4,6 +4,7 @@
 
 import logging
 import requests
+import json
 
 from phoenix.oob import OOBTimeoutError
 from phoenix.command import CommandTimeout
@@ -80,8 +81,6 @@ class Redfish(Oob):
             auth = cls._get_auth(node)
         headers={'Content-Type': 'application/json'}
         response = cls._do_redfish_req(host, path, "post", auth=auth, data=data, headers=headers)
-        logging.debug("Matt body is %s", response.request.body)
-        logging.debug(str(status_codes))
         if status_codes is not None and response.status_code not in status_codes:
             try:
                 rjson = response.json()
@@ -92,7 +91,11 @@ class Redfish(Oob):
         if len(response.text) == 0:
             status = "Ok"
         else:
-            status = str(response.text)
+            try:
+                rjson = response.json()
+                status = rjson
+            except:
+                status = str(response.text)
         return (True, status)
 
     @classmethod
@@ -236,7 +239,16 @@ class Redfish(Oob):
         data = {"ImageURI": url, "TransferProtocol":"HTTP"}
         if target:
             data["Targets"] = [target]
-        return cls._post_redfish(node, path, data, status_codes=[200, 202, 204])
+        (rc, msg) = cls._post_redfish(node, path, data, status_codes=[200, 202, 204])
+        if isinstance(msg, dict):
+            if '@odata.type' in msg and 'task' in msg['@odata.type'].lower():
+                if 'Id' in msg:
+                    message = 'Ok: Task %s created' % msg['Id']
+            else:
+                message = json.dumps(msg)
+        else:
+            message = msg
+        return (rc, message)
 
     inventory_map = {
         'mac': ('EthernetInterfaces/ManagementEthernet', 'MACAddress'),
