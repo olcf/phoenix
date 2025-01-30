@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Redfish SNMP Functions"""
+"""SNMP out-of-band Functions"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
 import logging
