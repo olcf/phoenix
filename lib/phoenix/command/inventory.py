@@ -41,7 +41,10 @@ class InventoryCommand(Command):
     def run(cls, client):
         action = client.command[1]
         if client.node['type'] == 'switch':
-            oobtype = 'snmp'
+            if 'switchtype' in client.node and (client.node['switchtype'] == 'ssh' or client.node['switchtype'] == 'aruba'):
+                oobtype = 'ssh'
+            else:
+                oobtype = 'snmp'
             oobcls = phoenix.get_component("oob", oobtype, oobtype.capitalize() + "Switch")
         else:
             oobkind = "bmc"
