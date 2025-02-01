@@ -11,6 +11,7 @@ except ImportError:
     from yaml import Loader, Dumper
 
 import os
+import re
 import sys
 import subprocess
 import signal
@@ -203,6 +204,13 @@ class Recipe(object):
                 if rc:
                     logging.error("Could not add repo %s at %s", repo, repourl)
                     raise RuntimeError
+            elif self.packagemanager in ['yum', 'dnf']:
+                with open('%s/etc/yum.repos.d/%s.repo' % (self.root, repo), 'w') as f:
+                    f.write("[%s]\n" % repo)
+                    f.write("name = %s\n" % repo)
+                    f.write("baseurl = %s\n" % repourl)
+                    f.write("enabled = 1\n")
+                    f.write("gpgcheck = 0\n")
             else:
                 logging.error("Unsupported package manager")
                 raise RuntimeError
@@ -284,14 +292,16 @@ class ConfirmKeyboardInterrupt(object):
         signal.signal(signal.SIGINT, self.saved_handler)
 
 def guesspackagemanager(distro):
-    # FIXME: make this work better
     if distro[0:3] == "sle":
         return "zypper"
-    elif distro[0:4] == "rhel":
-        if distro[5] < 8:
+    elpattern = re.compile('(?:rh)?el([0-9\.]+)')
+    result = elpattern.search(distro)
+    if result:
+        if int(result.group(1)) < 8:
             return "yum"
         else:
             return "dnf"
+    raise RuntimeError("Unknown package manager - please manually set")
 
 class Step(object):
     pass
@@ -337,13 +347,24 @@ class StepPackage(Step):
         command = ["buildah",
                    "run",
                    "--net=host",
-                   recipe.container,
-                   "zypper",
-                   "--non-interactive",
-                   "install",
-                   "--no-confirm",
-                   "--no-recommends"
-                   ]
+                   recipe.container]
+        if recipe.packagemanager == 'zypper':
+            command.extend([
+                "zypper",
+                "--non-interactive",
+                "install",
+                "--no-confirm",
+                "--no-recommends",
+                ])
+        elif recipe.packagemanager == 'dnf':
+            command.extend([
+                "dnf",
+                "--assumeyes",
+                "install",
+                ])
+        else:
+            raise RuntimeError("Unknown package manager installation requested")
+
         command.extend(self.packages)
         rc = runcmd(command)
         if rc:
