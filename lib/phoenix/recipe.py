@@ -420,6 +420,8 @@ class ArtifactFile(Artifact):
             pass
         logging.info("Saving artifact '%s' to %s", self.pattern, outputdir)
         paths = glob.glob(recipe.root + '/' + self.pattern)
+        if len(paths) == 0:
+            logging.error("Artifact file '%s' did not match any files" % self.pattern)
         for path in paths:
             logging.debug("Copying %s to %s", path, outputdir)
             shutil.copy(path, outputdir)
