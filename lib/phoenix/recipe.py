@@ -205,6 +205,7 @@ class Recipe(object):
                     logging.error("Could not add repo %s at %s", repo, repourl)
                     raise RuntimeError
             elif self.packagemanager in ['yum', 'dnf']:
+                os.makedirs('%s/etc/yum.repos.d' % self.root, exist_ok=True)
                 with open('%s/etc/yum.repos.d/%s.repo' % (self.root, repo), 'w') as f:
                     f.write("[%s]\n" % repo)
                     f.write("name = %s\n" % repo)
@@ -235,6 +236,32 @@ class Recipe(object):
             if rc:
                 logging.error("Failed to install the init packages")
                 raise RuntimeError
+
+        elif self.packagemanager == "dnf":
+            command = ["dnf",
+                       "--installroot=%s" % self.root,
+                       "--assumeyes",
+                       "install",
+                       ]
+            command.extend(self.initpackages)
+            rc = runcmd(command)
+            if rc:
+                logging.error("Failed to install the init packages")
+                raise RuntimeError
+
+            logging.info("Rebuilding RPM database in container %s", self.container)
+            command = ["buildah",
+                       "run",
+                       "--net=host",
+                       self.container,
+                       "/bin/bash",
+                       "-c",
+                       "--",
+                       "rpmdb --rebuilddb",
+                       ]
+            rc = runcmd(command)
+            if rc:
+                logging.error("Return code %d from rpmdb", rc)
 
         else:
             logging.error("Unsupported package manager")
