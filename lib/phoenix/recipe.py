@@ -13,6 +13,7 @@ except ImportError:
 import os
 import re
 import sys
+import platform
 import subprocess
 import signal
 import time
@@ -26,6 +27,7 @@ from jinja2 import Template
 class Recipe(object):
     def __init__(self, name=None, variables=None):
         self.name = name
+        self.architecture = platform.machine()
         self.root = None
         self.tag = None
         self.imagetype = None
@@ -44,10 +46,11 @@ class Recipe(object):
 
     def __str__(self):
         result = list()
-        result.append("Name:      %s" % self.name)
-        result.append("ImageType: %s" % self.imagetype)
-        result.append("Distro:    %s" % self.distro)
-        result.append("InitPkgs:  %s" % ",".join(self.initpackages))
+        result.append("Name:         %s" % self.name)
+        result.append("Architecture: %s" % self.architecture)
+        result.append("ImageType:    %s" % self.imagetype)
+        result.append("Distro:       %s" % self.distro)
+        result.append("InitPkgs:     %s" % ",".join(self.initpackages))
         result.append("Repos:")
         for key in self.repos:
             result.append("  %s" % key)
@@ -115,6 +118,8 @@ class Recipe(object):
         for key, value in recipedata.items():
             if key == "imagetype":
                 self.imagetype = value
+            elif key == "architecture":
+                self.architecture = value
             elif key == "initfrom":
                 self.initfrom = value
             elif key == "distro":
@@ -167,7 +172,7 @@ class Recipe(object):
         name = "%s-%s" % (self.name, tag)
         # FIXME add more error handling here
         try:
-            self.container = subprocess.check_output(["buildah", "from", "--name", name, self.initfrom], stderr=subprocess.STDOUT).decode().rstrip()
+            self.container = subprocess.check_output(["buildah", "from", "--name", name, "--arch", self.architecture, self.initfrom], stderr=subprocess.STDOUT).decode().rstrip()
             self.root = subprocess.check_output(["buildah", "mount", self.container], stderr=subprocess.STDOUT).decode().rstrip()
         except subprocess.CalledProcessError as cpe:
             logging.error("Command failed: %s", cpe.output)
@@ -240,6 +245,7 @@ class Recipe(object):
         elif self.packagemanager == "dnf":
             command = ["dnf",
                        "--installroot=%s" % self.root,
+                       "--forcearch=%s" % self.architecture,
                        "--assumeyes",
                        "install",
                        ]
