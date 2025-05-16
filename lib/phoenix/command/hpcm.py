@@ -584,13 +584,13 @@ class HpcmCommand(Command):
                     pass
                 else:
                     raise
+            if isinstance(repos[repo], dict):
+                url = repos[repo]['url']
+            else:
+                url = repos[repo]
             with open(typefile, 'w') as filefd:
                 filefd.write('repo-md')
             with open(urlfile, 'w') as filefd:
-                if isinstance(repos[repo], dict):
-                    url = repos[repo]['url']
-                else:
-                    url = repos[repo]
                 filefd.write(url)
             if isinstance(repos[repo], dict) and 'priority' in repos[repo]:
                 with open(priofile, 'w') as filefd:
@@ -606,7 +606,7 @@ class HpcmCommand(Command):
             except:
                 pass
             try:
-                response = urllib.request.urlopen('%s/clusters/cm.rpmlist' % repos[repo], timeout=5).read().decode('utf-8')
+                response = urllib.request.urlopen('%s/clusters/cm.rpmlist' % url, timeout=5).read().decode('utf-8')
                 with open(rpmfile, 'w') as filefd:
                     filefd.write(response)
             except:
