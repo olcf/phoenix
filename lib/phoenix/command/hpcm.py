@@ -576,6 +576,7 @@ class HpcmCommand(Command):
             typefile = '%s/repo-type' % path
             urlfile = '%s/repo-url' % path
             rpmfile = '%s/cm.rpmlist' % path
+            priofile = '%s/priority' % path
             try:
                 os.mkdir(path)
             except OSError as e:
@@ -586,7 +587,20 @@ class HpcmCommand(Command):
             with open(typefile, 'w') as filefd:
                 filefd.write('repo-md')
             with open(urlfile, 'w') as filefd:
-                filefd.write(repos[repo])
+                if isinstance(repos[repo], dict):
+                    url = repos[repo]['url']
+                else:
+                    url = repos[repo]
+                filefd.write(url)
+            if isinstance(repos[repo], dict) and 'priority' in repos[repo]:
+                with open(priofile, 'w') as filefd:
+                    filefd.write(str(repos[repo]['priority']))
+            else:
+                try:
+                    os.unlink(priofile)
+                except:
+                    pass
+
             try:
                 os.unlink(rpmfile)
             except:
