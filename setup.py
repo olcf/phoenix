@@ -4,7 +4,6 @@
 
 import sys
 import os
-import imp
 import gzip
 import argparse
 import subprocess
@@ -35,6 +34,8 @@ class GenerateMan(Command):
         pass
 
     def run(self):
+        print("Disabled for now")
+        return false
         for script in self.scripts:
             scriptname = script.split('/')[-1]
             sys.dont_write_bytecode = True
