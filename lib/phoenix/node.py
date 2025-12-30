@@ -108,8 +108,8 @@ class Node(object):
         return False
 
     @classmethod
-    def load_nodes(cls, filename=None, nodeset=None, clear=False):
-        """ Reads and processes the nodes.yaml file.
+    def load_nodes(cls, filename=None, datastr=None, nodeset=None, clear=False):
+        """ Reads and processes node data.
             Can be called more than once to load multiple files,
             or if you want to focus on a different nodeset. By
             default, it just adds to the current view of nodes.
@@ -120,13 +120,19 @@ class Node(object):
         if clear:
             cls.nodes = dict()
 
-        if filename is None:
+        if filename is not None and datastr is not None:
+            logging.error("Cannot load nodes from a file and string")
+            return False
+        elif filename is None and datastr is None:
             filename = "%s/nodes.yaml" % phoenix.conf_path
 
-        # Read the yaml file
-        logging.info("Loading node file '%s'", filename)
-        with open(filename) as nodefd:
-            nodedata = yaml.load(nodefd, Loader=Loader) or {}
+        if filename is not None:
+            logging.info("Loading node file '%s'", filename)
+            with open(filename) as nodefd:
+                nodedata = yaml.load(nodefd, Loader=Loader) or {}
+        elif datastr is not None:
+            filename = 'datastr'
+            nodedata = yaml.load(datastr, Loader=Loader) or {}
 
         # Load the data into the node structures
         for noderange, data in nodedata.items():
