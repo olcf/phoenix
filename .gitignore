@@ -7,3 +7,4 @@ dist
 man
 /conf*
 .vscode
+docs/_site

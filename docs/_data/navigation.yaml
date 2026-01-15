@@ -1,0 +1,47 @@
+# main links
+main:
+  - title: "Documentation"
+    url: /docs/
+
+# documentation links
+docs:
+  - title: Getting Started
+    children:
+      - title: Introduction
+        url: /docs/
+      - title: "Quick-Start Tutorial"
+        url: /docs/quick-start/
+      - title: Building and Development
+        url: /docs/building/
+      - title: "Installation and Upgrades"
+        url: /docs/install/
+  - title: Phoenix Configuration
+    children:
+      - title: Config Basics
+        url: /docs/config/basics
+      - title: Global System Config
+        url: /docs/config/system
+      - title: Networks
+        url: /docs/config/network
+      - title: Inventory
+        url: /docs/config/inventory
+  - title: System Administration
+    children:
+      - title: Building Images
+        url: /docs/administration/images
+      - title: Node Control
+        url: /docs/administration/node_control
+      - title: Node Logging
+        url: /docs/administration/logging
+  - title: Advanced Topics
+    children:
+      - title: Scaling
+        url: /docs/advanced/scaling
+      - title: Automatic Discovery
+        url: /docs/advanced/autodiscovery
+  - title: Hardware Plugins
+    children:
+      - title: Generic
+        url: /docs/plugins/generic
+      - title: "HPE Cray EX"
+        url: /docs/plugins/cray_ex
