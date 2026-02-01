@@ -40,7 +40,7 @@ class InventoryCommand(Command):
     @classmethod
     def run(cls, client):
         action = client.command[1]
-        if client.node['type'] == 'switch':
+        if 'type' in client.node and client.node['type'] == 'switch':
             if 'switchtype' in client.node and (client.node['switchtype'] == 'ssh' or client.node['switchtype'] == 'aruba'):
                 oobtype = 'ssh'
             else:
