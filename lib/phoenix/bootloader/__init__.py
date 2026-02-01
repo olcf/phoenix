@@ -10,6 +10,7 @@ import socket
 import fcntl
 import os
 import signal
+from pathlib import Path
 
 try:
     from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -95,6 +96,9 @@ def get_bootloader_script(node):
     return loader_class.script(node)
 
 def write_bootloader_scripts():
+    bldir = Path(phoenix.artifact_path) / 'bootfiles'
+    if not bldir.is_dir():
+        bldir.mkdir()
     for nodename,node in sorted(Node.nodes.items()):
         if 'interfaces' in node:
             for ifacename, iface in node['interfaces'].items():
@@ -108,7 +112,7 @@ def write_bootloader_scripts():
                 except:
                     logging.debug("Skipping %s because a script was not generated", node['name'])
                     continue
-                outputpath = '%s/bootfiles/%s' % (phoenix.artifact_path, iface['ip'])
+                outputpath = bldir / iface['ip']
                 logging.debug("Writing bootfile to %s", outputpath)
                 with open (outputpath, 'w') as ofile:
                     ofile.write(script)
