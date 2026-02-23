@@ -18,7 +18,7 @@ class InventoryCommand(Command):
     def get_parser(cls):
         parser = argparse.ArgumentParser(description="Query inventory of Phoenix nodes")
         parser.add_argument('nodes', default=None, type=str, help='Nodes to query')
-        parser.add_argument('action', default=None, type=str, help='Action')
+        parser.add_argument('action', default=None, nargs=argparse.REMAINDER, help='Action')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
         return parser
@@ -55,7 +55,7 @@ class InventoryCommand(Command):
                 client.output("bmctype not set", stderr=True)
                 return 1
         try:
-            rc = oobcls.inventory(client.node, client, [action])
+            rc = oobcls.inventory(client.node, client, action)
             return rc
         except OOBTimeoutError:
             client.output("Timeout", stderr=True)
