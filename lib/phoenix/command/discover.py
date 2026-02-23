@@ -64,7 +64,7 @@ class DiscoverCommand(Command):
 
         if len(individual_nodes) > 0:
             (task, _) = phoenix.parallel.setup(individual_nodes, args)
-            cmd = ["inventory", "mac"]
+            cmd = ["inventory", ["mac"]]
             task.shell(cmd, nodes=individual_nodes, autoclose=False, stdin=False, tree=True, remote=False)
             task.resume()
             for buf, nodes in task.iter_buffers():
