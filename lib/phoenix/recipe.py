@@ -276,6 +276,15 @@ class Recipe(object):
             raise RuntimeError
             return
 
+    def taglatest(self):
+        latestlink = Path(phoenix.artifact_path) / 'images' / self.name / 'latest'
+        if latestlink.is_symlink():
+            try:
+                latestlink.unlink()
+            except FileNotFoundError:
+                pass
+        latestlink.symlink_to(Path(self.tag))
+
     def docleanup(self):
         try:
             subprocess.check_output(["buildah", "umount", self.container])
@@ -302,6 +311,7 @@ class Recipe(object):
                 step.run(self)
             for artifact in self.artifacts:
                 artifact.run(self)
+            self.taglatest()
             if keep:
                 print("Keeping build root at %s" % self.root)
             else:
