@@ -23,6 +23,7 @@ import shutil
 import phoenix
 import jinja2
 from jinja2 import Template
+from pathlib import Path
 
 class Recipe(object):
     def __init__(self, name=None, variables=None):
@@ -67,8 +68,8 @@ class Recipe(object):
     def list_recipes(cls):
         """ List all known recipes on the system """
         try:
-            user_provided = os.listdir("%s/recipes" % phoenix.conf_path)
-            return [x[0:-5] for x in sorted(user_provided) if x.endswith(".yaml")]
+            user_provided = (Path(phoenix.conf_path) / "recipes").iterdir()
+            return sorted([x.stem for x in user_provided if x.suffix == ".yaml"])
         except OSError:
             return []
 
@@ -78,8 +79,8 @@ class Recipe(object):
             file system
         """
         # First check in the phoenix_conf area
-        filename = "%s/recipes/%s.yaml" % (phoenix.conf_path, name)
-        if os.path.exists(filename):
+        filename = (Path(phoenix.conf_path) / "recipes" / name).with_suffix(".yaml")
+        if filename.is_file():
             return filename
 
         # Next, check for Phoenix "built-in" recipes
@@ -100,8 +101,7 @@ class Recipe(object):
 
         # Read the yaml file
         logging.info("Loading recipe file '%s'", filename)
-        with open(filename) as recipefd:
-            recipestr = recipefd.read()
+        recipestr = filename.read_text()
 
         # Process any variables
         template = Template(recipestr, undefined=jinja2.StrictUndefined)
@@ -173,7 +173,7 @@ class Recipe(object):
         # FIXME add more error handling here
         try:
             self.container = subprocess.check_output(["buildah", "from", "--name", name, "--arch", self.architecture, self.initfrom], stderr=subprocess.STDOUT).decode().rstrip()
-            self.root = subprocess.check_output(["buildah", "mount", self.container], stderr=subprocess.STDOUT).decode().rstrip()
+            self.root = Path(subprocess.check_output(["buildah", "mount", self.container], stderr=subprocess.STDOUT).decode().rstrip())
         except subprocess.CalledProcessError as cpe:
             logging.error("Command failed: %s", cpe.output)
             raise RuntimeError
@@ -210,8 +210,10 @@ class Recipe(object):
                     logging.error("Could not add repo %s at %s", repo, repourl)
                     raise RuntimeError
             elif self.packagemanager in ['yum', 'dnf']:
-                os.makedirs('%s/etc/yum.repos.d' % self.root, exist_ok=True)
-                with open('%s/etc/yum.repos.d/%s.repo' % (self.root, repo), 'w') as f:
+                yumdir = Path(self.root) / 'etc' / 'yum.repos.d'
+                yumdir.mkdir(parents=True, exist_ok=True)
+                #with open('%s/etc/yum.repos.d/%s.repo' % (self.root, repo), 'w') as f:
+                with (yumdir / repo).with_suffix(".repo").open('w') as f:
                     f.write("[%s]\n" % repo)
                     f.write("name = %s\n" % repo)
                     f.write("baseurl = %s\n" % repourl)
@@ -446,18 +448,19 @@ class ArtifactFile(Artifact):
     def run(self, recipe):
         # TODO: Make sure the resulting glob doesn't escape the container root
         #       Not really a security issue, as users shouldn't run untrusted recipes
-        outputdir = os.path.join(phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
-        try:
-            os.makedirs(outputdir)
-        except FileExistsError:
-            pass
+        outputdir = Path(phoenix.artifact_path) / 'images' / recipe.name / recipe.tag
+        outputdir.mkdir(parents=True, exist_ok=True)
         logging.info("Saving artifact '%s' to %s", self.pattern, outputdir)
-        paths = glob.glob(recipe.root + '/' + self.pattern)
-        if len(paths) == 0:
-            logging.error("Artifact file '%s' did not match any files" % self.pattern)
+
+        # pathlib glob does not support patterns with absolute paths
+        paths = glob.glob(str(recipe.root) + '/' + self.pattern)
+        copied = 0
         for path in paths:
             logging.debug("Copying %s to %s", path, outputdir)
             shutil.copy(path, outputdir)
+            copied = copied + 1
+        if copied == 0:
+            logging.error("Artifact file '%s' did not match any files" % self.pattern)
 
 class ArtifactInitramfs(Artifact):
     name = 'Initramfs'
@@ -469,11 +472,8 @@ class ArtifactInitramfs(Artifact):
         return "True"
 
     def run(self, recipe):
-        outputdir = os.path.join(phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
-        try:
-            os.makedirs(outputdir)
-        except FileExistsError:
-            pass
+        outputdir = Path(phoenix.artifact_path) / 'images' / recipe.name / recipe.tag
+        outputdir.mkdir(parents=True, exist_ok=True)
         cpiocommand = "find . | cpio --quiet -H newc -o | pigz -9 -n > %s/initramfs.gz" % outputdir
         logging.info("Saving image root as initramfs artifact")
         command = [ "/bin/bash",
@@ -505,11 +505,8 @@ class ArtifactSquashfs(Artifact):
         return "True"
 
     def run(self, recipe):
-        outputdir = os.path.join(phoenix.artifact_path, 'images', recipe.name, recipe.tag, '')
-        try:
-            os.makedirs(outputdir)
-        except FileExistsError:
-            pass
+        outputdir = Path(phoenix.artifact_path) / 'images' / recipe.name / recipe.tag
+        outputdir.mkdir(parents=True, exist_ok=True)
         if len(self.include) > 0:
             squashcommand = "mksquashfs %s %s/%s -no-strip" % (" ".join(self.include), outputdir, self.output)
         else:
