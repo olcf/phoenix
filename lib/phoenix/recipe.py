@@ -450,10 +450,18 @@ class ArtifactFile(Artifact):
     name = 'File'
 
     def __init__(self, filedesc):
-        self.pattern = filedesc
+        if type(filedesc) is dict:
+            self.pattern = filedesc['src']
+            self.dst = filedesc['dst']
+        else:
+            self.pattern = filedesc
+            self.dst = None
 
     def __str__(self):
-        return self.pattern
+        if self.dst:
+            return '%s => %s' % (self.pattern, self.dst)
+        else:
+            return self.pattern
 
     def run(self, recipe):
         # TODO: Make sure the resulting glob doesn't escape the container root
@@ -462,12 +470,14 @@ class ArtifactFile(Artifact):
         outputdir.mkdir(parents=True, exist_ok=True)
         logging.info("Saving artifact '%s' to %s", self.pattern, outputdir)
 
+        outputpath = outputdir / self.dst if self.dst else outputdir
+
         # pathlib glob does not support patterns with absolute paths
         paths = glob.glob(str(recipe.root) + '/' + self.pattern)
         copied = 0
         for path in paths:
-            logging.debug("Copying %s to %s", path, outputdir)
-            shutil.copy(path, outputdir)
+            logging.debug("Copying %s to %s", path, outputpath)
+            shutil.copy(path, outputpath)
             copied = copied + 1
         if copied == 0:
             logging.error("Artifact file '%s' did not match any files" % self.pattern)
