@@ -477,7 +477,8 @@ class ArtifactFile(Artifact):
         copied = 0
         for path in paths:
             logging.debug("Copying %s to %s", path, outputpath)
-            shutil.copy(path, outputpath)
+            created = shutil.copy2(path, outputpath)
+            os.chmod(created, 0o644)
             copied = copied + 1
         if copied == 0:
             logging.error("Artifact file '%s' did not match any files" % self.pattern)
