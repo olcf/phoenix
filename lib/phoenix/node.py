@@ -16,6 +16,7 @@ except ImportError:
 from ClusterShell.NodeSet import NodeSet
 from jinja2 import Template
 from jinja2 import Environment
+from jinja2.runtime import Context
 import re
 import copy
 import importlib
@@ -37,6 +38,16 @@ if sys.version_info < (3,7) or (sys.version_info < (3,6) and platform.python_imp
         return OrderedDict(loader.construct_pairs(node))
 
     yaml.add_constructor("tag:yaml.org,2002:map", odict_constructor, Loader=Loader)
+
+class NodeContext(Context):
+    def resolve_or_missing(self, key):
+        logging.debug("Inside resolve_or_missing")
+        logging.debug(self.vars)
+        if 'node' in self.parent:
+            logging.debug("Node is defined")
+            if key in self.parent['node']:
+                return self.parent['node'][key]
+        return super().resolve_or_missing(key)
 
 class Node(object):
     tpl_regex = re.compile(r'{{')
@@ -271,6 +282,7 @@ class Node(object):
             return
         logging.info("Loading Jinja templates")
         cls.environment = Environment()
+        cls.environment.context_class = NodeContext
         cls.environment.globals['ipadd'] = Network.ipadd
         cls.environment.globals['data'] = Data.data
         cls.environment.globals['nodeset_offset'] = Node.nodeset_offset
