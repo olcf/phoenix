@@ -41,12 +41,9 @@ if sys.version_info < (3,7) or (sys.version_info < (3,6) and platform.python_imp
 
 class NodeContext(Context):
     def resolve_or_missing(self, key):
-        logging.debug("Inside resolve_or_missing")
-        logging.debug(self.vars)
-        if 'node' in self.parent:
-            logging.debug("Node is defined")
-            if key in self.parent['node']:
-                return self.parent['node'][key]
+        logging.debug("Inside NodeContext resolve_or_missing")
+        if 'node' in self.parent and key in self.parent['node']:
+            return self.parent['node'][key]
         return super().resolve_or_missing(key)
 
 class Node(object):
