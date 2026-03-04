@@ -23,6 +23,7 @@ from phoenix.system import System
 from phoenix.command import Command
 from phoenix.node import Node
 from phoenix.bootloader import write_bootloader_scripts
+from phoenix.dhcp import load_dhcp_provider
 
 class ConfCommand(Command):
     @classmethod
