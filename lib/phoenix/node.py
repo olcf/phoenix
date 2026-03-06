@@ -21,6 +21,7 @@ import re
 import copy
 import importlib
 import ipaddress
+import collections
 import phoenix
 from phoenix.system import System
 from phoenix.network import Network
@@ -38,6 +39,83 @@ if sys.version_info < (3,7) or (sys.version_info < (3,6) and platform.python_imp
         return OrderedDict(loader.construct_pairs(node))
 
     yaml.add_constructor("tag:yaml.org,2002:map", odict_constructor, Loader=Loader)
+
+class NodeLayerMeta(object):
+    def __init__(self, layertype=None, file=None, line=None, noderange=None, nodeset=None):
+        self.layertype = layertype
+        self.file = file
+        self.line = line
+        self.noderange = noderange
+        self.nodeset = nodeset
+
+class NodeLayer(object):
+    def __init__(self, meta=None, layertype=None, file=None, line=None, noderange=None, nodeset=None, data={}):
+        if meta is None:
+            self.meta = NodeLayerMeta(layertype = layertype,
+                                      file = file,
+                                      line = line,
+                                      noderange = noderange,
+                                      nodeset = nodeset)
+        else:
+            self.meta = meta
+        self.data = data
+
+    def __str__(self):
+        return str(data)
+
+    def __repr__(self):
+        return str(data)
+
+    def __iter__(self):
+        return iter(self.data)
+
+class NodeLayerMap(collections.abc.Mapping):
+    def __init__(self, *layers):
+        self.layers = list(layers) or []
+        self.layers.insert(0, NodeLayer(layertype="cache"))
+
+    def addlayer(self, layer):
+        self.layers.insert(1, layer)
+
+    def __str__(self):
+        return(str(dict(self)))
+
+    def __repr__(self):
+        return(str(dict(self)))
+
+    def __getitem__(self, key):
+        for layer in self.layers:
+            try:
+                result = layer.data[key]
+                if isinstance(result, collections.abc.Mapping):
+                    return NodeLayerMap(*[NodeLayer(meta=layer.meta, data=layer.data[key]) for layer in self.layers if key in layer.data and isinstance(layer.data[key], collections.abc.Mapping)])
+                else:
+                    return result
+            except KeyError:
+                pass
+        raise KeyError(key)
+
+    def getwithblame(self, key):
+        for layer in self.layers:
+            try:
+                result = layer.data['key']
+                blame = layer.meta
+                return (result, blame)
+            except KeyError:
+                pass
+        raise KeyError(key)
+
+    def __contains__(self, key):
+        return any(key in l.data for l in self.layers)
+
+    def __iter__(self):
+        return iter(set().union(*self.layers))
+
+    def __setitem__(self, key, value):
+        self.layers[0].data[key] = value
+
+    def __len__(self):
+        return len(set().union(*self.layers))
 
 class NodeContext(Context):
     def resolve_or_missing(self, key):
