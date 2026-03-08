@@ -7,7 +7,7 @@ import logging
 import phoenix
 
 class Data(object):
-    datasource = None
+    datasource = phoenix.get_component('datasource')
 
     def __init__(self, name):
         pass
@@ -15,9 +15,6 @@ class Data(object):
     @classmethod
     def data(cls, *args):
         logging.debug("Called data with key %s", args)
-        if cls.datasource is None:
-            cls.datasource = phoenix.get_component('datasource')
-        logging.debug("calling getkey")
         output = cls.datasource.getval(*args)
         logging.debug("got data value %s", output)
         return output
