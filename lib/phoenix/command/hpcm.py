@@ -616,7 +616,7 @@ class HpcmCommand(Command):
         except KeyError:
             logging.error("images section not found in metadata")
             return
-        for image in images:
+        for image in set(images):
             if 'repos' not in images[image]:
                 logging.error("repos section not found in image %s", image)
                 return
