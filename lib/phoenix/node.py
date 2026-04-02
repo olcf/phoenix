@@ -49,7 +49,7 @@ class NodeLayerMeta(object):
         self.nodeset = nodeset
 
 class NodeLayer(object):
-    def __init__(self, meta=None, layertype=None, file=None, line=None, noderange=None, nodeset=None, data={}):
+    def __init__(self, meta=None, layertype=None, file=None, line=None, noderange=None, nodeset=None, data=None):
         if meta is None:
             self.meta = NodeLayerMeta(layertype = layertype,
                                       file = file,
@@ -58,37 +58,63 @@ class NodeLayer(object):
                                       nodeset = nodeset)
         else:
             self.meta = meta
-        self.data = data
+        self.data = data or {}
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __getitem__(self, key):
+        return self.data[key]
 
     def __str__(self):
-        return str(data)
+        return str(self.data)
 
     def __repr__(self):
-        return str(data)
+        return str(self.data)
 
     def __iter__(self):
         return iter(self.data)
 
 class NodeLayerMap(collections.abc.Mapping):
-    def __init__(self, *layers):
-        self.layers = list(layers) or []
+    def __init__(self, node=None, initlayers=None):
+        self.node = node
+        self.layers = initlayers or []
         self.layers.insert(0, NodeLayer(layertype="cache"))
 
-    def addlayer(self, layer):
-        self.layers.insert(1, layer)
+    def addlayer(self, layer, position=None):
+        ''' Adds a layer to the map at the desired position. Position must be
+            after the cache layer (cache always wins).
+        '''
+        if position is None:
+            position = 1
+        elif position < 1:
+            raise IndexError
+        self.layers.insert(position, layer)
+
+    def haslayeroftype(self, layertype):
+        ''' Determines if any of this map's layers are of the specified type'''
+        for layer in self.layers:
+            if layer.meta.layertype == layertype:
+                return True
+        return False
 
     def __str__(self):
         return(str(dict(self)))
 
     def __repr__(self):
         return(str(dict(self)))
+
+    def getsubmapping(self, key):
+        return NodeLayerMap(self.node, [NodeLayer(meta=layer.meta, data=layer.data[key]) for layer in self.layers if key in layer.data and isinstance(layer.data[key], collections.abc.Mapping)])
 
     def __getitem__(self, key):
         for layer in self.layers:
             try:
                 result = layer.data[key]
                 if isinstance(result, collections.abc.Mapping):
-                    return NodeLayerMap(*[NodeLayer(meta=layer.meta, data=layer.data[key]) for layer in self.layers if key in layer.data and isinstance(layer.data[key], collections.abc.Mapping)])
+                    return self.getsubmapping(key)
+                elif isinstance(result, NodeTemplate):
+                    return result.render(self.node)
                 else:
                     return result
             except KeyError:
@@ -112,7 +138,12 @@ class NodeLayerMap(collections.abc.Mapping):
         return iter(set().union(*self.layers))
 
     def __setitem__(self, key, value):
-        self.layers[0].data[key] = value
+        if self.node.in_plugin:
+            # Add to plugin layer
+            self.layers[-1].data[key] = value
+        else:
+            # Add to cache layer
+            self.layers[0].data[key] = value
 
     def __len__(self):
         return len(set().union(*self.layers))
@@ -123,6 +154,20 @@ class NodeContext(Context):
         if 'node' in self.parent and key in self.parent['node']:
             return self.parent['node'][key]
         return super().resolve_or_missing(key)
+
+class NodeTemplate(object):
+    def __init__(self, templatestr):
+        self.template = Node.environment.from_string(templatestr)
+        self.templatestr = templatestr
+
+    def render(self, node):
+        return self.template.render({'node':node})
+
+    def __str__(self):
+        return "<unrendered template: %s>" % self.templatestr
+
+    def __repr__(self):
+        return "<unrendered template: %s>" % self.templatestr
 
 class Node(object):
     tpl_regex = re.compile(r'{{')
@@ -140,58 +185,55 @@ class Node(object):
     models = dict()
 
     def __init__(self, name):
-        self.rawattr = dict()
-        self.rawattr_nodeset_index = dict()
-        self.attr = {'name': name}
         self.ran_plugins = False
+        self.in_plugin = False
+        self.linked_model = False
+        self.name = name
+        self.data = NodeLayerMap(self)
+        self['name'] = name
 
     def __repr__(self):
-        #attrs = ["%s = %s (%s)" % (attr_name, getattr(self, attr_name), type(getattr(self, attr_name))) for attr_name in dir(self) if attr_name not in dir(Node)]
         if not self.ran_plugins:
             self.run_plugins()
-        self.interpolate(None)
-        return yaml.dump({self.attr['name']: self.attr}, default_flow_style=False)
-        attrs = ["%s = %s (%s)" % (attr_name, self[attr_name], type(self[attr_name])) for attr_name in sorted(self.attr.keys() + self.rawattr.keys())]
-        return "Node(%s)\n\t%s" % (self.attr['name'], "\n\t".join(attrs))
+        if not self.linked_model:
+            self.link_model()
+        return yaml.dump({self.name: dict(self.data)}, default_flow_style=False)
 
     def setrawitem(self, key, value):
-        self.rawattr[key] = value
+        self.data[key] = value
 
     def setifblank(self, key, value):
         if key not in self:
-            self.attr[key] = value
+            self.data[key] = value
 
     def __setitem__(self, key, value):
-        self.attr[key] = value
+        self.data[key] = value
 
     def __getitem__(self, key):
+        if key == "name":
+            return self.name
         if not self.ran_plugins:
             self.run_plugins()
-        if key in self.attr:
-            if type(self.attr[key]) is types.LambdaType:
-                return self.attr[key]()
-            return self.attr[key]
-        if key in self.rawattr:
-            self.interpolate(key)
-            return self.attr[key]
+        if not self.linked_model:
+            self.link_model()
+        try:
+            result = self.data[key]
+            return result
+        except:
+            raise
         if 'model' in self.attr and self.attr['model'] in Node.models:
             if key in Node.models[self.attr['model']]:
                 return Node.models[self.attr['model']][key]
         raise KeyError("Node %s does not have attribute \"%s\"" % (self.attr['name'], key))
 
     def __delitem__(self, key):
-        del self.attr[key]
+        raise NotImplementedError("Attributes cannot be deleted from a node")
 
     def __contains__(self, key):
-        if key in self.attr or key in self.rawattr:
-            return True
-        if not self.ran_plugins:
-            self.run_plugins()
-            if key in self.attr or key in self.rawattr:
-                return True
-        if 'model' in self.attr and self.attr['model'] in Node.models and key in Node.models[self.attr['model']]:
-            return True
-        return False
+        return key in self.data
+
+    def addlayer(self, layer, position=None):
+        self.data.addlayer(layer, position)
 
     @classmethod
     def load_nodes(cls, filename=None, datastr=None, nodeset=None, clear=False):
@@ -224,9 +266,15 @@ class Node(object):
         for noderange, data in nodedata.items():
             ns1 = NodeSet(noderange)
 
-            # This is where we should split out the keys between
-            # simple values and complex ones (including needing interpolation)
-            # Instead just do it below...
+            # Convert any value using Jinja2 to a compiled template
+            Node.create_templates(data)
+
+            newlayer = NodeLayer(layertype='normal',
+                                 file=filename,
+                                 noderange=noderange,
+                                 nodeset=ns1,
+                                 data=data
+                                )
 
             for node_nodeset_index, node in enumerate(ns1):
                 # Optimization to skip nodes we don't care about
@@ -234,25 +282,9 @@ class Node(object):
                     continue
                 if node not in cls.nodes:
                     cls.nodes[node] = Node(node)
-                for key, value in data.items():
-                    if (isinstance(value, bool) or
-                        isinstance(value, int) or
-                        isinstance(value, float) or
-                        (isinstance(value, str) and not cls.tpl_regex.search(value))
-                       ):
-                        cls.nodes[node][key] = value
-                        logging.debug("Setting node %s key %s to %s", node, key, value)
-                    else:
-                        # Deep copy is needed to make sure each node gets its own copy
-                        newval = copy.deepcopy(value)
-                        if isinstance(value, dict):
-                            if key not in cls.nodes[node].rawattr:
-                                cls.nodes[node].rawattr[key] = dict()
-                            cls.nodes[node].rawattr[key].update(newval)
-                        else:
-                            cls.nodes[node].rawattr[key] = newval
-                        cls.nodes[node].rawattr_nodeset_index[key] = node_nodeset_index
-                        logging.debug("Setting node %s raw key %s to %s (%s) - offset %d", node, key, value, cls.nodes[node].rawattr[key], node_nodeset_index)
+
+                # Add the layer to the node
+                cls.nodes[node].addlayer(newlayer)
 
         # Mark that nodes have been loaded
         cls.loaded_nodes = True
@@ -326,10 +358,10 @@ class Node(object):
             return
         self.ran_plugins = True
 
-        if 'plugin' in self.attr:
-            plugin_name = self.attr['plugin']
+        if 'plugin' in self:
+            plugin_name = self['plugin']
         else:
-            self.attr['plugin'] = 'generic'
+            self['plugin'] = 'generic'
             plugin_name = 'generic'
 
         logging.info("Running plugins for %s", self['name'])
@@ -343,13 +375,27 @@ class Node(object):
             alias = none
 
         try:
-            plugin.set_node_attrs(self, alias=alias)
+            self.in_plugin = True
+            plugin_layer = NodeLayer(layertype='nodeplugin')
+            self.addlayer(plugin_layer, position=999)
+            plugin.set_node_attrs(self, layer=plugin_layer, alias=alias)
+            self.in_plugin = False
         except Exception as E:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             while exc_tb.tb_next != None:
                 exc_tb = exc_tb.tb_next 
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             logging.error("Plugin caught exception: %s. %s:%d", repr(E), fname, exc_tb.tb_lineno)
+            raise
+
+    def link_model(self):
+        if self.linked_model:
+            return
+        self.linked_model = True
+
+        if 'model' in self:
+            if 'model' in self.models:
+                self.addlayer(self.models[self['model']], 999)
 
     @classmethod
     def load_functions(cls):
@@ -364,62 +410,6 @@ class Node(object):
         #Environment.globals['ipadd'] = Node.ipadd
         cls.loaded_functions = True
 
-    def interpolatevalue(self, value):
-        logging.debug("Interpolating value %s" % value)
-        #return str(Template(value).render(**self.attr))
-        output = str(Node.environment.from_string(value).render(**self.attr))
-        logging.debug("Interpolated value %s as %s", value, output)
-        return output
-        
-    def interpolate(self, key=None, source=None, dest=None):
-        """ Interpolates a value from source dict to dest dict.
-            Key of None means interpolate all keys in the dict.
-            Defaults to interpolating from the Node rawattr to attr
-        """
-        logging.debug("Interpolating %s", key)
-        if not Node.loaded_functions:
-            Node.load_functions()
-        if source is None:
-            source = self.rawattr
-        if dest is None:
-            dest = self.attr
-        if key is None:
-            # Interpolate everything in this dict
-            for newkey in list(source.keys()):
-                self.interpolate(newkey, source, dest)
-            return
-        if source is self.rawattr and key in self.rawattr_nodeset_index:
-            Node.environment.globals['offset'] = self.rawattr_nodeset_index[key]
-        if isinstance(source[key], dict):
-            newdest = dict()
-            # This is a hierarchial value, recursively interpolate
-            self.interpolate(None, source=source[key], dest=newdest)
-            dest[key] = newdest
-            del source[key]
-        elif isinstance(source[key], list):
-            newdest = list()
-            for item in source[key]:
-                newdest.append(self.interpolatevalue(item))
-            dest[key] = newdest
-            del source[key]
-        elif type(source[key]) == str:
-            # Just interpolate one key in the dict
-            dest[key] = self.interpolatevalue(source[key])
-            del source[key]
-        elif type(source[key]) == bool:
-            dest[key] = source[key]
-            del source[key]
-        elif type(source[key]) == int:
-            dest[key] = source[key]
-            del source[key]
-        elif type(source[key]) == types.LambdaType:
-            dest[key] = source[key]()
-            del source[key]
-        else:
-            logging.error("Unhandled interpolation for key %s %s", key, type(source[key]))
-        if 'offset' in Node.environment.globals:
-            del Node.environment.globals['offset']
-
     @classmethod
     def nodeset_offset(cls, nodesetstr, offset=0):
         logging.debug("Called nodeset_offset with %s, offset %d", nodesetstr, offset)
@@ -428,3 +418,42 @@ class Node(object):
             cls.nodeset_cache[nodesetstr].sort()
         ns = cls.nodeset_cache[nodesetstr]
         return ns[offset]
+
+    @classmethod
+    def create_templates(cls, data):
+        ''' Searches a data structure for any template strings and converts them
+            Assume this is called for a dict
+            Returns True if a template was created, false otherwise
+        '''
+        logging.debug("Calling create_templates")
+        has_templates = False
+        if not cls.loaded_functions:
+            cls.load_functions()
+
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if isinstance(value, dict):
+                    if Node.create_templates(value):
+                        has_templates = True
+                elif isinstance(value, str) and cls.tpl_regex.search(value):
+                    data[key] = NodeTemplate(value)
+                    has_templates = True
+        elif isinstance(data, list):
+            for index, value in enumerate(data):
+                if isinstance(value, str) and cls.tpl_regex.search(value):
+                    data[index] = NodeTemplate(value)
+                    has_templates = True
+        return has_templates
+
+# How to represent a Node in yaml
+def node_representer(dumper, data):
+    return dumper.represent_mapping('tag:yaml.org,2002:map', data)
+def nodelayermap_representer(dumper, data):
+    return dumper.represent_mapping('tag:yaml.org,2002:map', data)
+def nodetemplate_representer(dumper, data):
+    return dumper.represent_scalar('tag:yaml.org,2002:str', str(data))
+
+# Register the representer
+#yaml.add_representer(Node, node_representer)
+yaml.add_representer(NodeLayerMap, nodelayermap_representer)
+yaml.add_representer(NodeTemplate, nodetemplate_representer)

@@ -365,7 +365,7 @@ def _nid_to_node_attrs(node):
                                         boardidx, nodeidx)
 
 # Main entry point called from Node.run_plugins
-def set_node_attrs(node, alias=None):
+def set_node_attrs(node, layer=None, alias=None):
     ''' Sets attributes for nodes in the system
         Note that a "node" in this context could be a
         compute node, nC, cC, cec, or switch
@@ -412,17 +412,17 @@ def set_node_attrs(node, alias=None):
         node['firmware_name'] = 'Node%d.BIOS' % node['nodenum']
         node['firmware_target'] = '/redfish/v1/UpdateService/FirmwareInventory/Node%d.BIOS' % node['nodenum']
         node['bmctype'] = 'redfish'
-        node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
+        node['bmc'] = "x%dc%ds%db%d" % (node['racknum'], node['chassis'], node['slot'], node['board'])
         node['bmcuser'] = 'root'
         node['discoverytype'] = 'bmc'
         if 'hostmgmt' in settings['autoip']:
-            _setinterfaceparam(node, 'bond0', 'network', 'hostmgmt%d' % _hostmgmt_network(node))
-            _setinterfaceparam(node, 'bond0', 'ip', Network.ipadd("hostmgmt", node['nodeindexinrack'] + settings['autoip']['hostmgmt'], node['rackidx']))
-            _setinterfaceparam(node, 'bond0', 'mac', Data.data('mac', node['name']))
-            _setinterfaceparam(node, 'bond0', 'alias', node['xname'])
-        _setinterfaceparam(node, 'bond0', 'discoverytype', 'bmc')
+            _setinterfaceparam(layer, 'bond0', 'network', 'hostmgmt%d' % _hostmgmt_network(node))
+            _setinterfaceparam(layer, 'bond0', 'ip', Network.ipadd("hostmgmt", node['nodeindexinrack'] + settings['autoip']['hostmgmt'], node['rackidx']))
+            _setinterfaceparam(layer, 'bond0', 'mac', Data.data('mac', node['name']))
+            _setinterfaceparam(layer, 'bond0', 'alias', node['xname'])
+        _setinterfaceparam(layer, 'bond0', 'discoverytype', 'bmc')
         node.setifblank('bmcpassword', 'initial0')
-        node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
+        node['pdu'] = "x%dc%d" % (node['racknum'], node['chassis'])
         node['pdutype'] = 'redfish'
         node['pduuser'] = 'root'
         node.setifblank('pdupassword', 'initial0') 
@@ -454,15 +454,15 @@ def set_node_attrs(node, alias=None):
             switch = _hsnswitchnum(node, nic=hsnnic, switchname=switchname)
             port = _hsnswitchport(node, hsnnic)
 
-            _setinterfaceparam(node, nic, 'network', 'hsn')
-            _setinterfaceparam(node, nic, 'group', group)
-            _setinterfaceparam(node, nic, 'switchnum', switch)
-            _setinterfaceparam(node, nic, 'port', port)
-            _setinterfaceparam(node, nic, 'switch', switchname)
-            _setinterfaceparam(node, nic, 'mac', _hsnalgomac(group, switch, port))
-            _setinterfaceparam(node, nic, 'nid', _hsnnid(group, switch, port))
+            _setinterfaceparam(layer, nic, 'network', 'hsn')
+            _setinterfaceparam(layer, nic, 'group', group)
+            _setinterfaceparam(layer, nic, 'switchnum', switch)
+            _setinterfaceparam(layer, nic, 'port', port)
+            _setinterfaceparam(layer, nic, 'switch', switchname)
+            _setinterfaceparam(layer, nic, 'mac', _hsnalgomac(group, switch, port))
+            _setinterfaceparam(layer, nic, 'nid', _hsnnid(group, switch, port))
             if 'hsn' in settings['autoip']:
-                _setinterfaceparam(node, nic, 'ip', Network.ipadd("hsn", (node['nodeindex'] * globalnicspernode) + hsnnic + settings['autoip']['hsn']))
+                _setinterfaceparam(layer, nic, 'ip', Network.ipadd("hsn", (node['nodeindex'] * globalnicspernode) + hsnnic + settings['autoip']['hsn']))
 
     elif node['type'] == 'nc':
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
@@ -475,14 +475,14 @@ def set_node_attrs(node, alias=None):
         node['pdutype'] = 'redfish'
         node['pduuser'] = 'root'
         node.setifblank('pdupassword', 'initial0') 
-        _setinterfaceparam(node, 'me0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
-        _setinterfaceparam(node, 'me0', 'dhcp', True)
-        _setinterfaceparam(node, 'me0', 'hostname', node['name'])
-        _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
+        _setinterfaceparam(layer, 'me0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
+        _setinterfaceparam(layer, 'me0', 'dhcp', True)
+        _setinterfaceparam(layer, 'me0', 'hostname', node['name'])
+        _setinterfaceparam(layer, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 48, node['board']))
         if 'hostctrl' in settings['autoip']:
             offset = node['chassis'] * 16 + node['slot'] * 2 + node['board']
-            _setinterfaceparam(node, 'me0', 'network', 'hostctrl%d' % _hostctrl_network(node))
-            _setinterfaceparam(node, 'me0', 'ip', Network.ipadd("hostctrl", offset + 100 + settings['autoip']['hostctrl'], node['rackidx']))
+            _setinterfaceparam(layer, 'me0', 'network', 'hostctrl%d' % _hostctrl_network(node))
+            _setinterfaceparam(layer, 'me0', 'ip', Network.ipadd("hostctrl", offset + 100 + settings['autoip']['hostctrl'], node['rackidx']))
 
     elif node['type'] == 'blade':
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
@@ -498,13 +498,13 @@ def set_node_attrs(node, alias=None):
         node['bmc'] = node['name']
         node['bmcuser'] = 'root'
         node.setifblank('bmcpassword', 'initial0')
-        _setinterfaceparam(node, 'me0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], 0, 0))
-        _setinterfaceparam(node, 'me0', 'dhcp', True)
-        _setinterfaceparam(node, 'me0', 'hostname', node['name'])
-        _setinterfaceparam(node, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0))
+        _setinterfaceparam(layer, 'me0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], 0, 0))
+        _setinterfaceparam(layer, 'me0', 'dhcp', True)
+        _setinterfaceparam(layer, 'me0', 'hostname', node['name'])
+        _setinterfaceparam(layer, 'me0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], 0, 0))
         if 'hostctrl' in settings['autoip']:
-            _setinterfaceparam(node, 'me0', 'network', 'hostctrl')
-            _setinterfaceparam(node, 'me0', 'ip', Network.ipadd("hostctrl", node['chassis'] + settings['autoip']['hostctrl'], node['rackidx']))
+            _setinterfaceparam(layer, 'me0', 'network', 'hostctrl')
+            _setinterfaceparam(layer, 'me0', 'ip', Network.ipadd("hostctrl", node['chassis'] + settings['autoip']['hostctrl'], node['rackidx']))
 
     elif node['type'] == 'switch':
         node['switchtype'] = 'slingshot'
@@ -526,14 +526,14 @@ def set_node_attrs(node, alias=None):
             node['pduuser'] = 'root'
             node.setifblank('pdupassword', 'initial0') 
             node['pduredfishpath'] = 'Chassis/Perif%d' % node['slot']
-            _setinterfaceparam(node, 'eth0', 'dhcp', True)
-            _setinterfaceparam(node, 'eth0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0))
-            _setinterfaceparam(node, 'eth0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0))
-            _setinterfaceparam(node, 'eth0', 'hostname', node['name'])
+            _setinterfaceparam(layer, 'eth0', 'dhcp', True)
+            _setinterfaceparam(layer, 'eth0', 'mac', _mgmtalgomac(node['racknum'], node['chassis'], node['slot'] + 96, 0))
+            _setinterfaceparam(layer, 'eth0', 'ip6', _mgmtalgoipv6addr(node['racknum'], node['chassis'], node['slot'] + 96, 0))
+            _setinterfaceparam(layer, 'eth0', 'hostname', node['name'])
             if 'hostctrl' in settings['autoip']:
-                _setinterfaceparam(node, 'eth0', 'network', 'hostctrl%d' % _hostctrl_network(node))
+                _setinterfaceparam(layer, 'eth0', 'network', 'hostctrl%d' % _hostctrl_network(node))
                 offset = node['chassis'] * 8 + node['slot']
-                _setinterfaceparam(node, 'eth0', 'ip', Network.ipadd("hostctrl", offset + 20 + settings['autoip']['hostctrl'], node['rackidx']))
+                _setinterfaceparam(layer, 'eth0', 'ip', Network.ipadd("hostctrl", offset + 20 + settings['autoip']['hostctrl'], node['rackidx']))
 
         node['firmware_name'] = 'BMC'
 
@@ -553,18 +553,15 @@ def set_node_attrs(node, alias=None):
 
     logging.debug("Done running cray_ex plugin for node %s", node['name'])
 
-def _setinterfaceparam(node, interface, paramname, paramvalue):
-    """ Updates a node's interface with a certain value """
+def _setinterfaceparam(layer, interface, paramname, paramvalue):
+    """ Updates a node's cache layer interface with a certain value """
     if paramvalue == None:
         return
-    if 'interfaces' not in node:
-        node['interfaces'] = dict()
-    if interface not in node['interfaces']:
-        node['interfaces'][interface] = dict()
-    if paramname in node['interfaces'][interface]:
-        # User already set this, don't overwrite
-        return
-    node['interfaces'][interface][paramname] = paramvalue
+    if 'interfaces' not in layer:
+        layer['interfaces'] = dict()
+    if interface not in layer['interfaces']:
+        layer['interfaces'][interface] = dict()
+    layer['interfaces'][interface][paramname] = paramvalue
 
 def _mgmtalgomac(rack, chassis, slot, idx, prefix=2):
     """ Returns the string representation of an algorithmic mac address """

@@ -11,15 +11,19 @@ from phoenix.network import handleautointerfaces
 num_regex = re.compile(r'\d+')
 logging.debug("Generic plugin compiled the num_regex")
 
-def set_node_attrs(node, alias=None):
+def set_node_attrs(node, layer=None, alias=None):
     logging.debug("Running generic plugin for node %s" % (node['name']))
+
+    if layer is None:
+        logging.error("Generic plugin called without a layer")
+        raise RuntimeError
 
     # Extract node index number from the name
     m = num_regex.findall(node['name'])
     if m is not None and len(m) > 0:
-        node['nodeindex'] = int(m[-1])
+        layer['nodeindex'] = int(m[-1])
         if len(m) > 1:
-            node['nodenums'] = [ int(x) for x in m ]
+            layer['nodenums'] = [ int(x) for x in m ]
 
     if 'autointerfaces' in node:
         handleautointerfaces(node)

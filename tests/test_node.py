@@ -29,6 +29,9 @@ node01:
     key5: valueG
 rack2node3:
   plugin: generic
+  key6: '{{name}}-templated'
+  mapping2:
+    key7: 'hello-{{name}}'
 '''
 
 def test_nodelayermap():
@@ -51,7 +54,7 @@ def test_nodelayermap():
     assert n1['mapping1']['key4'] == 'valueD'
     assert n1['mapping1']['key5'] == 'valueG'
 
-def test_node_values():
+def test_node_inheritance():
     Node.load_nodes(datastr=datayaml, clear=True)
     n1 = Node.find_node('node01')
     n2 = Node.find_node('node02')
@@ -64,7 +67,7 @@ def test_node_values():
     assert n1['mapping1']['key4'] == 'valueD'
     assert n1['mapping1']['key5'] == 'valueG'
 
-def test_plugin_generic():
+def test_node_plugin_generic():
     Node.load_nodes(datastr=datayaml, clear=True)
     n2 = Node.find_node('node02')
     n3 = Node.find_node('rack2node3')
@@ -74,3 +77,13 @@ def test_plugin_generic():
     assert n3['plugin'] == 'generic'
     assert n3['nodeindex'] == 3
     assert n3['nodenums'] == [2,3]
+
+    print(n2)
+
+def test_node_templates():
+    Node.load_nodes(datastr=datayaml, clear=True)
+    n3 = Node.find_node('rack2node3')
+    assert n3['key6'] == 'rack2node3-templated'
+    assert n3['mapping2']['key7'] == 'hello-rack2node3'
+    #print(dict(n3))
+    print(n3)
