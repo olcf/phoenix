@@ -34,7 +34,7 @@ class DnsmasqDhcp(object):
                     if 'switchport' not in iface:
                         logging.warn("No switchport defined for %s interface %s", nodename, ifacename)
                         continue
-                    output.append("*:*:*:*:*:*,tag:%s,tag:port%s,%s,%s,10m" % (iface['switch'], iface['switchport'], iface['ip'], hostname))
+                    output.append("*:*:*:*:*:*,tag:%s,tag:%s,%s,%s,10m" % (iface['switch'], iface['switchport'], iface['ip'], hostname))
                 else:
                     if 'mac' not in iface or iface['mac'] is None or iface['mac'] == 'None':
                         logging.warn("No MAC address for %s interface %s", nodename, ifacename)
