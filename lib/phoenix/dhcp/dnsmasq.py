@@ -46,7 +46,7 @@ class DnsmasqDhcp(object):
                 ethersfile.write('\n'.join(output))
                 ethersfile.write('\n')
         except:
-            logging.Error("Could not write to %s", outputfile)
+            logging.error("Could not write to %s", outputfile)
             return(False)
 
         return("Ok")
