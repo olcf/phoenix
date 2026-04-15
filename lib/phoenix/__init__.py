@@ -6,6 +6,7 @@ import os
 import logging
 import sys
 import resource
+import importlib
 
 logging.basicConfig(format="%(levelname)s: %(message)s")
 
@@ -26,15 +27,9 @@ def adjust_limits():
     except:
         pass
 
-#default_providers = { 'dhcp'      : 'dnsmasq',
-#                      'bootloader': 'ipxe'
-#                    }
-
 def get_component(category, provider=None, providerclass=None):
     packagefile = "phoenix." + category
-    if packagefile not in list(sys.modules):
-        logging.debug("Loading package %s", packagefile)
-        __import__(packagefile)
+    importlib.import_module(packagefile)
 
     if provider is None:
         System.load_config()
@@ -42,16 +37,8 @@ def get_component(category, provider=None, providerclass=None):
             provider = System.config[category]
         except KeyError:
             provider = getattr(sys.modules[packagefile], 'DEFAULT_PROVIDER')
-    provider = provider.lower()
-
-    modulefile = provider
-    modname = "phoenix.%s.%s" % (category, modulefile)
-
-    # Check if the module needs to be loaded, load it if required
-    if modname not in list(sys.modules):
-        logging.debug("Loading module %s", modname)
-        # Import module if not yet loaded
-        __import__(modname)
+    modname = "phoenix.%s.%s" % (category, provider.lower())
+    importlib.import_module(modname)
 
     # Get the class pointer
     if providerclass == None:
