@@ -93,7 +93,7 @@ class ConfCommand(Command):
                     hostname = iface['hostname']
                     components.append('%s.%s' % (hostname, System.config['domain']))
                     components.append(hostname)
-                elif ifacename == args.primary:
+                elif ifacename == args.primary or (args.primary is None and 'primary' in iface and iface['primary']):
                     hostname = nodename
                     components.append('%s.%s' % (hostname, System.config['domain']))
                     components.append(hostname)
