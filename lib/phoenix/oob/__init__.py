@@ -153,6 +153,22 @@ class Oob(object):
     def _inventory(cls, node):
         raise NotImplementedError
 
+    @classmethod
+    def bios(cls, node, client, args):
+        try:
+            (ok, state) = cls._bios(node, args)
+            client.output(state, stderr=not ok)
+            return 0 if ok else 1
+        except OOBTimeoutError as e:
+            client.output("Connection timeout", stderr=True)
+        except Exception as e:
+            client.output("BIOS request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
+            return -1
+
+    @classmethod
+    def _bios(cls, node, args):
+        raise NotImplementedError
+
 class Bmc(Oob):
     pass
 

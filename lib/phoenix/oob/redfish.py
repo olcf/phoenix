@@ -34,6 +34,8 @@ class Redfish(Oob):
                 response = requests.post(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
             elif request_type == "put":
                 response = requests.put(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
+            elif request_type == "patch":
+                response = requests.patch(url, verify=False, auth=auth, headers=headers, json=data, timeout=timeout)
             else:
                 raise NotImplementedError("HTTP request type %s not understood" % request_type)
         except requests.ConnectTimeout as e:
@@ -72,7 +74,7 @@ class Redfish(Oob):
         return (True, str(value))
 
     @classmethod
-    def _post_redfish(cls, node, path, data, status_codes=None, auth=None):
+    def _post_redfish(cls, node, path, data, status_codes=None, auth=None, method="post"):
         try:
             host = node[cls.oobtype]
         except:
@@ -80,7 +82,7 @@ class Redfish(Oob):
         if auth is None:
             auth = cls._get_auth(node)
         headers={'Content-Type': 'application/json'}
-        response = cls._do_redfish_req(host, path, "post", auth=auth, data=data, headers=headers)
+        response = cls._do_redfish_req(host, path, method, auth=auth, data=data, headers=headers)
         if status_codes is not None and response.status_code not in status_codes:
             try:
                 rjson = response.json()
@@ -275,6 +277,30 @@ class Redfish(Oob):
 
         path = '%s/%s' % (systempath, itempath)
         return cls._get_redfish_attribute(node, path, attr)
+
+    @classmethod
+    def _bios(cls, node, args):
+        systempath = cls._redfish_path_system(node)
+        if len(args) == 0:
+            return (True, 'Summary is not currently supported')
+        if args[1] == "get":
+            path = '%s/Bios' % (systempath)
+            if args[2]:
+                return cls._get_redfish_attribute(node, path, "Attributes.%s" % args[2])
+            else: return cls._get_redfish_attribute(node, path, "Attributes")
+        elif args[1] == "set":
+            if not args[2] or not args[3]:
+                return(False, "Must specify a key and value")
+            if args[3].lower() == "false":
+                args[3] = False
+            elif args[3].lower() == "true":
+                args[3] = True
+            path = '%s/Bios/Settings' % (systempath)
+            data = {"Attributes": { args[2]: args[3] }}
+            (rc, msg) = cls._post_redfish(node, path, data, status_codes=[200, 202, 204], method='patch')
+            if rc:
+                msg = "Ok"
+            return (rc, msg)
 
 class RedfishBmc(Redfish):
     oobtype = "bmc"
