@@ -302,6 +302,8 @@ class PhoenixClient(EngineClient):
             return self
 
     def output(self, message, stderr=False):
+        if not isinstance(message, str):
+            message = str(message)
         try:
             message = message.encode()
             if not message.endswith(b'\n'):
