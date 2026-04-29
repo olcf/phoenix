@@ -5,6 +5,7 @@
 import logging
 import requests
 import json
+import re
 
 from phoenix.oob import OOBTimeoutError
 from phoenix.command import CommandTimeout
@@ -302,6 +303,39 @@ class Redfish(Oob):
             if rc:
                 msg = "Ok"
             return (rc, msg)
+        elif args[1] == 'bootorder':
+            (rc, order) = cls._get_redfish_attribute(node, systempath, "Boot.BootOrder")
+            path = '%s/BootOptions?$expand=*' % systempath
+            (rc, details) = cls._get_redfish_attribute(node, path, 'Members')
+            output = list()
+            bootmap = dict()
+            for device in details:
+                bootmap[device['Name']] = "%s - %s - %s" % (device['Name'], device['DisplayName'], device['UefiDevicePath'])
+            if args[2] is None:
+                for device in order:
+                    output.append(bootmap[device])
+                return (rc, '\n'.join(output))
+            else:
+                target = None
+                request = args[2]
+                if request in order:
+                    target = request
+                else:
+                    pattern = re.compile(request)
+                    for device in bootmap:
+                        if re.search(pattern, bootmap[device]):
+                            target = device
+                            break
+                    if target is None:
+                        return(False, "%s not found" % request)
+                order.insert(0, order.pop(order.index(target)))
+                path = '%s/Settings' % (systempath)
+                data = { "Boot": { "BootOrder": order }}
+                (rc, msg) = cls._post_redfish(node, path, data, status_codes=[200, 202, 204], method='patch')
+                if rc:
+                    return(rc, 'Set %s as first boot device' % target)
+                else:
+                    return(rc, msg)
 
 class RedfishBmc(Redfish):
     oobtype = "bmc"
