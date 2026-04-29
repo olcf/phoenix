@@ -289,14 +289,15 @@ class Redfish(Oob):
                 return cls._get_redfish_attribute(node, path, "Attributes.%s" % args[2])
             else: return cls._get_redfish_attribute(node, path, "Attributes")
         elif args[1] == "set":
-            if not args[2] or not args[3]:
-                return(False, "Must specify a key and value")
-            if args[3].lower() == "false":
-                args[3] = False
-            elif args[3].lower() == "true":
-                args[3] = True
+            if len(args) < 3 or args[2] is None or args[3] is None:
+                return(False, "Must specify a key and value (got %s)" % str(args))
+            value = args[3].lower()
+            if value == "false":
+                value = False
+            elif value == "true":
+                value = True
             path = '%s/Bios/Settings' % (systempath)
-            data = {"Attributes": { args[2]: args[3] }}
+            data = {"Attributes": { args[2]: value }}
             (rc, msg) = cls._post_redfish(node, path, data, status_codes=[200, 202, 204], method='patch')
             if rc:
                 msg = "Ok"
