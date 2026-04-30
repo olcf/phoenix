@@ -292,10 +292,10 @@ class Redfish(Oob):
         elif args[1] == "set":
             if len(args) < 3 or args[2] is None or args[3] is None:
                 return(False, "Must specify a key and value (got %s)" % str(args))
-            value = args[3].lower()
-            if value == "false":
+            value = args[3]
+            if value.lower() == "false":
                 value = False
-            elif value == "true":
+            elif value.lower() == "true":
                 value = True
             path = '%s/Bios/Settings' % (systempath)
             data = {"Attributes": { args[2]: value }}
