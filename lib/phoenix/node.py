@@ -48,6 +48,15 @@ class NodeLayerMeta(object):
         self.noderange = noderange
         self.nodeset = nodeset
 
+    def __str__(self):
+        data = { 'layertype': self.layertype,
+                 'file':      self.file,
+                 'line':      self.line,
+                 'noderange': self.noderange,
+                 'nodeset':   self.nodeset,
+                }
+        return ','.join(['%s=%s' % (x, data[x]) for x in data if data[x]])
+
 class NodeLayer(object):
     def __init__(self, meta=None, layertype=None, file=None, line=None, noderange=None, nodeset=None, data=None):
         if meta is None:
