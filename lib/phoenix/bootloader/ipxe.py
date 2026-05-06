@@ -14,7 +14,7 @@ ipxe_template = """
 {%- set kcmdline = kcmdline | join(" ") -%}
 {%- endif -%}
 #!ipxe
-kernel {{server}}/images/{{image}}/vmlinuz initrd=initramfs.img root=live:{{server}}/images/{{image}}/rootdir.squashfs BOOTIF=${mac} ip=dhcp console={{console|default('ttyS0,115200')}} {{kcmdline}} || goto failed
+kernel {{server}}/images/{{image}}/vmlinuz initrd=initramfs.img root=live:{{server}}/images/{{image}}/rootdir.squashfs BOOTIF=${mac} ip=dhcp console={{console|default('ttyS0,115200n8')}} {{kcmdline}} || goto failed
 initrd {{server}}/images/{{image}}/initramfs.img || goto failed
 boot || goto failed
 
