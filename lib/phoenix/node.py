@@ -120,14 +120,16 @@ class NodeLayerMap(collections.abc.Mapping):
         for layer in self.layers:
             try:
                 result = layer.data[key]
-                if isinstance(result, collections.abc.Mapping):
-                    return self.getsubmapping(key)
-                elif isinstance(result, NodeTemplate):
-                    return result.render(self.node)
-                else:
-                    return result
             except KeyError:
-                pass
+                continue
+            if isinstance(result, collections.abc.Mapping):
+                return self.getsubmapping(key)
+            elif isinstance(result, NodeTemplate):
+                return result.render(self.node)
+            elif result is None:
+                raise KeyError(key)
+            else:
+                return result
         raise KeyError(key)
 
     def getwithblame(self, key):
@@ -141,10 +143,17 @@ class NodeLayerMap(collections.abc.Mapping):
         raise KeyError(key)
 
     def __contains__(self, key):
-        return any(key in l.data for l in self.layers)
+        for l in self.layers:
+            if key in l.data:
+                return False if l.data[key] is None else True
+        return False
 
     def __iter__(self):
-        return iter(set().union(*self.layers))
+        tombstones = set([x for x in self.layers[0] if self.layers[0][x] is None])
+        return iter(set().union(*self.layers) - tombstones)
+
+    def setcache(self, key, value):
+        self.layers[0].data[key] = value
 
     def __setitem__(self, key, value):
         if self.node.in_plugin:
@@ -152,7 +161,7 @@ class NodeLayerMap(collections.abc.Mapping):
             self.layers[-1].data[key] = value
         else:
             # Add to cache layer
-            self.layers[0].data[key] = value
+            self.setcache(key, value)
 
     def __len__(self):
         return len(set().union(*self.layers))
@@ -210,6 +219,9 @@ class Node(object):
 
     def setrawitem(self, key, value):
         self.data[key] = value
+
+    def setcache(self, key, value):
+        self.data.setcache(key, value)
 
     def setifblank(self, key, value):
         if key not in self:
