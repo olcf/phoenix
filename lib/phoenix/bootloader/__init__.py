@@ -91,9 +91,9 @@ class PhoenixBootfileHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(loader_class.script(node))
 
-def get_bootloader_script(node):
+def get_bootloader_script(node, interface=None):
     loader_class = _find_class(node)
-    return loader_class.script(node)
+    return loader_class.script(node, interface=interface)
 
 def write_bootloader_scripts():
     bldir = Path(phoenix.artifact_path) / 'bootfiles'
@@ -108,7 +108,7 @@ def write_bootloader_scripts():
                     logging.debug("Skipping %s because it is not set for DHCP", node['name'])
                     continue
                 try:
-                    script = get_bootloader_script(node)
+                    script = get_bootloader_script(node, interface=ifacename)
                 except:
                     logging.debug("Skipping %s because a script was not generated", node['name'])
                     continue

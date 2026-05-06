@@ -38,7 +38,7 @@ class IpxeBootloader(Bootloader):
     def_template = Node.environment.from_string(ipxe_template)
 
     @classmethod
-    def script(cls, node):
+    def script(cls, node, interface=None):
         logging.debug("Generating iPXE script for node %s", node['name'])
 
         if 'image' not in node:
