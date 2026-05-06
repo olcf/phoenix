@@ -5,6 +5,7 @@
 import logging
 from phoenix.bootloader import Bootloader
 from phoenix.node import Node
+from phoenix.network import Network
 import jinja2
 from jinja2 import Template
 
@@ -14,7 +15,7 @@ ipxe_template = """
 {%- set kcmdline = kcmdline | join(" ") -%}
 {%- endif -%}
 #!ipxe
-kernel {{server}}/images/{{image}}/vmlinuz initrd=initramfs.img root=live:{{server}}/images/{{image}}/rootdir.squashfs BOOTIF=${mac} ip=dhcp console={{console|default('ttyS0,115200n8')}} {{kcmdline}} || goto failed
+kernel {{server}}/images/{{image}}/vmlinuz initrd=initramfs.img root=live:{{server}}/images/{{image}}/rootdir.squashfs BOOTIF=${mac} ip={{ipline|default('dhcp')}} console={{console|default('ttyS0,115200n8')}} {{kcmdline}} || goto failed
 initrd {{server}}/images/{{image}}/initramfs.img || goto failed
 boot || goto failed
 
@@ -44,5 +45,17 @@ class IpxeBootloader(Bootloader):
         if 'image' not in node:
             raise KeyError('No image set for %s, not generating bootfile' % node['name'])
 
-        script = cls.def_template.render({'node': node})
+        if interface:
+            iface = node['interfaces'][interface]
+            ip = iface['ip']
+            networks = Network.networks()
+            networkname = iface['network']
+            gateway = networks[networkname]['gateway']
+            netmask = networks[networkname]['netmask']
+            ifacename = iface['interfacename'] if 'interfacename' in iface else interface
+            ipline = "%s::%s:%s:${hostname}:%s:none" % (ip, gateway, netmask, ifacename)
+        else:
+            ipline = None
+
+        script = cls.def_template.render({'node': node, 'ipline': ipline})
         return script
