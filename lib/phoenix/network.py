@@ -122,9 +122,13 @@ def handleautointerfaces(node):
     # Format: interface,network,ipoffset[,key=value[,key2=value2]][;interface,network,ipoffset[,key=value]]
     # For keys, the following have special meaning:
     # - mac=<dataname> Pull the value from a data plugin with the key dataname
+    if 'autointerfaces' not in node:
+        return
+    autointerfaces = node['autointerfaces']
+    if autointerfaces is None:
+        return
     result = dict()
-    entries = node['autointerfaces'].split(';')
-    for entry in entries:
+    for entry in autointerfaces.split(';'):
         components = entry.split(',')
         iface = components[0]
         result[iface] = dict()
@@ -140,4 +144,4 @@ def handleautointerfaces(node):
                 else:
                     result[iface][entities[0]] = entities[1]
     node.setrawitem('interfaces', result)
-    del node['autointerfaces']
+    node.setcache('autointerfaces', None)
