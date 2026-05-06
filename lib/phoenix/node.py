@@ -473,8 +473,11 @@ def nodelayermap_representer(dumper, data):
     return dumper.represent_mapping('tag:yaml.org,2002:map', data)
 def nodetemplate_representer(dumper, data):
     return dumper.represent_scalar('tag:yaml.org,2002:str', str(data))
+def function_representer(dumper, data):
+     return dumper.represent_scalar('tag:yaml.org,2002:str', str(data()))
 
 # Register the representer
 #yaml.add_representer(Node, node_representer)
 yaml.add_representer(NodeLayerMap, nodelayermap_representer)
 yaml.add_representer(NodeTemplate, nodetemplate_representer)
+yaml.add_representer(types.FunctionType, function_representer)
