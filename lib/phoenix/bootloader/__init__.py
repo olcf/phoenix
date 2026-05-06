@@ -105,12 +105,12 @@ def write_bootloader_scripts():
                 if ifacename == 'bmc':
                     continue
                 if 'dhcp' not in iface or iface['dhcp'] == False:
-                    logging.debug("Skipping %s because it is not set for DHCP", node['name'])
+                    logging.debug("Skipping %s %s because it is not set for DHCP", node['name'], ifacename)
                     continue
                 try:
                     script = get_bootloader_script(node, interface=ifacename)
-                except:
-                    logging.debug("Skipping %s because a script was not generated", node['name'])
+                except Exception as e:
+                    logging.debug("Skipping %s %s because a script was not generated (%s)", node['name'], ifacename, e)
                     continue
                 outputpath = bldir / iface['ip']
                 logging.debug("Writing bootfile to %s", outputpath)
