@@ -46,7 +46,7 @@ initpackages:
 - dnf
 - bash
 repos:
-- https://download.rockylinux.org/pub/rocky/9/BaseOS/x86_64/os/
+  rocky9: https://download.rockylinux.org/pub/rocky/9/BaseOS/x86_64/os/
 steps:
   - recipe: rocky-base
   - package:
