@@ -91,8 +91,8 @@ class PhoenixBootfileHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(loader_class.script(node))
 
-def get_bootloader_script(node, interface=None):
-    loader_class = _find_class(node)
+def get_bootloader_script(node, interface=None, provider=None):
+    loader_class = _find_class(node, provider)
     return loader_class.script(node, interface=interface)
 
 def write_bootloader_scripts():
@@ -108,22 +108,30 @@ def write_bootloader_scripts():
                     logging.debug("Skipping %s %s because it is not set for DHCP", node['name'], ifacename)
                     continue
                 try:
-                    script = get_bootloader_script(node, interface=ifacename)
+                    provider = _find_provider(node)
+                    script = get_bootloader_script(node, interface=ifacename, provider=provider)
                 except Exception as e:
                     logging.debug("Skipping %s %s because a script was not generated (%s)", node['name'], ifacename, e)
                     continue
-                outputpath = bldir / iface['ip']
+                provdir = bldir / provider
+                if not provdir.is_dir():
+                    provdir.mkdir()
+                outputpath = provdir / iface['ip']
                 logging.debug("Writing bootfile to %s", outputpath)
                 with open (outputpath, 'w') as ofile:
                     ofile.write(script)
 
-def _find_class(node):
+def _find_provider(node):
     try:
-        loader = node['bootloader']
+        provider = node['bootloader']
     except KeyError:
-        loader = DEFAULT_PROVIDER
+        provider = DEFAULT_PROVIDER
+    return provider
 
-    return phoenix.get_component('bootloader', loader)
+def _find_class(node, provider=None):
+    if provider is None:
+        provider = _find_provider(node)
+    return phoenix.get_component('bootloader', provider)
 
 class Bootloader(object):
     bootloadertype = "unknown"

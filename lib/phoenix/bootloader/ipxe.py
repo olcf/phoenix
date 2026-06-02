@@ -30,7 +30,7 @@ echo Restarting networking
 ifclose
 ifconf
 echo
-chain {{server}}/bootfile
+chain {{server}}/ipxe
 
 """
 
