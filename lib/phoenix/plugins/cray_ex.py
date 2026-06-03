@@ -468,10 +468,10 @@ def set_node_attrs(node, layer=None, alias=None):
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
         node['firmware_name'] = 'BMC'
         node['bmctype'] = 'redfish'
-        node['bmc'] = "x{racknum}c{chassis}s{slot}b{board}".format(**node.attr)
+        node['bmc'] = "x%dc%ds%db%d" % (node['racknum'], node['chassis'], node['slot'], node['board'])
         node['bmcuser'] = 'root'
         node.setifblank('bmcpassword', 'initial0')
-        node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
+        node['pdu'] = "x%dc%d" % (node['racknum'], node['chassis'])
         node['pdutype'] = 'redfish'
         node['pduuser'] = 'root'
         node.setifblank('pdupassword', 'initial0') 
@@ -487,7 +487,7 @@ def set_node_attrs(node, layer=None, alias=None):
     elif node['type'] == 'blade':
         node['redfishpath'] = 'Chassis/Blade%d' % node['slot']
         node['bmctype'] = 'redfish'
-        node['bmc'] = "x{racknum}c{chassis}".format(**node.attr)
+        node['bmc'] = "x%dc%d" % (node['racknum'], node['chassis'])
         node['bmcuser'] = 'root'
         node.setifblank('bmcpassword', 'initial0')
 
@@ -522,7 +522,7 @@ def set_node_attrs(node, layer=None, alias=None):
         node.setifblank('bmcpassword', 'initial0')
         if node['switchmodel'] == 'colorado':
             node['pdutype'] = 'redfish'
-            node['pdu'] = "x{racknum}c{chassis}".format(**node.attr)
+            node['pdu'] = "x%dc%d" % (node['racknum'], node['chassis'])
             node['pduuser'] = 'root'
             node.setifblank('pdupassword', 'initial0') 
             node['pduredfishpath'] = 'Chassis/Perif%d' % node['slot']
