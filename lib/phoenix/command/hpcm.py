@@ -255,8 +255,7 @@ class HpcmCommand(Command):
                         missingmac.append(n['name'])
                     logging.debug("Node %s is missing a mac", n['name'])
                     if fakemacs == True:
-                        n['interfaces'][iface]['mac'] = cls._fakemac(n, iface)
-                        it.addia('mgmt_net_macs', iface, 'mac')
+                        it.addraw('mgmt_net_macs', cls._fakemac(n, iface))
         elif n['plugin'] == 'cray_ex' and n['type'] == 'nc':
             it.addna('internal_name', 'name')
             it.addia('mgmt_bmc_net_name', 'me0', 'network')
@@ -327,8 +326,7 @@ class HpcmCommand(Command):
                         missingmac.append(n['name'])
                     logging.debug("Node %s is missing a mac", n['name'])
                     if fakemacs == True:
-                        n['interfaces']['bond0']['mac'] = cls._fakemac(n)
-                        it.addraw('mgmt_net_macs', n['interfaces']['bond0']['mac'])
+                        it.addraw('mgmt_net_macs', cls._fakemac(n))
                 if 'leaderlist' in usersettings:
                     leaderidx = (n['nodeindex'] - usersettings['startnid']) % len(usersettings['leaderlist'])
                     it.addraw('su_leader', (usersettings['leaderlist'][leaderidx]))
