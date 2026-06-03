@@ -14,7 +14,7 @@ import fcntl
 import os
 import signal
 from pathlib import Path
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 need_to_reload = False
 
@@ -40,7 +40,7 @@ class BootfileServer(object):
 
     def serve_forever(self):
         try:
-            httpd = HTTPServer(('0.0.0.0', self.port), PhoenixBootfileHandler)
+            httpd = ThreadingHTTPServer(('0.0.0.0', self.port), PhoenixBootfileHandler)
         except NameError:
             logging.error("Could not find HTTPServer, install the python package")
             sys.exit(1)
