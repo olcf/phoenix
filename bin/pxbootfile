@@ -8,7 +8,15 @@ import logging
 from ClusterShell.NodeSet import NodeSet
 import phoenix
 from phoenix.node import Node
-from phoenix.bootloader import BootfileServer
+import phoenix.bootloader
+import socket
+import fcntl
+import os
+import signal
+from pathlib import Path
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+need_to_reload = False
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Phoenix configuration utility")
@@ -16,6 +24,84 @@ def get_parser():
     parser.add_argument('-p', '--port', type=int, default=8000, help="Port to listen on")
     parser.add_argument('-P', '--privileged', action='store_true', default=False, help="Require privileged source ports")
     return parser
+
+def handler(signum, frame):
+    global need_to_reload
+    need_to_reload = True
+
+class BootfileServer(object):
+    def __init__(self, port=8000, require_privports=False):
+        self.port = port
+        self.require_privports = require_privports
+        signal.signal(signal.SIGIO, handler)
+        fd = os.open(phoenix.conf_path, os.O_RDONLY)
+        fcntl.fcntl(fd, fcntl.F_SETSIG, 0)
+        fcntl.fcntl(fd, fcntl.F_NOTIFY, fcntl.DN_MODIFY | fcntl.DN_CREATE | fcntl.DN_MULTISHOT)
+
+    def serve_forever(self):
+        try:
+            httpd = HTTPServer(('0.0.0.0', self.port), PhoenixBootfileHandler)
+        except NameError:
+            logging.error("Could not find HTTPServer, install the python package")
+            sys.exit(1)
+        httpd.require_privports = self.require_privports
+        httpd.serve_forever()
+
+class PhoenixBootfileHandler(BaseHTTPRequestHandler):
+    def returnhttp(self, code=500, message=None):
+        if message is None:
+            message = "No data returned\n"
+        if not message.endswith('\n'):
+            message = message + '\n'
+        self.send_response(code)
+        self.end_headers()
+        self.wfile.write(message.encode('utf-8'))
+
+    def return404(self):
+        self.returnhttp(404, 'Node not found\n')
+
+    def do_GET(self):
+        global need_to_reload
+        if need_to_reload:
+            logging.info('Detected config changes - reloading')
+            Node.load_nodes(clear=True)
+            need_to_reload = False
+
+        if self.server.require_privports and self.client_address[1] > 1024:
+            logging.error("Denying unauthenticated request from %s:%s", self.client_address[0], self.client_address[1])
+            self.returnhttp(403, 'Access denied')
+            return
+
+        try:
+            hostname, aliases, _ = socket.gethostbyaddr(self.client_address[0])
+        except OSError:
+            self.return404()
+            return
+
+        node = None
+        try:
+            node = Node.find_node(hostname)
+        except KeyError:
+            for alias in aliases:
+                try:
+                    node = Node.find_node(alias)
+                    break
+                except KeyError:
+                    pass
+
+        if node == None:
+            self.return404()
+            return
+
+        if self.path == "/bootloader" or self.path == "/ipxe":
+            self._do_bootloader(node)
+        else:
+            self.returnhttp(404, "Unknown path '%s'\n" % self.path)
+
+    def _do_bootloader(self, node):
+        script = phoenix.bootloader.get_bootloader_script(node)
+
+        self.returnhttp(200, script)
 
 if __name__ == '__main__':
     parser = get_parser()
