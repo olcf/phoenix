@@ -126,6 +126,8 @@ class NodeLayerMap(collections.abc.Mapping):
                 return self.getsubmapping(key)
             elif isinstance(result, NodeTemplate):
                 return result.render(self.node)
+            elif isinstance(result, types.FunctionType):
+                return result()
             elif result is None:
                 raise KeyError(key)
             else:
