@@ -97,7 +97,7 @@ class Recipe(object):
         filename = Recipe.find_recipe(name)
         if filename is None:
             logging.error("Could not find a recipe named '%s'", name)
-            return
+            sys.exit(1)
 
         # Read the yaml file
         logging.info("Loading recipe file '%s'", filename)
@@ -339,7 +339,7 @@ class ConfirmKeyboardInterrupt(object):
 def guesspackagemanager(distro):
     if distro[0:3] == "sle":
         return "zypper"
-    elpattern = re.compile('(?:rh)?el([0-9\.]+)')
+    elpattern = re.compile('(?:rh)?el([0-9.]+)')
     result = elpattern.search(distro)
     if result:
         if int(result.group(1)) < 8:
