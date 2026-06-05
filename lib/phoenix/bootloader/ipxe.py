@@ -30,5 +30,13 @@ class IpxeBootloader(Bootloader):
         else:
             ipline = None
 
-        script = cls.def_template.render({'node': node, 'ipline': ipline})
+        if 'ipxe_template' in node:
+            try:
+                template = Node.environment.get_template(node['ipxe_template'])
+            except:
+                logging.error("Could not generate an ipxe file for node '%s' - Template '%s' was not found" % (node['name'], node['ipxe_template']))
+                raise
+        else:
+            template = cls.def_template
+        script = template.render({'node': node, 'ipline': ipline})
         return script
