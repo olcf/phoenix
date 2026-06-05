@@ -50,12 +50,14 @@ class BootfileServer(object):
 class PhoenixBootfileHandler(BaseHTTPRequestHandler):
     def returnhttp(self, code=500, message=None):
         if message is None:
-            message = "No data returned\n"
-        if not message.endswith('\n'):
-            message = message + '\n'
+            message = b"No data returned\n"
+        elif isinstance(message, str):
+            message = message.encode()
+        if not message.endswith(b'\n'):
+            message = message + b'\n'
         self.send_response(code)
         self.end_headers()
-        self.wfile.write(message.encode('utf-8'))
+        self.wfile.write(message)
 
     def return404(self):
         self.returnhttp(404, 'Node not found\n')
