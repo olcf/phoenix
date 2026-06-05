@@ -39,3 +39,13 @@ bmc: '{{name}}-bmc'
 ```
 <!-- {% endraw %} -->
 
+### Functions
+Phoenix defines several functions to make definitions easier
+
+| Function            | Description                                            |
+| :-------------------| :------------------------------------------------------|
+| data(table, key)    | Return the value of a key stored in the specified table|
+| div1(base, divisor) | Perform integer division on a one-indexed number       |
+| ipadd(net, offset)  | Add offset to the base net (can be a network name defined in networks.yaml or an IP address |
+| mod1(base, divisor) | Return the modulus of a one-indexed number             |
+| NodeSet(desc)       | Return a NodeSet object from the provided string       |

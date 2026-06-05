@@ -437,10 +437,12 @@ class Node(object):
             PackageLoader('phoenix', 'templates')
         ])
         cls.environment.context_class = NodeContext
+        cls.environment.globals['div1'] = div1
+        cls.environment.globals['mod1'] = mod1
         cls.environment.globals['ipadd'] = Network.ipadd
         cls.environment.globals['data'] = Data.data
         cls.environment.globals['nodeset_offset'] = Node.nodeset_offset
-        #Environment.globals['ipadd'] = Node.ipadd
+        cls.environment.globals['NodeSet'] = NodeSet
         cls.loaded_functions = True
 
     @classmethod
@@ -493,3 +495,9 @@ def function_representer(dumper, data):
 yaml.add_representer(NodeLayerMap, nodelayermap_representer)
 yaml.add_representer(NodeTemplate, nodetemplate_representer)
 yaml.add_representer(types.FunctionType, function_representer)
+
+def div1(idx, divisor):
+    return (idx -1) // divisor + 1
+
+def mod1(idx, divisor):
+    return (idx - 1) % divisor + 1
