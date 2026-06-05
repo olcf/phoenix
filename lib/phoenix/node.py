@@ -15,7 +15,11 @@ except ImportError:
     from yaml import Loader, Dumper
 from ClusterShell.NodeSet import NodeSet
 from jinja2 import Template
-from jinja2 import Environment
+try:
+    # NativeEnvironment is only available in Jinja 2.10 and later
+    from jinja2.nativetypes import NativeEnvironment as Environment
+except ImportError:
+    from jinja2 import Environment
 from jinja2 import ChoiceLoader, FileSystemLoader, PackageLoader
 from jinja2.runtime import Context
 from pathlib import Path
