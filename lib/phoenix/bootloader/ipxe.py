@@ -19,12 +19,25 @@ class IpxeBootloader(Bootloader):
             raise KeyError('No image set for %s, not generating bootfile' % node['name'])
 
         if interface:
+            if 'interfaces' not in node:
+                raise KeyError("Node '%s' has no 'interfaces' defined" % node['name'])
+            if interface not in node['interfaces']:
+                raise KeyError("Node '%s' has no interface '%s' defined" % (node['name'], interface))
             iface = node['interfaces'][interface]
+            if 'ip' not in iface:
+                raise KeyError("Node '%s' interface '%s' is missing 'ip'" % (node['name'], interface))
             ip = iface['ip']
-            networks = Network.networks()
+            if 'network' not in iface:
+                raise KeyError("Node '%s' interface '%s' is missing 'network' (should reference a network defined in networks.yaml)" % (node['name'], interface))
             networkname = iface['network']
-            gateway = networks[networkname]['gateway']
-            netmask = networks[networkname]['netmask']
+            networks = Network.networks()
+            if networkname not in networks:
+                raise KeyError("Node '%s' interface '%s' references network '%s' which is not defined in networks.yaml" % (node['name'], interface, networkname))
+            network = networks[networkname]
+            if 'netmask' not in network:
+                raise KeyError("Network '%s' (used by node '%s' interface '%s') is missing 'netmask' in networks.yaml" % (networkname, node['name'], interface))
+            gateway = network.get('gateway', '')
+            netmask = network['netmask']
             ifacename = iface['interfacename'] if 'interfacename' in iface else interface
             ipline = "%s::%s:%s:${hostname}:%s:none" % (ip, gateway, netmask, ifacename)
         else:
