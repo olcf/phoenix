@@ -16,7 +16,9 @@ except ImportError:
 from ClusterShell.NodeSet import NodeSet
 from jinja2 import Template
 from jinja2 import Environment
+from jinja2 import ChoiceLoader, FileSystemLoader, PackageLoader
 from jinja2.runtime import Context
+from pathlib import Path
 import re
 import copy
 import importlib
@@ -426,6 +428,10 @@ class Node(object):
             return
         logging.info("Loading Jinja templates")
         cls.environment = Environment()
+        cls.environment.loader = ChoiceLoader([
+            FileSystemLoader(Path(phoenix.conf_path) / 'templates'),
+            PackageLoader('phoenix', 'templates')
+        ])
         cls.environment.context_class = NodeContext
         cls.environment.globals['ipadd'] = Network.ipadd
         cls.environment.globals['data'] = Data.data
