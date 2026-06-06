@@ -38,6 +38,15 @@ class System(object):
             systemdata = load(systemfd, Loader=Loader) or {}
 
         cls.config = systemdata
+
+        # Special handling for 'racks'
+        # Expand NodeSets into a list
+        if 'racks' in cls.config and 'racklist' not in cls.config:
+            cls.config['racklist'] = list()
+            if isinstance(cls.config['racks'], str):
+                cls.config['racks'] = [cls.config['racks']]
+            for entry in cls.config['racks']:
+                cls.config['racklist'].extend(list(NodeSet(entry)))
         cls.loaded_config = True
 
     @classmethod
