@@ -187,7 +187,12 @@ class NodeTemplate(object):
         self.templatestr = templatestr
 
     def render(self, node):
-        return self.template.render({'node':node})
+        Network.load_config()
+        return self.template.render({
+            'node':node,
+            'System': System.config,
+            'Network': Network.config,
+            })
 
     def __str__(self):
         return "<unrendered template: %s>" % self.templatestr
