@@ -97,11 +97,13 @@ class Network(object):
 
         if net not in cls.config:
             # Attempt to support an ip string instead of a defined network
-            # Otherwise just return 0.0.0.0
             if net[0].isnumeric():
-                return ipaddress.ip_address(net), 0
+                return { 'network': net,
+                         ipobj: ipaddress.ip_address(net),
+                         rackaddresses: 0
+                       }
             else:
-                return ipaddress.ip_address(0), 0
+                raise KeyError("Network '%s' is not defined in networks.yaml" % net)
 
         if 'ipobj' not in cls.config[net]:
             cls._cache_network(net)
