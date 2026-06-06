@@ -433,7 +433,7 @@ class Node(object):
         logging.info("Loading Jinja templates")
         cls.environment = Environment()
         cls.environment.loader = ChoiceLoader([
-            FileSystemLoader(Path(phoenix.conf_path) / 'templates'),
+            FileSystemLoader([Path(phoenix.conf_path) / 'templates']),
             PackageLoader('phoenix', 'templates')
         ])
         cls.environment.context_class = NodeContext
