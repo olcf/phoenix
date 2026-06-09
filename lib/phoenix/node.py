@@ -448,6 +448,8 @@ class Node(object):
         cls.environment.globals['data'] = Data.data
         cls.environment.globals['nodeset_offset'] = Node.nodeset_offset
         cls.environment.globals['NodeSet'] = NodeSet
+        cls.environment.globals['racklist'] = System.racklist
+        cls.environment.globals['rackindex'] = System.rackindex
         cls.loaded_functions = True
 
     @classmethod

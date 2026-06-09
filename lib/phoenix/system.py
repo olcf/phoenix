@@ -17,9 +17,11 @@ import copy
 
 class System(object):
     loaded_config = False
+    loaded_racklist = False
 
     # Dicts to hold all System data
     config = dict()
+    rackmap = dict()
 
     tpl_regex = re.compile(r'{{')
 
@@ -38,16 +40,45 @@ class System(object):
             systemdata = load(systemfd, Loader=Loader) or {}
 
         cls.config = systemdata
-
-        # Special handling for 'racks'
-        # Expand NodeSets into a list
-        if 'racks' in cls.config and 'racklist' not in cls.config:
-            cls.config['racklist'] = list()
-            if isinstance(cls.config['racks'], str):
-                cls.config['racks'] = [cls.config['racks']]
-            for entry in cls.config['racks']:
-                cls.config['racklist'].extend(list(NodeSet(entry)))
         cls.loaded_config = True
+
+    @classmethod
+    def load_racklist(cls):
+        ''' Special handling for 'racks'. Expected to be a map with keys being
+            "categories" of racks, and the values being ordered lists of
+             NodeSet strings. Caches this as category to expanded list
+        '''
+        if cls.loaded_racklist:
+            return
+
+        if 'racks' not in cls.config:
+            cls.loaded_racklist = True
+            return
+
+        if not isinstance(cls.config['racks'], dict):
+            raise KeyError("system.yaml 'racks' must be a mapping")
+        for category, value in cls.config['racks'].items():
+            if isinstance(value, str):
+                value = [value]
+            racklist = list()
+            for entry in value:
+                racklist.extend(list(NodeSet(entry)))
+            cls.rackmap[category] = racklist
+        cls.loaded_racklist = True
+
+    @classmethod
+    def racklist(cls, category):
+        if not cls.loaded_racklist:
+            cls.load_racklist()
+
+        if category not in cls.rackmap:
+            raise KeyError("Rack category '%s' not found in system.yaml" % category)
+
+        return cls.rackmap[category]
+
+    @classmethod
+    def rackindex(cls, category, needle):
+        return cls.racklist(category).index(needle)
 
     @classmethod
     def setting(cls, key, default=None):
