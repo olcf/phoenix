@@ -15,6 +15,7 @@ except ImportError:
     from yaml import Loader, Dumper
 from ClusterShell.NodeSet import NodeSet
 from jinja2 import Template
+from jinja2.exceptions import TemplateSyntaxError
 try:
     # NativeEnvironment is only available in Jinja 2.10 and later
     from jinja2.nativetypes import NativeEnvironment as Environment
@@ -301,7 +302,7 @@ class Node(object):
             ns1 = NodeSet(noderange)
 
             # Convert any value using Jinja2 to a compiled template
-            Node.create_templates(data)
+            Node.create_templates(data, filename)
 
             newlayer = NodeLayer(layertype='normal',
                                  file=filename,
@@ -462,7 +463,7 @@ class Node(object):
         return ns[offset]
 
     @classmethod
-    def create_templates(cls, data):
+    def create_templates(cls, data, filename=None):
         ''' Searches a data structure for any template strings and converts them
             Assume this is called for a dict
             Returns True if a template was created, false otherwise
@@ -475,11 +476,14 @@ class Node(object):
         if isinstance(data, dict):
             for key, value in data.items():
                 if isinstance(value, dict):
-                    if Node.create_templates(value):
+                    if Node.create_templates(value, filename):
                         has_templates = True
                 elif isinstance(value, str) and cls.tpl_regex.search(value):
-                    data[key] = NodeTemplate(value)
-                    has_templates = True
+                    try:
+                        data[key] = NodeTemplate(value)
+                        has_templates = True
+                    except TemplateSyntaxError as e:
+                        logging.error("Malformed template for %s '%s': %s" % (filename, key, e))
         elif isinstance(data, list):
             for index, value in enumerate(data):
                 if isinstance(value, str) and cls.tpl_regex.search(value):
