@@ -97,13 +97,21 @@ class PhoenixBootfileHandler(BaseHTTPRequestHandler):
 
         if self.path == "/bootloader" or self.path == "/ipxe":
             self._do_bootloader(node)
+        elif self.path == "/ztp":
+            self._do_ztp(node)
         else:
             self.returnhttp(404, "Unknown path '%s'\n" % self.path)
 
     def _do_bootloader(self, node):
         script = phoenix.bootloader.get_bootloader_script(node)
-
         self.returnhttp(200, script)
+
+    def _do_ztp(self, node):
+        try:
+            script = node.ztpscript()
+            self.returnhttp(200, script)
+        except:
+            self.returnhttp(404, "No ZTP script generated for %s\n" % node['name'])
 
 if __name__ == '__main__':
     parser = get_parser()

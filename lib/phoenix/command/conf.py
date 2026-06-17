@@ -8,6 +8,7 @@ import logging
 import argparse
 import socket
 import errno
+from pathlib import Path
 
 from yaml import load, dump
 try:
@@ -182,6 +183,7 @@ class ConfCommand(Command):
     def bootfiles(cls, nodes, args):
         Node.load_nodes(nodeset=nodes)
         write_bootloader_scripts()
+        write_ztp_scripts()
         return 0
 
     @classmethod
@@ -246,6 +248,30 @@ class ConfCommand(Command):
         action = client.command[1]
         client.output("Not yet implemented", stderr=True)
         return 1
+
+def write_ztp_scripts():
+    ztpdir = Path(phoenix.artifact_path) / 'bootfiles' / 'ztp'
+    if not ztpdir.is_dir():
+        ztpdir.mkdir()
+    for nodename,node in sorted(Node.nodes.items()):
+        if 'ztptemplate' not in node:
+            logging.debug("'ztptemplate' not defined for %s" % nodename)
+            continue
+
+        if 'interfaces' not in node:
+            continue
+
+        script = node.ztpscript()
+
+        for ifacename, iface in node['interfaces'].items():
+            if 'dhcp' not in iface or iface['dhcp'] == False:
+                logging.debug("Skipping ZTP for %s %s because it is not set for DHCP", node['name'], ifacename)
+                continue
+
+            outputpath = ztpdir / iface['ip']
+            logging.debug("Writing ztpscript to %s", outputpath)
+            with open (outputpath, 'w') as ofile:
+                ofile.write(script)
 
 if __name__ == '__main__':
     sys.exit(ConfCommand.run())

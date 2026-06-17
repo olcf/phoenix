@@ -251,6 +251,9 @@ class Node(object):
             self.run_plugins()
         if not self.linked_model:
             self.link_model()
+
+        if key == 'ztpscript':
+            return self.ztpscript()
         try:
             result = self.data[key]
             return result
@@ -490,6 +493,19 @@ class Node(object):
                     data[index] = NodeTemplate(value)
                     has_templates = True
         return has_templates
+
+    def ztpscript(self):
+        if 'ztptemplate' not in self:
+            raise KeyError("No ZTP template defined for node")
+
+        template = self.environment.get_template(self['ztptemplate'])
+        output = template.render({
+            'node': self,
+            'System': System.config,
+            'Network': Network.config,
+            })
+
+        return output
 
 # How to represent a Node in yaml
 def node_representer(dumper, data):
