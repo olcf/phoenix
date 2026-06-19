@@ -232,7 +232,7 @@ class HpcmCommand(Command):
         n = Node.find_node(nodename)
         it = ParamList(n)
         it.addna('hostname1', 'name')
-        if n['type'] == 'mgmtsw':
+        if n.get('type', 'generic') == 'mgmtsw':
             if 'internal_name' in n:
                 it.addna('internal_name', 'internal_name')
             elif 'nodenums' in n:
@@ -256,7 +256,7 @@ class HpcmCommand(Command):
                     logging.debug("Node %s is missing a mac", n['name'])
                     if fakemacs == True:
                         it.addraw('mgmt_net_macs', cls._fakemac(n, iface))
-        elif n['plugin'] == 'cray_ex' and n['type'] == 'nc':
+        elif n['plugin'] == 'cray_ex' and n.get('type', 'generic') == 'nc':
             it.addna('internal_name', 'name')
             it.addia('mgmt_bmc_net_name', 'me0', 'network')
             it.addia('mgmt_bmc_net_macs', 'me0', 'mac')
@@ -268,7 +268,7 @@ class HpcmCommand(Command):
             it.addraw('username', 'root')
             it.addraw('password', 'initial0')
             it.addraw('node_controller')
-        elif n['plugin'] == 'cray_ex' and n['type'] == 'switch':
+        elif n['plugin'] == 'cray_ex' and n.get('type', 'generic') == 'switch':
             it.addna('internal_name', 'name')
             it.addia('mgmt_bmc_net_name', 'eth0', 'network')
             it.addia('mgmt_bmc_net_macs', 'eth0', 'mac')
@@ -286,13 +286,13 @@ class HpcmCommand(Command):
         else:
             it.addraw('internal_name', cls._get_internal_name(n))
             cls._add_interfaces(n, it)
-            if n['type'] == 'admin' or n['type'] == 'leader':
+            if n.get('type', 'generic') == 'admin' or n.get('type', 'generic') == 'leader':
                 it.addna('rootfs', 'rootfs', 'disk')
                 if disk:
                     it.addraw('force_disk', '%s' % disk)
                 else:
                     it.addna('force_disk', 'force_disk', '/dev/disk/by-path/pci-0000:06:00.0-scsi-0:1:0:0')
-            elif n['type'] == 'compute':
+            elif n.get('type', 'generic') == 'compute':
                 it.addna('rootfs', 'rootfs', 'nfs')
                 it.addna('nfs_writable_type', 'tmpfs-overlay', 'tmpfs-overlay')
             else:
@@ -310,7 +310,7 @@ class HpcmCommand(Command):
             it.addna('dhcp_bootfile', 'ipxe-direct')
             it.addna('transport', 'hpcm_transport', 'rsync')
             it.addna('console_device', 'console', 'ttyS0')
-            if n['plugin'] == 'cray_ex' and n['type'] == 'compute':
+            if n['plugin'] == 'cray_ex' and n.get('type', 'generic') == 'compute':
                 it.addraw('card_type', 'IPMI')
                 it.addna('rack_nr', 'racknum')
                 it.addna('chassis', 'chassis')

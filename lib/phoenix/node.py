@@ -264,6 +264,14 @@ class Node(object):
                 return Node.models[self.attr['model']][key]
         raise KeyError("Node %s does not have attribute \"%s\"" % (self.attr['name'], key))
 
+    def get(self, key, default=None):
+        try:
+            return self.__getitem__(key)
+        except KeyError:
+            if default is not None:
+                return default
+            raise
+
     def __delitem__(self, key):
         raise NotImplementedError("Attributes cannot be deleted from a node")
 
