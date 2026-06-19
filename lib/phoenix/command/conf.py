@@ -81,6 +81,18 @@ class ConfCommand(Command):
             node = Node.find_node(nodename)
             if 'interfaces' not in node:
                 continue
+            primary = None
+            if args.primary:
+                primary = args.primary
+            else:
+                for ifacename, iface in node['interfaces'].items():
+                    # First non-bmc interface is primary if otherwise unset
+                    if primary is None and ifacename != 'bmc':
+                        primary = ifacename
+                    if 'primary' in iface and iface['primary']:
+                        primary = ifacename
+                        break
+
             for ifacename in sorted(node['interfaces']):
                 iface = node['interfaces'][ifacename]
                 if len(args.interfaces) > 0 and ifacename not in args.interfaces:
@@ -94,7 +106,7 @@ class ConfCommand(Command):
                     hostname = iface['hostname']
                     components.append('%s.%s' % (hostname, System.config['domain']))
                     components.append(hostname)
-                elif ifacename == args.primary or (args.primary is None and 'primary' in iface and iface['primary']):
+                elif ifacename == primary:
                     hostname = nodename
                     components.append('%s.%s' % (hostname, System.config['domain']))
                     components.append(hostname)
