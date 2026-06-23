@@ -1,0 +1,64 @@
+# Main dnsmasq.conf file for {{System.system | default("your phoenix-managed cluster")}}
+
+{% if 'interfaces' in Dnsmasq -%}
+{% for interface in Dnsmasq.interfaces | default([]) -%}
+interface={{interface}}
+{% endfor -%}
+bind-interfaces
+{% endif %}
+
+# Store configlets here
+conf-dir=/etc/dnsmasq.d
+
+# New and changed files in this directory are automatically consumed
+dhcp-hostsdir=/etc/dnsmasq.hosts.d
+
+log-dhcp
+
+# DHCP Ranges
+{% for network, definition in Network.items() -%}
+{% if 'dhcp' in definition and definition['dhcp'] -%}
+# {{network}} network
+dhcp-range=set:{{network}},{{definition.network}},static,{{definition.netmask}},10m
+{% if 'gateway' in definition -%}
+# {{network}} gateway
+dhcp-option=tag:{{network}},3,{{definition.gateway}}
+{% endif -%}
+{% endif -%}
+{% endfor %}
+
+# iLO seems to report as a Compaq Remote Insight Board
+dhcp-vendorclass=set:ilo,CPQRIB3
+
+dhcp-ignore-clid
+
+#dhcp-authoritative
+
+# Configure TFTP
+enable-tftp
+tftp-root={{Dnsmasq.tftproot | default("/tftpboot")}}
+
+# Identify iPXE user class to avoid loops
+dhcp-match=set:ipxe,175
+dhcp-boot=tag:ipxe,{{Dnsmasq.ipxeurl | default("http://"~Ip~":8000/bootfile")}}
+
+# Boot for BIOS
+dhcp-match=set:bios,option:client-arch,0
+dhcp-match=set:bios,option:client-arch,6
+dhcp-boot=tag:!ipxe,tag:bios,undionly.kpxe
+
+# Boot for EFI-x86
+dhcp-match=set:efi-x86_64,option:client-arch,7
+dhcp-match=set:efi-x86_64,option:client-arch,9
+dhcp-boot=tag:!ipxe,tag:efi-x86_64,ipxe-x86_64.efi
+
+# Boot for EFI-arm
+dhcp-match=set:efi-arm32,option:client-arch,10
+dhcp-match=set:efi-arm64,option:client-arch,11
+dhcp-boot=tag:!ipxe,tag:efi-arm64,ipxe-arm64.efi
+
+{% if 'config' in Dnsmasq -%}
+{% for line in Dnsmasq.config -%}
+{{line}}
+{% endfor -%}
+{% endif -%}

@@ -5,9 +5,19 @@
 import sys
 import logging
 import datetime
+import socket
+
+from pathlib import Path
+
 import phoenix
 from phoenix.system import System
+from phoenix.network import Network
 from phoenix.node import Node
+
+from jinja2 import Template
+from jinja2.exceptions import TemplateSyntaxError
+from jinja2 import ChoiceLoader, FileSystemLoader, PackageLoader
+from jinja2 import Environment
 
 def _escape_vendorclass(vendorclass):
     table = str.maketrans({' ': '_', '/': '_', '\\': '_'})
@@ -15,6 +25,7 @@ def _escape_vendorclass(vendorclass):
 
 class DnsmasqDhcp(object):
     dhcptype = "dnsmasq"
+    environment = None
 
     @classmethod
     def update_dhcp_reservations(cls):
@@ -70,5 +81,32 @@ class DnsmasqDhcp(object):
         return("Ok")
 
     @classmethod
+    def load_environment(cls):
+        if cls.environment is not None:
+            return
+
+        cls.environment = Environment()
+        cls.environment.loader = ChoiceLoader([
+            FileSystemLoader([Path(phoenix.conf_path) / 'templates']),
+            PackageLoader('phoenix', 'templates')
+        ])
+
+    @classmethod
     def get_dhcp_conf(cls):
-        return "# not yet implemented"
+        cls.load_environment()
+        Network.load_config()
+        template = cls.environment.get_template('dnsmasq.conf.j2')
+
+        if 'dnsmasq' in System.config:
+            settings = System.config['dnsmasq']
+        else:
+            settings = {}
+
+        local_ip = socket.gethostbyname(socket.gethostname())
+
+        return template.render({
+            'System': System.config,
+            'Network': Network.config,
+            'Dnsmasq': settings,
+            'Ip': local_ip,
+            })
