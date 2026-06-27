@@ -287,7 +287,7 @@ class HpcmCommand(Command):
                 it.addraw('external_switch_controller')
         else:
             it.addraw('internal_name', cls._get_internal_name(n))
-            cls._add_interfaces(n, it)
+            cls._add_interfaces(n, it, fakemacs=fakemacs, missingmac=missingmac)
             if n.get('type', 'generic') == 'admin' or n.get('type', 'generic') == 'leader':
                 it.addna('rootfs', 'rootfs', 'disk')
                 if disk:
@@ -381,15 +381,30 @@ class HpcmCommand(Command):
         return 'service%d' % servicenum
 
     @classmethod
-    def _add_interfaces(cls, n, it):
-        dnets = 0
+    def _add_interfaces(cls, n, it, fakemacs=False, missingmac=None):
+        dnets = dict()
         for interface in sorted(n['interfaces']):
             if interface == 'bmc':
-                it.addia('mgmt_bmc_net_macs', 'bmc', 'mac')
+                if 'mac' not in n['interfaces'][interface] or n['interfaces'][interface]['mac'] is None or n['interfaces'][interface]['mac'] == 'None':
+                    logging.debug("There is no mac for %s %s" % (n['name'], interface))
+                    if missingmac is not None:
+                        missingmac.append(n['name'])
+                    if fakemacs:
+                        it.addraw('mgmt_bmc_net_macs', cls._fakemac(n, 'bmc'))
+                else:
+                    logging.debug("the mac is %s type %s" % (n['interfaces'][interface]['mac'], type(n['interfaces'][interface]['mac'])))
+                    it.addia('mgmt_bmc_net_macs', 'bmc', 'mac')
                 it.addia('mgmt_bmc_net_ip', 'bmc', 'ip')
                 it.addia('mgmt_bmc_net_name', 'bmc', 'network')
             elif interface == 'bond0':
-                it.addia('mgmt_net_macs', 'bond0', 'mac')
+                if 'mac' not in n['interfaces'][interface] or n['interfaces'][interface]['mac'] is None or n['interfaces'][interface]['mac'] == 'None':
+                    logging.debug("There is no mac for %s %s" % (n['name'], interface))
+                    if missingmac is not None:
+                        missingmac.append(n['name'])
+                    if fakemacs:
+                        it.addraw('mgmt_net_macs', cls._fakemac(n, 'bond0'))
+                else:
+                    it.addia('mgmt_net_macs', 'bond0', 'mac')
                 it.addia('mgmt_net_ip', 'bond0', 'ip')
                 it.addia('mgmt_net_name', 'bond0', 'network')
                 it.addraw('mgmt_net_bonding_mode', '802.3ad')
@@ -414,10 +429,18 @@ class HpcmCommand(Command):
             elif '.' in interface:
                 logging.debug("Skipping vlan interface %s", interface)
             else:
-                dnets = dnets + 1
-                it.addia('data%d_net_name' % dnets, interface, 'network')
-                it.addraw('data%d_net_interfaces' % dnets, interface)
-                it.addia('data%d_net_ip' % dnets, interface, 'ip')
+                # This is a data network
+                net = n['interfaces'][interface]['network']
+                if net not in dnets:
+                    dnets[net] = {'interfaces': list(), 'ips': list()}
+                dnets[net]['interfaces'].append(interface)
+                dnets[net]['ips'].append(n['interfaces'][interface]['ip'])
+        dnetnum = 1
+        for dnetname, dnet in dnets.items():
+            it.addraw('data%d_net_name' % dnetnum, dnetname)
+            it.addraw('data%d_net_interfaces' % dnetnum, ','.join(dnet['interfaces']))
+            it.addraw('data%d_net_ip' % dnetnum, ','.join(dnet['ips']))
+            dnetnum = dnetnum + 1
 
     @classmethod
     def _get_bond0_bondmembers(cls, n):
