@@ -200,6 +200,8 @@ class HpcmCommand(Command):
             netentry.append('netmask=%s' % net['netmask'])
             if 'gateway' in net:
                 netentry.append('gateway=%s' % net['gateway'])
+            if 'mtu' in net:
+                netentry.append('mtu=%s' % net['mtu'])
             output.append(', '.join(netentry))
         output.append('')
 
