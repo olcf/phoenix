@@ -515,6 +515,65 @@ class Node(object):
 
         return output
 
+    def get_ip(self, interface=None):
+        # For simple devices like switches, support putting an IP at the top level
+        if 'ip' in self:
+            return self['ip']
+
+        if 'interfaces' not in self:
+            raise KeyError('No interfaces defined for %s' % self['name'])
+
+        if interface is not None:
+            if interface not in self['interfaces']:
+                raise KeyError('Node %s does not have interface %s' % (self['name'], interface))
+            if 'ip' not in self['interfaces'][interface]:
+                raise KeyError('Node %s interface %s does not have an IP set' % (self['name'], interface))
+            return self['interfaces'][interface]['ip']
+
+        # Check if any interface is listed as 'primary'
+        for ifacename, iface in self['interfaces'].items():
+            if 'primary' in iface and iface['primary'] and 'ip' in iface:
+                return iface['ip']
+
+        # Otherwise, return the first interface with an ip
+        for ifacename, iface in self['interfaces'].items():
+            # Skip 'bmc' on nodes with multiple interfaces
+            if ifacename == 'bmc' and len(self['interfaces']) > 1:
+                continue
+            if 'ip' in iface:
+                return iface['ip']
+
+        raise KeyError('Could not determine IP for %s' % self['name'])
+
+    def option82_remoteid(self):
+        # Returns a tuple of:
+        # remoteid format
+        # remoteid human-readable
+        # remoteid machine-readable
+        if 'option82' not in self:
+            raise KeyError("%s does not have 'option82' set" % self.name)
+        if isinstance(self['option82'], str):
+            return('string', self['option82'], self['option82'])
+        elif not isinstance(self['option82'], dict) and not isinstance(self['option82'], NodeLayerMap):
+            raise KeyError("%s 'option82' should be a string or a dict, got %s" % (self.name, type(self['option82'])))
+        if 'remoteid' in self['option82']:
+            remoteid_human = self['option82']['remoteid']
+        else:
+            remoteid_human = self.name
+        if 'remoteid_format' in self['option82']:
+            remoteid_format = self['option82']['remoteid_format']
+        else:
+            remoteid_format = 'string'
+        if remoteid_format == 'string':
+            remoteid_machine = remoteid_human
+        elif remoteid_format == 'ipbytes':
+            remoteid_machine = ipaddress.ip_address(remoteid_human).packed
+        elif remoteid_format == 'ipbytes_reverse':
+            remoteid_machine = ipaddress.ip_address(remoteid_human).packed[::-1]
+        else:
+            raise KeyError("Unknown remoteid_format setting %s for %s" % (remoteid_format, self.name))
+        return(remoteid_format, remoteid_human, remoteid_machine)
+
 # How to represent a Node in yaml
 def node_representer(dumper, data):
     return dumper.represent_mapping('tag:yaml.org,2002:map', data)
