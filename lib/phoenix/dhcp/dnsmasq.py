@@ -19,16 +19,21 @@ from jinja2.exceptions import TemplateSyntaxError
 from jinja2 import ChoiceLoader, FileSystemLoader, PackageLoader
 from jinja2 import Environment
 
+from ClusterShell.NodeSet import NodeSet
+
 def _escape_vendorclass(vendorclass):
     table = str.maketrans({' ': '_', '/': '_', '\\': '_'})
     return vendorclass.translate(table)
 
 class DnsmasqDhcp(object):
     dhcptype = "dnsmasq"
+    configroot = Path('/etc/dnsmasq.d')
+    settings = None
     environment = None
 
     @classmethod
     def update_dhcp_reservations(cls):
+        cls.load_settings()
         leasetime='10m'
         curtime = datetime.datetime.now()
         timestamp = curtime.strftime('%Y-%m-%d %H:%M:%S')
@@ -57,7 +62,11 @@ class DnsmasqDhcp(object):
                         continue
                     elements = ["*:*:*:*:*:*"]
                     elements.append('tag:' + iface['switch'])
-                    elements.append('tag:' + iface['switchport'])
+                    # Prepend numeric interfaces with 'port' to avoid confusing dnsmasq configs
+                    if isinstance(iface['switchport'], int) or iface['switchport'][0].isdigit():
+                        elements.append('tag:port' + str(iface['switchport']))
+                    else:
+                        elements.append('tag:' + iface['switchport'])
                     if 'vendorclass' in iface:
                         elements.append('tag:' + _escape_vendorclass(iface['vendorclass']))
                     elements.append(iface['ip'])
@@ -70,7 +79,9 @@ class DnsmasqDhcp(object):
                         continue
                     output.append("%s,%s,%s,%s" % (iface['mac'], iface['ip'], hostname, leasetime))
         try:
-            outputfile = '/etc/dnsmasq.hosts.d/phoenix.conf'
+            outputdir = cls.configroot / 'hosts'
+            outputdir.mkdir(parents=True, exist_ok=True)
+            outputfile = outputdir / 'phoenix.conf'
             with open(outputfile, 'w') as ethersfile:
                 ethersfile.write('\n'.join(output))
                 ethersfile.write('\n')
@@ -81,11 +92,25 @@ class DnsmasqDhcp(object):
         return("Ok")
 
     @classmethod
+    def load_settings(cls):
+        if cls.settings is not None:
+            return
+
+        if 'dnsmasq' in System.config:
+            cls.settings = System.config['dnsmasq']
+        else:
+            cls.settings = {}
+
+        if 'configroot' in cls.settings:
+            cls.configroot = Path(cls.settings['configroot'])
+
+    @classmethod
     def load_environment(cls):
         if cls.environment is not None:
             return
 
         cls.environment = Environment()
+        cls.environment.trim_blocks = True
         cls.environment.loader = ChoiceLoader([
             FileSystemLoader([Path(phoenix.conf_path) / 'templates']),
             PackageLoader('phoenix', 'templates')
@@ -93,20 +118,89 @@ class DnsmasqDhcp(object):
 
     @classmethod
     def get_dhcp_conf(cls):
+        cls.load_settings()
         cls.load_environment()
         Network.load_config()
-        template = cls.environment.get_template('dnsmasq.conf.j2')
 
-        if 'dnsmasq' in System.config:
-            settings = System.config['dnsmasq']
+        if 'template' in cls.settings:
+            templatefile = cls.settings['template']
         else:
-            settings = {}
+            templatefile = 'dnsmasq.conf.j2'
+        template = cls.environment.get_template(templatefile)
+
+        curtime = datetime.datetime.now()
+        timestamp = curtime.strftime('%Y-%m-%d %H:%M:%S')
 
         local_ip = socket.gethostbyname(socket.gethostname())
+
+        switch_defs = list()
+        switch_ports = set()
+
+        # Iterate through the switches defined in nodes.yaml
+        for nodename,node in sorted(Node.nodes.items()):
+            if 'type' not in node or node['type'] != 'switch':
+                continue
+
+            # Retrieve the remoteid settings
+            try:
+                (option82_format, option82_human, option82_machine) = node.option82_remoteid()
+            except KeyError as e:
+                logging.warning("%s" % e)
+                continue
+
+            # dnsmasq expects raw bytes to be in colon-separated  hex format
+            if isinstance(option82_machine, bytes):
+                option82_machine = option82_machine.hex(':')
+
+            switch_defs.append("dhcp-remoteid=set:%s,%s # %s" % (nodename, option82_machine, option82_human))
+
+            if 'ports' not in node:
+                logging.warning("Switch %s does not have 'ports' set" % nodename)
+                continue
+
+            if 'circuitid_format' in node['option82']:
+                circuitid_setting = node['option82']['circuitid_format']
+            else:
+                circuitid_setting = 'string'
+
+            for port in NodeSet(node['ports']):
+                if circuitid_setting == 'integerbytes':
+                    try:
+                        portbytes_str = ':'.join(f'{b:02x}' for b in int(port).to_bytes(4, 'big'))
+                    except:
+                        logging.warning("Port %s could not be read as 'integerbytes'" % port)
+                        continue
+                    switch_ports.add(("port%d" % int(port),portbytes_str))
+                elif circuitid_setting == 'string':
+                    switch_ports.add((str(port),str(port)))
+
+        # Write out phoenix_switchports.conf
+        try:
+            outputfile = cls.configroot / 'phoenix_switchports.conf'
+            with open(outputfile, 'w') as outputfd:
+                outputfd.write("# This file was generated by phoenix at %s\n" % timestamp)
+                for switch_port in sorted(switch_ports):
+                    outputfd.write("dhcp-circuitid=set:%s,%s\n" % (switch_port[0], switch_port[1]))
+        except:
+            logging.error("Could not write to %s", outputfile)
+            return(False)
+
+
+        # Write out phoenix_switches.conf
+        try:
+            outputfile = cls.configroot / 'phoenix_switches.conf'
+            with open(outputfile, 'w') as outputfd:
+                outputfd.write("# This file was generated by phoenix at %s\n" % timestamp)
+                outputfd.write('\n'.join(switch_defs))
+                outputfd.write('\n')
+        except:
+            logging.error("Could not write to %s", outputfile)
+            return(False)
 
         return template.render({
             'System': System.config,
             'Network': Network.config,
-            'Dnsmasq': settings,
+            'Dnsmasq': cls.settings,
             'Ip': local_ip,
+            'Timestamp': timestamp,
             })
