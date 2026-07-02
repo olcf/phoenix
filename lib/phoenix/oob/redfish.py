@@ -15,6 +15,13 @@ from phoenix.system import System
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+import yaml
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    logging.info("Unable to load CLoader and/or CDumper")
+    from yaml import Loader, Dumper
+
 from phoenix.oob import Oob
 
 class RedfishError(Exception):
@@ -287,8 +294,15 @@ class Redfish(Oob):
         if args[1] == "get":
             path = '%s/Bios' % (systempath)
             if args[2]:
-                return cls._get_redfish_attribute(node, path, "Attributes.%s" % args[2])
-            else: return cls._get_redfish_attribute(node, path, "Attributes")
+                rc, data = cls._get_redfish_attribute(node, path, "Attributes.%s" % args[2])
+            else:
+                rc, data = cls._get_redfish_attribute(node, path, "Attributes")
+            try:
+                if isinstance(data, dict):
+                    data = yaml.dump(data, default_flow_style=False, explicit_start=False, explicit_end=False) 
+            except Exception as e:
+                pass
+            return rc, data
         elif args[1] == "set":
             if len(args) < 3 or args[2] is None or args[3] is None:
                 return(False, "Must specify a key and value (got %s)" % str(args))
