@@ -306,8 +306,9 @@ class HpcmCommand(Command):
                     it.addraw('mgmt_bmc_net_macs', cls._fakemac(n, 'cooldev0'))
                 else:
                     logging.debug("CDU %s is missing a mac", n['name'])
-            cdutype = n.get('cdutype', 'cdu')
-            command = "/opt/cmu/pcim/tools/add_rack -n %s -t %s -i %s -c 2" % (n.name, cdutype, n['interfaces']['cooldev0']['ip']) 
+            cdutype = n.get('cdutype', 'mcdu').upper()
+            # Note that for snmpv1 or v2c a username and password is not used, but add_rack forces you to specify something
+            command = "/opt/cmu/pcim/tools/add_rack -n %s -t %s -i %s -c 2 -u user -p pass && grep -q %s /opt/cmu/pcim/layout.txt || echo %s >> /opt/cmu/pcim/layout.txt" % (n.name, cdutype, n['interfaces']['cooldev0']['ip'], n.name, n.name)
         else:
             it.addraw('internal_name', cls._get_internal_name(n))
             cls._add_interfaces(n, it, fakemacs=fakemacs, missingmac=missingmac)
