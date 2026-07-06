@@ -309,6 +309,17 @@ class HpcmCommand(Command):
             cdutype = n.get('cdutype', 'mcdu').upper()
             # Note that for snmpv1 or v2c a username and password is not used, but add_rack forces you to specify something
             command = "/opt/cmu/pcim/tools/add_rack -n %s -t %s -i %s -c 2 -u user -p pass && grep -q %s /opt/cmu/pcim/layout.txt || echo %s >> /opt/cmu/pcim/layout.txt" % (n.name, cdutype, n['interfaces']['cooldev0']['ip'], n.name, n.name)
+        elif n.get('type', 'generic') == 'pdu':
+            it.addraw('internal_name', cls._get_internal_name(n))
+            it.addraw('device_type', 'pdu')
+            it.addia('mgmt_bmc_net_name', 'pdu0', 'network')
+            it.addia('mgmt_bmc_net_ip', 'pdu0', 'ip')
+            if not it.addia('mgmt_bmc_net_macs', 'pdu0', 'mac') and missingmac is not None:
+                missingmac.append(n.name)
+                if fakemacs == True:
+                    it.addraw('mgmt_bmc_net_macs', cls._fakemac(n, 'pdu0'))
+            else:
+                logging.debug("PDU %s is missing a mac", n.name)
         else:
             it.addraw('internal_name', cls._get_internal_name(n))
             cls._add_interfaces(n, it, fakemacs=fakemacs, missingmac=missingmac)
@@ -383,6 +394,11 @@ class HpcmCommand(Command):
                 return 'cooldev%d' % n['cooldevnum']
             else:
                 return 'cooldev%d' % n['nodeindex']
+        elif 'type' in n and n['type'] == 'pdu':
+            if 'pdunum' in n:
+                return 'pdu%d' % n['pdunum']
+            else:
+                return 'pdu%d' % n['nodeindex']
         elif 'type' in n and n['type'] == 'compute' and n['plugin'] == 'cray_ex':
             servicenum = (2000000000 + n['racknum'] * 10000 +
                           n['chassis'] * 1000 + n['slot'] * 100 +
