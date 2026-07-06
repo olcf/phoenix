@@ -62,8 +62,9 @@ class ParamList(object):
         try:
             val = self.node['interfaces'][interface][ifaceattr]
             self.paramlist.append("{}={}".format(hpcmattr, self._quote(val)))
+            return True
         except KeyError:
-            pass
+            return False
 
 class HpcmCommand(Command):
     @classmethod
@@ -285,6 +286,17 @@ class HpcmCommand(Command):
                 it.addraw('switch_controller')
             else:
                 it.addraw('external_switch_controller')
+        elif n.get('type', 'generic') == 'cdu':
+            it.addraw('internal_name', cls._get_internal_name(n))
+            it.addraw('device_type', 'cdu')
+            it.addia('mgmt_bmc_net_name', 'cooldev0', 'network')
+            it.addia('mgmt_bmc_net_ip', 'cooldev0', 'ip')
+            if not it.addia('mgmt_bmc_net_macs', 'cooldev0', 'mac') and missingmac is not None:
+                missingmac.append(n['name'])
+                if fakemacs == True:
+                    it.addraw('mgmt_bmc_net_macs', cls._fakemac(n, 'cooldev0'))
+                else:
+                    logging.debug("CDU %s is missing a mac", n['name'])
         else:
             it.addraw('internal_name', cls._get_internal_name(n))
             cls._add_interfaces(n, it, fakemacs=fakemacs, missingmac=missingmac)
@@ -354,6 +366,11 @@ class HpcmCommand(Command):
             servicenum = n['hpcm_servicenum']
         elif 'type' in n and n['type'] == 'admin':
             return 'admin'
+        elif 'type' in n and n['type'] == 'cdu':
+            if 'cooldevnum' in n:
+                return 'cooldev%d' % n['cooldevnum']
+            else:
+                return 'cooldev%d' % n['nodeindex']
         elif 'type' in n and n['type'] == 'compute' and n['plugin'] == 'cray_ex':
             servicenum = (2000000000 + n['racknum'] * 10000 +
                           n['chassis'] * 1000 + n['slot'] * 100 +
