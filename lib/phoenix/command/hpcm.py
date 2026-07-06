@@ -127,7 +127,8 @@ class HpcmCommand(Command):
 
         # Discover section for the admin node
         output.append('[discover]')
-        output.append(cls._node_discover('admin1'))
+        admindiscover, admincommand = cls._node_discover('admin1')
+        output.append(admindiscover)
         output.append('')
 
         # Attributes section
@@ -220,20 +221,28 @@ class HpcmCommand(Command):
         missingmac = list()
         output = list()
         output.append("[discover]")
+        commands = list()
         for nodename in nodes:
-            result = cls._node_discover(nodename, image=args.image, fakemacs=args.fakemacs, missingmac=missingmac, disk=args.disk)
+            result, command = cls._node_discover(nodename, image=args.image, fakemacs=args.fakemacs, missingmac=missingmac, disk=args.disk)
             output.append(result)
+            if command is not None:
+                commands.append(command)
         if len(missingmac) > 0 and args.fakemacs == False:
             logging.error("Nodes %s are missing a mac address. Specify --fakemacs to continue", NodeSet.fromlist(missingmac))
         else:
             for line in output:
                 print(line)
+            if len(commands) > 0:
+                print("# Run these commands after discovering:", file=sys.stderr)
+                for line in commands:
+                    print(line, file=sys.stderr)
         return 0
 
     @classmethod
     def _node_discover(cls, nodename, image=None, fakemacs=False, missingmac=None, disk=None):
         n = Node.find_node(nodename)
         it = ParamList(n)
+        command = None
         it.addna('hostname1', 'name')
         if n.get('type', 'generic') == 'mgmtsw':
             if 'internal_name' in n:
@@ -297,6 +306,8 @@ class HpcmCommand(Command):
                     it.addraw('mgmt_bmc_net_macs', cls._fakemac(n, 'cooldev0'))
                 else:
                     logging.debug("CDU %s is missing a mac", n['name'])
+            cdutype = n.get('cdutype', 'cdu')
+            command = "/opt/cmu/pcim/tools/add_rack -n %s -t %s -i %s -c 2" % (n.name, cdutype, n['interfaces']['cooldev0']['ip']) 
         else:
             it.addraw('internal_name', cls._get_internal_name(n))
             cls._add_interfaces(n, it, fakemacs=fakemacs, missingmac=missingmac)
@@ -346,7 +357,7 @@ class HpcmCommand(Command):
                     it.addraw('su_leader', (usersettings['leaderlist'][leaderidx]))
             else:
                 it.addraw('card_type', 'ILO')
-        return ', '.join(it.paramlist)
+        return ', '.join(it.paramlist), command
 
     @classmethod
     def _fakemac(cls, n, interface='bond0'):
