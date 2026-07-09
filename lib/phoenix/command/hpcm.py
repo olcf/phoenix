@@ -309,6 +309,19 @@ class HpcmCommand(Command):
             cdutype = n.get('cdutype', 'mcdu').upper()
             # Note that for snmpv1 or v2c a username and password is not used, but add_rack forces you to specify something
             command = "/opt/cmu/pcim/tools/add_rack -n %s -t %s -i %s -c 2 -u user -p pass && grep -q %s /opt/cmu/pcim/layout.txt || echo %s >> /opt/cmu/pcim/layout.txt" % (n.name, cdutype, n['interfaces']['cooldev0']['ip'], n.name, n.name)
+        elif n.get('type', 'generic') == 'rdhx':
+            it.addraw('internal_name', cls._get_internal_name(n))
+            it.addraw('device_type', 'rdhx')
+            it.addia('mgmt_bmc_net_name', 'cooldev0', 'network')
+            it.addia('mgmt_bmc_net_ip', 'cooldev0', 'ip')
+            if not it.addia('mgmt_bmc_net_macs', 'cooldev0', 'mac') and missingmac is not None:
+                missingmac.append(n['name'])
+                if fakemacs == True:
+                    it.addraw('mgmt_bmc_net_macs', cls._fakemac(n, 'cooldev0'))
+                else:
+                    logging.debug("RDHX %s is missing a mac", n['name'])
+            # Note that for snmpv1 or v2c a username and password is not used, but add_rack forces you to specify something
+            command = "/opt/cmu/pcim/tools/add_rack -n %s -t RDHX -i %s -c 2 -u user -p pass && grep -q %s /opt/cmu/pcim/layout.txt || echo %s >> /opt/cmu/pcim/layout.txt" % (n.name, n['interfaces']['cooldev0']['ip'], n.name, n.name)
         elif n.get('type', 'generic') == 'pdu':
             it.addraw('internal_name', cls._get_internal_name(n))
             it.addraw('device_type', 'pdu')
@@ -394,6 +407,11 @@ class HpcmCommand(Command):
                 return 'cooldev%d' % n['cooldevnum']
             else:
                 return 'cooldev%d' % n['nodeindex']
+        elif 'type' in n and n['type'] == 'rdhx':
+            if 'cooldevnum' in n:
+                return 'cooldev%d' % n['cooldevnum']
+            else:
+                return 'cooldev%d' % (n['nodeindex'] + 100)
         elif 'type' in n and n['type'] == 'pdu':
             if 'pdunum' in n:
                 return 'pdu%d' % n['pdunum']
