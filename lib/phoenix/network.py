@@ -59,8 +59,14 @@ class Network(object):
         cls.config[net]['ipobj'] = ipaddress.ip_address(net2)
 
         # Cache the rack netmask width if present
-        if 'rackmask' in cls.config[net]:
-            netstring = "%s/%s" % ('0.0.0.0', cls.config[net]['rackmask'])
+        if 'rackprefix' in cls.config[net] or 'rackmask' in cls.config[net] or 'racknetmask' in cls.config[net]:
+            if 'rackprefix' in cls.config[net]:
+                prefix = cls.config[net]['rackprefix']
+            elif 'racknetmask' in cls.config[net]:
+                prefix = cls.config[net]['racknetmask']
+            else:
+                prefix = cls.config[net]['rackmask']
+            netstring = "%s/%s" % ('0.0.0.0', prefix)
             try:
                 netstring = netstring.decode()
             except:

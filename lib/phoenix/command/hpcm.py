@@ -19,6 +19,7 @@ except ImportError:
     from yaml import Loader, Dumper
 
 from ClusterShell.NodeSet import NodeSet
+from ClusterShell.RangeSet import RangeSet
 import phoenix
 import phoenix.parallel
 from phoenix.system import System
@@ -611,6 +612,58 @@ class HpcmCommand(Command):
 
     @classmethod
     def racknetworks(cls, nodes, args):
+        if System.setting('cray_ex', default=None) is not None:
+            # Legacy cray_ex racknetwork support, leave unchanged for now
+            cls.racknetworks_crayex(node, args)
+            return
+
+        for netname,network in Network.networks().items():
+            if 'rackprefix' not in network and 'racknetmask' not in network:
+                continue
+            if 'rackprefix' not in network:
+                network['rackprefix'] = ipaddress.ip_network('0.0.0.0/%s' % network['racknetmask']).prefixlen
+            net = ipaddress.ip_network('%s/%s' %(network['network'], network['netmask']))
+            subnets = list(net.subnets(new_prefix=network['rackprefix']))
+            if 'racksinclude' in network:
+                racksinclude = RangeSet(network['racksinclude'])
+            else:
+                racksinclude = range(len(subnets))
+            for idx, subnet in enumerate(subnets):
+                if idx not in racksinclude:
+                    continue
+                if 'racknetmask' in network:
+                    subnet = ipaddress.ip_network('%s/%s' % (subnet.network_address, network['racknetmask']))
+                parameters = [ "cm network add" ]
+                parameters.append("-w %s%d" % (netname, idx))
+                parameters.append("-b %s" % subnet.network_address)
+                if netname == 'head' or netname == 'hostmgmt':
+                    parameters.append("-T mgmt")
+                elif netname == 'head-bmc' or netname == 'hostctrl':
+                    parameters.append("-T bmc")
+                else:
+                    parameters.append("-T data")
+                parameters.append("-m %s" % subnet.netmask)
+                if 'rackgateway' in network:
+                    try:
+                        if network['rackgateway'] == 'first':
+                            gw = subnet[1]
+                        elif network['rackgateway'] == 'last':
+                            gw = subnet[-2]
+                        else:
+                            gw = subnet[int(network['rackgateway'])]
+                    except:
+                        gw = None
+                    if gw is not None:
+                        parameters.append("-g %s" % gw)
+                if 'mtu' in network:
+                    parameters.append("-M %d" % network['mtu'])
+                parameters.append("-a")
+                if idx != int(racksinclude[-1]):
+                    parameters.append("--skip-update-config")
+                print(" ".join(parameters))
+
+    @classmethod
+    def racknetworks_crayex(cls, nodes, args):
         global usersettings
         hostmgmtvlanmode = usersettings.get('hostmgmtvlanmode', 'rack-based')
         hostmgmtstart = usersettings.get('hostmgmtvlanstart', 2000)
