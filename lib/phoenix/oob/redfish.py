@@ -48,6 +48,8 @@ class Redfish(Oob):
                 raise NotImplementedError("HTTP request type %s not understood" % request_type)
         except requests.ConnectTimeout as e:
             raise OOBTimeoutError(e)
+        except requests.ReadTimeout as e:
+            raise OOBTimeoutError(e)
         except requests.ConnectionError as e:
             raise OOBTimeoutError(e)
         
