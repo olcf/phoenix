@@ -496,14 +496,20 @@ class HpcmCommand(Command):
                 # This is a data network
                 net = n['interfaces'][interface]['network']
                 if net not in dnets:
-                    dnets[net] = {'interfaces': list(), 'ips': list()}
+                    dnets[net] = {'interfaces': list(), 'ips': list(), 'ips6': list()}
                 dnets[net]['interfaces'].append(interface)
-                dnets[net]['ips'].append(n['interfaces'][interface]['ip'])
+                if 'ip' in n['interfaces'][interface]:
+                    dnets[net]['ips'].append(n['interfaces'][interface]['ip'])
+                if 'ip6' in n['interfaces'][interface]:
+                    dnets[net]['ips6'].append(n['interfaces'][interface]['ip6'])
         dnetnum = 1
         for dnetname, dnet in dnets.items():
             it.addraw('data%d_net_name' % dnetnum, dnetname)
             it.addraw('data%d_net_interfaces' % dnetnum, ','.join(dnet['interfaces']))
-            it.addraw('data%d_net_ip' % dnetnum, ','.join(dnet['ips']))
+            if len(dnet['ips']) > 0:
+                it.addraw('data%d_net_ip' % dnetnum, ','.join(dnet['ips']))
+            if len(dnet['ips6']) > 0:
+                it.addraw('data%d_net_ipv6' % dnetnum, ','.join(dnet['ips6']))
             dnetnum = dnetnum + 1
 
     @classmethod
@@ -617,44 +623,83 @@ class HpcmCommand(Command):
             cls.racknetworks_crayex(node, args)
             return
 
-        for netname,network in Network.networks().items():
-            if 'rackprefix' not in network and 'racknetmask' not in network:
+        for netname, network in Network.networks().items():
+            has_ipv4 = True if 'network' in network else False
+            has_ipv6 = True if 'network6' in network else False
+
+            has_ipv4_racks = True if 'rackprefix' in network or 'racknetmask' in network else False
+            has_ipv6_racks = True if 'rackprefix6' in network or 'racknetmask6' in network else False
+
+            if not has_ipv4_racks and not has_ipv6_racks:
                 continue
-            if 'rackprefix' not in network:
-                network['rackprefix'] = ipaddress.ip_network('0.0.0.0/%s' % network['racknetmask']).prefixlen
-            net = ipaddress.ip_network('%s/%s' %(network['network'], network['netmask']))
-            subnets = list(net.subnets(new_prefix=network['rackprefix']))
+
+            # In HPCM, a given interface can only be a part of one network.
+            # That means that if it has an ipv4 and an ipv6 address, the network
+            # must have a matching subnets for both address families.
+            # Iterate across the ipv4 networks and match it with the ipv6 one.
+            # That means the ipv6 subnet count cannot be smaller than ipv4.
+            if has_ipv4 and has_ipv6 and len(network['subnets']) > len(network['subnets6']):
+                raise ValueError('Network %s has more ipv4 subnets than ipv6 - not currently supported' % netname)
+
             if 'racksinclude' in network:
-                racksinclude = RangeSet(network['racksinclude'])
+                racksinclude = list(RangeSet(network['racksinclude']).intiter())
             else:
-                racksinclude = range(len(subnets))
-            for idx, subnet in enumerate(subnets):
-                if idx not in racksinclude:
-                    continue
+                if has_ipv4_racks:
+                    racksinclude = range(len(network['subnets']))
+                elif has_ipv6_racks:
+                    racksinclude = range(len(network['subnets6']))
+
+            for idx in racksinclude:
+                if has_ipv4_racks:
+                    subnet = network['subnets'][idx]
+                if has_ipv6_racks:
+                    subnet6 = network['subnets6'][idx]
+
+                # Rarely, the racknetmask does not match the network prefix
                 if 'racknetmask' in network:
                     subnet = ipaddress.ip_network('%s/%s' % (subnet.network_address, network['racknetmask']))
+
                 parameters = [ "cm network add" ]
+                # The --force parameter avoids questions
+                parameters.append("--force")
                 parameters.append("-w %s%d" % (netname, idx))
-                parameters.append("-b %s" % subnet.network_address)
                 if netname == 'head' or netname == 'hostmgmt':
                     parameters.append("-T mgmt")
                 elif netname == 'head-bmc' or netname == 'hostctrl':
                     parameters.append("-T bmc")
                 else:
                     parameters.append("-T data")
-                parameters.append("-m %s" % subnet.netmask)
-                if 'rackgateway' in network:
-                    try:
-                        if network['rackgateway'] == 'first':
-                            gw = subnet[1]
-                        elif network['rackgateway'] == 'last':
-                            gw = subnet[-2]
-                        else:
-                            gw = subnet[int(network['rackgateway'])]
-                    except:
-                        gw = None
-                    if gw is not None:
-                        parameters.append("-g %s" % gw)
+
+                if has_ipv4_racks:
+                    parameters.append("-b %s" % subnet.network_address)
+                    parameters.append("-m %s" % subnet.netmask)
+                    if 'rackgateway' in network:
+                        try:
+                            if network['rackgateway'] == 'first':
+                                gw = subnet[1]
+                            elif network['rackgateway'] == 'last':
+                                gw = subnet[-2]
+                            else:
+                                gw = subnet[int(network['rackgateway'])]
+                        except:
+                            gw = None
+                        if gw is not None:
+                            parameters.append("-g %s" % gw)
+                if has_ipv6_racks:
+                    parameters.append("-6b %s" % subnet6.network_address)
+                    parameters.append("-6m /%s" % subnet6.prefixlen)
+                    if 'rackgateway6' in network:
+                        try:
+                            if network['rackgateway6'] == 'first':
+                                gw = subnet6[1]
+                            elif network['rackgateway6'] == 'last':
+                                gw = subnet6[-2]
+                            else:
+                                gw = subnet[int(network['rackgateway6'])]
+                        except:
+                            gw = None
+                        if gw is not None:
+                            parameters.append("-6g %s" % gw)
                 if 'mtu' in network:
                     parameters.append("-M %d" % network['mtu'])
                 parameters.append("-a")
@@ -688,7 +733,7 @@ class HpcmCommand(Command):
             else:
                 hmvlan = racknum - firstrack + hostmgmtstart
             print("cm network add -w hostmgmt%d -T mgmt -b %s -m %s -v %d -G -a --rack %d%s" % \
-                (hmvlan, hostmgmtnet['ipobj'] + rackidx * hostmgmtnet['rackaddresses'], hostmgmtnet['racknetmask'], hmvlan, rackidx + 1, skip))
+                (hmvlan, hostmgmtnet['ipobj'].network_address + rackidx * hostmgmtnet['rackaddresses'], hostmgmtnet['racknetmask'], hmvlan, rackidx + 1, skip))
             if rackidx == numracks - 1:
                 skip = ""
             if hostctrlvlanmode == 'sequential':
@@ -696,7 +741,7 @@ class HpcmCommand(Command):
             else:
                 hcvlan = racknum - firstrack + hostctrlstart
             print("cm network add -w hostctrl%d -T mgmt-bmc -b %s -m %s -v %d -G -a --rack %d%s" % \
-                (hcvlan, hostctrlnet['ipobj'] + rackidx * hostctrlnet['rackaddresses'], hostctrlnet['racknetmask'], hcvlan, rackidx + 1, skip))
+                (hcvlan, hostctrlnet['ipobj'].network_address + rackidx * hostctrlnet['rackaddresses'], hostctrlnet['racknetmask'], hcvlan, rackidx + 1, skip))
 
     @classmethod
     def repos(cls, nodes, args):
