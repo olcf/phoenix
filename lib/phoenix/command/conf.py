@@ -26,6 +26,12 @@ from phoenix.node import Node
 from phoenix.bootloader import write_bootloader_scripts
 from phoenix.dhcp import load_dhcp_provider
 
+try:
+    from tabulate import tabulate
+    has_tabulate = True
+except ImportError:
+    has_tabulate = False
+
 class ConfCommand(Command):
     @classmethod
     def get_parser(cls):
@@ -77,6 +83,7 @@ class ConfCommand(Command):
     def hosts(cls, nodes, args):
         System.load_config()
         Node.load_nodes(nodeset=nodes)
+        output = list()
         for nodename in nodes:
             node = Node.find_node(nodename)
             if 'interfaces' not in node:
@@ -99,30 +106,36 @@ class ConfCommand(Command):
                     continue
                 if len(args.networks) > 0 and ('network' not in iface or iface['network'] not in args.networks):
                     continue
-                if 'ip' not in iface:
-                    continue
-                components = [iface['ip']]
-                if 'hostname' in iface:
-                    hostname = iface['hostname']
-                    components.append('%s.%s' % (hostname, System.config['domain']))
-                    components.append(hostname)
-                elif ifacename == primary:
-                    hostname = nodename
-                    components.append('%s.%s' % (hostname, System.config['domain']))
-                    components.append(hostname)
-                    hostname = "%s-%s" % (nodename, ifacename)
-                    components.append('%s.%s' % (hostname, System.config['domain']))
-                    components.append(hostname)
-                    if 'alias' in iface:
-                        components.append(iface['alias'])
-                else:
-                    hostname = "%s-%s" % (nodename, ifacename)
-                    components.append('%s.%s' % (hostname, System.config['domain']))
-                    components.append(hostname)
-                    if 'alias' in iface:
-                        components.append(iface['alias'])
-                        components.append("%s-%s" % (iface['alias'], ifacename))
-                print("\t".join(components))
+                for family in ['ip', 'ip6']:
+                    if family not in iface:
+                        continue
+                    components = [iface[family]]
+                    if 'hostname' in iface:
+                        hostname = iface['hostname']
+                        components.append('%s.%s' % (hostname, System.config['domain']))
+                        components.append(hostname)
+                    elif ifacename == primary:
+                        hostname = nodename
+                        components.append('%s.%s' % (hostname, System.config['domain']))
+                        components.append(hostname)
+                        hostname = "%s-%s" % (nodename, ifacename)
+                        components.append('%s.%s' % (hostname, System.config['domain']))
+                        components.append(hostname)
+                        if 'alias' in iface:
+                            components.append(iface['alias'])
+                    else:
+                        hostname = "%s-%s" % (nodename, ifacename)
+                        components.append('%s.%s' % (hostname, System.config['domain']))
+                        components.append(hostname)
+                        if 'alias' in iface:
+                            components.append(iface['alias'])
+                            components.append("%s-%s" % (iface['alias'], ifacename))
+                    output.append(components)
+        if has_tabulate:
+            print(tabulate(output, tablefmt='plain'))
+        else:
+            for line in output:
+                print("\t".join(line))
         return 0
 
     @classmethod
