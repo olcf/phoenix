@@ -276,6 +276,10 @@ class Node(object):
         raise NotImplementedError("Attributes cannot be deleted from a node")
 
     def __contains__(self, key):
+        if not self.ran_plugins:
+            self.run_plugins()
+        if not self.linked_model:
+            self.link_model()
         return key in self.data
 
     def addlayer(self, layer, position=None):
