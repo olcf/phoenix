@@ -53,6 +53,10 @@ class Network(object):
     @classmethod
     def _cache_network(cls, net):
         """ Parse and cache a network definition """
+        # If a domain is set use it, otherwise fallback to the system domain.
+        if 'domain' not in cls.config[net]:
+            cls.config[net]['domain'] = System.setting('domain')
+
         if 'network' in cls.config[net]:
             cls._cache_network_family(net, family=4)
         if 'network6' in cls.config[net]:
