@@ -24,7 +24,7 @@ def get_parser():
     parser_build.add_argument('name', type=str, help='Recipe name')
     parser_build.add_argument('--define', '-d', nargs=2, action='append', dest='variables', help='Variables to substitute')
     parser_build.add_argument('--keep', '-k', default=False, action='store_true', help='Keep intermediate build data instead of just artifacts')
-    parser_build.add_argument('--tag', '-t', type=str, default=None, help='Build Tag (default: current datetime)')
+    parser_build.add_argument('--tag', '-t', type=str, default=None, help='Build Tag (default: <datetime>[-<githash>[-dirty]])')
 
     return parser
 
