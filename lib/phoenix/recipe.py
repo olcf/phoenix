@@ -20,6 +20,7 @@ import time
 import datetime
 import glob
 import shutil
+import tempfile
 import phoenix
 import jinja2
 from jinja2 import Template
@@ -420,27 +421,56 @@ class StepFile(Step):
     name = 'File'
 
     def __init__(self, filedesc):
+        self.content = None
+        self.chown = None
+        self.chmod = None
         if type(filedesc) is dict:
-            self.src = filedesc['src']
+            self.content = filedesc.get('content')
+            self.chown = filedesc.get('chown')
+            self.chmod = filedesc.get('chmod')
             self.dst = filedesc['dst']
+            if self.content is not None:
+                self.src = None
+            else:
+                self.src = filedesc['src']
         else:
             self.src = filedesc
             self.dst = filedesc
 
     def __str__(self):
+        if self.content is not None:
+            return "(content) => %s" % self.dst
         return "%s => %s" % (self.src, self.dst)
 
     def run(self, recipe):
-        logging.info("Copying file %s to %s", self.src, self.dst)
-        command = ["buildah",
-                   "copy",
-                   recipe.container,
-                   self.src,
-                   self.dst
-                   ]
-        rc = runcmd(command)
+        command = ["buildah", "copy"]
+        if self.chown is not None:
+            command.extend(["--chown", str(self.chown)])
+        if self.chmod is not None:
+            command.extend(["--chmod", str(self.chmod)])
+        command.append(recipe.container)
+
+        tmpfile = None
+        if self.content is not None:
+            logging.info("Writing content to %s", self.dst)
+            tmpfd, tmpfile = tempfile.mkstemp()
+            with os.fdopen(tmpfd, 'w') as f:
+                f.write(self.content)
+            command.extend([tmpfile, self.dst])
+        else:
+            logging.info("Copying file %s to %s", self.src, self.dst)
+            command.extend([self.src, self.dst])
+
+        try:
+            rc = runcmd(command)
+        finally:
+            if tmpfile is not None:
+                os.unlink(tmpfile)
         if rc:
-            logging.error("Could not copy file  %s to %s", self.src, self.dst)
+            if self.content is not None:
+                logging.error("Could not write content to %s", self.dst)
+            else:
+                logging.error("Could not copy file  %s to %s", self.src, self.dst)
             raise RuntimeError
 
 class Artifact(object):
