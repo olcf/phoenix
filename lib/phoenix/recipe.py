@@ -299,7 +299,10 @@ class Recipe(object):
             logging.error("You must specify initpackages when building from scratch")
             return
         if tag == None:
-            tag = datetime.datetime.now().strftime("%Y%m%d%H%M")
+            tag = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+            gittag = git_tag(Path(phoenix.conf_path) / "recipes")
+            if gittag:
+                tag = "%s-%s" % (tag, gittag)
         self.tag = tag
         self.variables['tag'] = tag
         logging.info("Building recipe %s with tag %s", self.name, tag)
@@ -336,6 +339,41 @@ class ConfirmKeyboardInterrupt(object):
 
     def __exit__(self, type, value, traceback):
         signal.signal(signal.SIGINT, self.saved_handler)
+
+def git_tag(path):
+    """ If path is inside a git repo, return a tag component of the form
+        '<shorthash>' or '<shorthash>-dirty'.  Returns None if path is
+        not in a git repo or git is unavailable.
+    """
+    path = Path(path)
+    if not path.is_dir():
+        path = path.parent
+
+    def git(*args):
+        return subprocess.run(
+            ["git", "-C", str(path)] + list(args),
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            encoding="utf-8",
+        )
+
+    # Confirm we are inside a work tree before doing anything else
+    inside = git("rev-parse", "--is-inside-work-tree")
+    if inside.returncode != 0 or inside.stdout.strip() != "true":
+        logging.debug("Recipe path %s is not in a git repo", path)
+        return None
+
+    githash = git("show", "-s", "--pretty=format:%h").stdout.strip()
+    if not githash:
+        return None
+
+    # Refresh the index so stat-only changes don't cause false positives,
+    # then use 'git status --porcelain' as a concise dirty check: any
+    # output (tracked changes or untracked files) means dirty.
+    git("update-index", "-q", "--refresh")
+    status = git("status", "--porcelain")
+    dirty = bool(status.stdout.strip())
+
+    return "%s-dirty" % githash if dirty else githash
 
 def guesspackagemanager(distro):
     if distro[0:3] == "sle":
