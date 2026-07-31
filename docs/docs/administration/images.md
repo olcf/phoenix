@@ -24,6 +24,7 @@ The following parameters can be used to define a recipe:
 | package   | A string or list of strings of package names to install |
 | file      | Copy a file from the management node into the image. A string specifies a common source and destination. A mapping with `src` and `dst` can specify different paths |
 | command   | Run a command inside the image                          |
+| osrelease | Write `IMAGE_ID` (recipe name) and `IMAGE_VERSION` (build tag) to `/etc/os-release`. Accepts a boolean to enable `IMAGE_ID` and `IMAGE_VERSION`, or a dictionary of additional os-release fields. `IMAGE_ID` and `IMAGE_VERSION` is always added. |
 
 
 ### Artifact Types
@@ -57,6 +58,7 @@ steps:
       src: /root/hosts.mycluster
       dst: /etc/hosts
   - command: systemd-firstboot --timezone=America/New_York --locale=en_US.UTF-8 --locale-messages=en_US.UTF-8
+  - osrelease: true
 
 artifacts:
   - squashfs:

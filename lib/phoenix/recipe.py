@@ -149,6 +149,8 @@ class Recipe(object):
                             self.steps.append(StepPackage(step['package']))
                         elif steptype == 'file':
                             self.steps.append(StepFile(step['file']))
+                        elif steptype == 'osrelease':
+                            self.steps.append(StepOsRelease(step['osrelease']))
                         else:
                             self.steps.append(step)
             elif key == "artifacts":
@@ -471,6 +473,49 @@ class StepFile(Step):
                 logging.error("Could not write content to %s", self.dst)
             else:
                 logging.error("Could not copy file  %s to %s", self.src, self.dst)
+            raise RuntimeError
+
+class StepOsRelease(Step):
+    name = 'OsRelease'
+
+    def __init__(self, params):
+        # Optional mapping of additional os-release fields to set. IMAGE_ID
+        # and IMAGE_VERSION are always set from the recipe name and tag.
+        self.extra = dict()
+        if type(params) is dict:
+            self.extra = dict(params)
+
+    def __str__(self):
+        result = "IMAGE_ID=<name> IMAGE_VERSION=<tag>"
+        if self.extra:
+            result += " " + " ".join("%s=%s" % (k, v) for k, v in self.extra.items())
+        return result
+
+    def run(self, recipe):
+        osrelease = Path(recipe.root) / 'etc' / 'os-release'
+        fields = dict(self.extra)
+        fields['IMAGE_ID'] = recipe.name
+        fields['IMAGE_VERSION'] = recipe.tag
+        logging.info("Setting %s in %s",
+                     " ".join("%s=%s" % (k, v) for k, v in fields.items()),
+                     osrelease)
+
+        lines = []
+        if osrelease.is_file():
+            lines = osrelease.read_text().splitlines()
+
+        # Drop any pre-existing lines for the fields we are about to set
+        lines = [l for l in lines
+                 if not any(l.startswith("%s=" % key) for key in fields)]
+
+        for key, value in fields.items():
+            lines.append('%s="%s"' % (key, value))
+
+        try:
+            osrelease.parent.mkdir(parents=True, exist_ok=True)
+            osrelease.write_text('\n'.join(lines) + '\n')
+        except OSError as e:
+            logging.error("Could not write %s: %s", osrelease, e)
             raise RuntimeError
 
 class Artifact(object):
