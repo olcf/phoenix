@@ -23,6 +23,7 @@ import phoenix.parallel
 from phoenix.system import System
 from phoenix.command import Command
 from phoenix.node import Node
+from phoenix.network import Network
 from phoenix.bootloader import write_bootloader_scripts
 from phoenix.dhcp import load_dhcp_provider
 
@@ -106,26 +107,32 @@ class ConfCommand(Command):
                     continue
                 if len(args.networks) > 0 and ('network' not in iface or iface['network'] not in args.networks):
                     continue
+                # Use the interface's network domain, falling back to the system domain
+                domain = None
+                if 'network' in iface:
+                    domain = Network.find_network(iface['network']).get('domain')
+                if domain is None:
+                    domain = System.setting('domain')
                 for family in ['ip', 'ip6']:
                     if family not in iface:
                         continue
                     components = [iface[family]]
                     if 'hostname' in iface:
                         hostname = iface['hostname']
-                        components.append('%s.%s' % (hostname, System.config['domain']))
+                        components.append('%s.%s' % (hostname, domain))
                         components.append(hostname)
                     elif ifacename == primary:
                         hostname = nodename
-                        components.append('%s.%s' % (hostname, System.config['domain']))
+                        components.append('%s.%s' % (hostname, domain))
                         components.append(hostname)
                         hostname = "%s-%s" % (nodename, ifacename)
-                        components.append('%s.%s' % (hostname, System.config['domain']))
+                        components.append('%s.%s' % (hostname, domain))
                         components.append(hostname)
                         if 'alias' in iface:
                             components.append(iface['alias'])
                     else:
                         hostname = "%s-%s" % (nodename, ifacename)
-                        components.append('%s.%s' % (hostname, System.config['domain']))
+                        components.append('%s.%s' % (hostname, domain))
                         components.append(hostname)
                         if 'alias' in iface:
                             components.append(iface['alias'])

@@ -25,6 +25,10 @@ dhcp-range=set:{{network}},{{definition.network}},static,{{definition.netmask}},
 # {{network}} gateway
 dhcp-option=tag:{{network}},3,{{definition.gateway}}
 {% endif %}
+{% if definition.domain %}
+# {{network}} domain
+dhcp-option=tag:{{network}},15,{{definition.domain}}
+{% endif %}
 {% endif %}
 {% endfor %}
 
