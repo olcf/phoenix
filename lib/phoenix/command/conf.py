@@ -109,8 +109,10 @@ class ConfCommand(Command):
                     continue
                 # Use the interface's network domain, falling back to the system domain
                 domain = None
-                if 'network' in iface:
+                try:
                     domain = Network.find_network(iface['network']).get('domain')
+                except:
+                    pass
                 if domain is None:
                     domain = System.setting('domain')
                 for family in ['ip', 'ip6']:
