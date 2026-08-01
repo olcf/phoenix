@@ -361,6 +361,8 @@ class HpcmCommand(Command):
             it.addna('dhcp_bootfile', 'ipxe-direct')
             it.addna('transport', 'hpcm_transport', 'rsync')
             it.addna('console_device', 'console', 'ttyS0')
+            if n.get('location') is not None and n.get('location').isalnum():
+                it.addraw('alias_groups', 'cm-geo-name:%s' % n['location'])
             if n['plugin'] == 'cray_ex' and n.get('type', 'generic') == 'compute':
                 it.addraw('card_type', 'IPMI')
                 it.addna('rack_nr', 'racknum')
