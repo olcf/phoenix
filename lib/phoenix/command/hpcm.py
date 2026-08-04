@@ -496,7 +496,10 @@ class HpcmCommand(Command):
                 logging.debug("Skipping vlan interface %s", interface)
             else:
                 # This is a data network
-                net = n['interfaces'][interface]['network']
+                if 'hpcmnetwork' in  n['interfaces'][interface]:
+                    net = n['interfaces'][interface]['hpcmnetwork']
+                else:
+                    net = n['interfaces'][interface]['network']
                 if net not in dnets:
                     dnets[net] = {'interfaces': list(), 'ips': list(), 'ips6': list()}
                 dnets[net]['interfaces'].append(interface)
