@@ -145,7 +145,7 @@ class DnsmasqDhcp(object):
             try:
                 (option82_format, option82_human, option82_machine) = node.option82_remoteid()
             except KeyError as e:
-                logging.warning("%s" % e)
+                logging.warning("%s", e)
                 continue
 
             # dnsmasq expects raw bytes to be in colon-separated  hex format
@@ -155,7 +155,7 @@ class DnsmasqDhcp(object):
             switch_defs.append("dhcp-remoteid=set:%s,%s # %s" % (nodename, option82_machine, option82_human))
 
             if 'ports' not in node:
-                logging.warning("Switch %s does not have 'ports' set" % nodename)
+                logging.warning("Switch %s does not have 'ports' set", nodename)
                 continue
 
             if 'circuitid_format' in node['option82']:
@@ -168,7 +168,7 @@ class DnsmasqDhcp(object):
                     try:
                         portbytes_str = ':'.join(f'{b:02x}' for b in int(port).to_bytes(4, 'big'))
                     except:
-                        logging.warning("Port %s could not be read as 'integerbytes'" % port)
+                        logging.warning("Port %s could not be read as 'integerbytes'", port)
                         continue
                     switch_ports.add(("port%d" % int(port),portbytes_str))
                 elif circuitid_setting == 'string':

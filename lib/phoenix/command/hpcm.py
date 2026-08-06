@@ -452,19 +452,19 @@ class HpcmCommand(Command):
         for interface in sorted(n['interfaces']):
             if interface == 'bmc':
                 if 'mac' not in n['interfaces'][interface] or n['interfaces'][interface]['mac'] is None or n['interfaces'][interface]['mac'] == 'None':
-                    logging.debug("There is no mac for %s %s" % (n['name'], interface))
+                    logging.debug("There is no mac for %s interface %s", n['name'], interface)
                     if missingmac is not None:
                         missingmac.append(n['name'])
                     if fakemacs:
                         it.addraw('mgmt_bmc_net_macs', cls._fakemac(n, 'bmc'))
                 else:
-                    logging.debug("the mac is %s type %s" % (n['interfaces'][interface]['mac'], type(n['interfaces'][interface]['mac'])))
+                    logging.debug("the mac is %s type %s", n['interfaces'][interface]['mac'], type(n['interfaces'][interface]['mac']))
                     it.addia('mgmt_bmc_net_macs', 'bmc', 'mac')
                 it.addia('mgmt_bmc_net_ip', 'bmc', 'ip')
                 it.addia('mgmt_bmc_net_name', 'bmc', 'network')
             elif interface == 'bond0':
                 if 'mac' not in n['interfaces'][interface] or n['interfaces'][interface]['mac'] is None or n['interfaces'][interface]['mac'] == 'None':
-                    logging.debug("There is no mac for %s %s" % (n['name'], interface))
+                    logging.debug("There is no mac for %s %s", n['name'], interface)
                     if missingmac is not None:
                         missingmac.append(n['name'])
                     if fakemacs:

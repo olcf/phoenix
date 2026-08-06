@@ -32,7 +32,7 @@ class Redfish(Oob):
     def _do_redfish_req(cls, host, path, request_type, auth=('admin', 'password'), data={}, headers={}, timeout=(5,30)):
         """A simple redfish request - returns a requests response"""
         url = "https://%s/redfish/v1/%s" % (host, path)
-        logging.debug("Making %s request to %s" % (request_type, url))
+        logging.debug("Making %s request to %s", request_type, url)
         logging.debug("Data is %s", data)
 
         try:

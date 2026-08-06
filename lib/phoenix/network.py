@@ -65,7 +65,7 @@ class Network(object):
     @classmethod
     def _cache_network_family(cls, net, family=4):
         """ Parse and cache a network ipv4 definition """
-        logging.debug("Caching network %s ipv%d details", (net, family))
+        logging.debug("Caching network %s ipv%d details", net, family)
         cfg = cls.config[net]
 
         # To support both ipv4 and ipv6, create a mapping 't' from the ipv4
@@ -156,7 +156,7 @@ class Network(object):
             elif 'network6' in net:
                 family = 6
         if (family == 4 and 'ipobj' not in net) or (family == 6 and 'ip6obj' not in net):
-            logging.error("No ipv%d network found in network %s" % (family, base))
+            logging.error("No ipv%d network found in network %s", family, base)
             return "error"
         if family == 4:
             subnet = net['subnets'][rack]

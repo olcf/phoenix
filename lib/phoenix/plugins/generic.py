@@ -12,7 +12,7 @@ num_regex = re.compile(r'\d+')
 logging.debug("Generic plugin compiled the num_regex")
 
 def set_node_attrs(node, layer=None, alias=None):
-    logging.debug("Running generic plugin for node %s" % (node['name']))
+    logging.debug("Running generic plugin for node %s", node['name'])
 
     if layer is None:
         logging.error("Generic plugin called without a layer")

@@ -498,7 +498,7 @@ class Node(object):
                         data[key] = NodeTemplate(value)
                         has_templates = True
                     except TemplateSyntaxError as e:
-                        logging.error("Malformed template for %s '%s': %s" % (filename, key, e))
+                        logging.error("Malformed template for %s '%s': %s", filename, key, e)
         elif isinstance(data, list):
             for index, value in enumerate(data):
                 if isinstance(value, str) and cls.tpl_regex.search(value):

@@ -72,7 +72,7 @@ def excepthook(exception_type, exception_value, traceback):
     task_self().default_excepthook(exception_type, exception_value, traceback)
 
 def tb_signal_handler(signum, frame):
-    logging.debug("Got signal %s" % signum)
+    logging.debug("Got signal %s", signum)
     for th in threading.enumerate():
       print(th)
       traceback.print_stack(sys._current_frames()[th.ident])
@@ -313,7 +313,7 @@ class PhoenixClient(EngineClient):
             else:
                 os.write(self._stdout[1], message)
         except Exception as e:
-            logging.debug("Failed to write out message: %s" % e)
+            logging.debug("Failed to write out message: %s", e)
 
     def mark_command_complete(self, rc=None):
         logging.info("Command %s complete for node %s. Closing fd %d", self.command, self.key, self._stdout[1])

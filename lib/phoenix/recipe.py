@@ -511,7 +511,7 @@ class ArtifactFile(Artifact):
             os.chmod(created, 0o644)
             copied = copied + 1
         if copied == 0:
-            logging.error("Artifact file '%s' did not match any files" % self.pattern)
+            logging.error("Artifact file '%s' did not match any files", self.pattern)
 
 class ArtifactInitramfs(Artifact):
     name = 'Initramfs'
@@ -572,7 +572,7 @@ class ArtifactSquashfs(Artifact):
             logging.error("Could not create squashfs")
             raise RuntimeError
         else:
-            logging.info("Created %s/%s" % (outputdir, self.output))
+            logging.info("Created %s/%s", outputdir, self.output)
 
 def runcmd(command, cwd=None):
     logging.debug("Running command %s", command)

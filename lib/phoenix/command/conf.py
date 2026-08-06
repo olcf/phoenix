@@ -289,7 +289,7 @@ def write_ztp_scripts():
         ztpdir.mkdir()
     for nodename,node in sorted(Node.nodes.items()):
         if 'ztptemplate' not in node:
-            logging.debug("'ztptemplate' not defined for %s" % nodename)
+            logging.debug("'ztptemplate' not defined for %s", nodename)
             continue
 
         if 'interfaces' not in node:

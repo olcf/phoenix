@@ -11,7 +11,7 @@ columns=36
 nodespercol=18
 
 def set_node_attrs(node, alias=None):
-    logging.debug("Running ornl_ibm plugin for node %s" % (node['name']))
+    logging.debug("Running ornl_ibm plugin for node %s", node['name'])
 
     # Extract node index number from the name
     m = name_regex.search(node['name'])

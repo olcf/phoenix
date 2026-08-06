@@ -49,7 +49,7 @@ class SshSwitch(Ssh):
         output = task.node_buffer(hostname)
         logging.debug(task.node_buffer(hostname))
         if task.max_retcode() != 0:
-            logging.debug("An error occurred (max rc = %s)" % task.max_retcode())
+            logging.debug("An error occurred (max rc = %s)", task.max_retcode())
         task.abort()
         for line in output.decode().split('\n'):
             try:

@@ -47,7 +47,7 @@ class IpxeBootloader(Bootloader):
             try:
                 template = Node.environment.get_template(node['ipxe_template'])
             except:
-                logging.error("Could not generate an ipxe file for node '%s' - Template '%s' was not found" % (node['name'], node['ipxe_template']))
+                logging.error("Could not generate an ipxe file for node '%s' - Template '%s' was not found", node['name'], node['ipxe_template'])
                 raise
         else:
             template = cls.def_template
