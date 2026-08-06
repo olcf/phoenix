@@ -319,6 +319,32 @@ class Redfish(Oob):
             if rc:
                 msg = "Ok"
             return (rc, msg)
+        elif args[1] == "check":
+            if 'biossettings' not in node:
+                return(False, "Expected bios settings is not set on node %s" % node.name)
+            msg = list()
+            path = '%s/Bios' % (systempath)
+            rc, data = cls._get_redfish_attribute(node, path, "Attributes")
+            rc = 0
+            for item, value in node['biossettings'].items():
+                if item not in data:
+                    msg.append("%s not found in bios response" % item)
+                    rc = 1
+                elif data[item] != value:
+                    msg.append("%s got '%s' but expected '%s'" % (item, data[item], value))
+                    rc = 1
+            if rc == 0:
+                return True, "Ok"
+            return False, "\n".join(sorted(msg))
+        elif args[1] == "sync":
+            if 'biossettings' not in node:
+                return(False, "Expected bios settings is not set on node %s" % node.name)
+            path = '%s/Bios/Settings' % (systempath)
+            data = {"Attributes": dict(node['biossettings'])}
+            (rc, msg) = cls._post_redfish(node, path, data, status_codes=[200, 202, 204], method='patch')
+            if rc:
+                msg = "Ok"
+            return (rc, msg)
         elif args[1] == 'bootorder':
             (rc, order) = cls._get_redfish_attribute(node, systempath, "Boot.BootOrder")
             path = '%s/BootOptions?$expand=*' % systempath
