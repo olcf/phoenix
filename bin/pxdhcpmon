@@ -50,7 +50,6 @@ def main():
     if args.hpcm:
         load_hpcm_token()
         load_hpcm()
-        #print(hpcm_nodes)
         threading.Thread(target=hpcm_sync, daemon=True).start()
 
     print("Starting DHCP Discover sniffer...")
@@ -65,12 +64,13 @@ def hpcm_sync():
     global hpcm_sync_flag
 
     hpcm_sync_flag = threading.Event()
+    print("Starting HPCM update thread with cooldown %d" % args.cooldown)
     
     while True:
         hpcm_sync_flag.wait()
         hpcm_sync_flag.clear()
         print("(((( Syncing HPCM ))))")
-        subprocess.run(["cm", "node", "update", "config", "--sync", "dhcp", "-n", "admin"])
+        subprocess.run(["/opt/clmgr/bin/cm", "node", "update", "config", "--sync", "dhcp", "-n", "admin"])
         time.sleep(args.cooldown)
 
 def load_switches():
