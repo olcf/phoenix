@@ -1,0 +1,16 @@
+[Unit]
+Description=Phoenix DHCP Monitoring Daemon
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/sysconfig/pxdhcpmon
+ExecStart=/usr/bin/python3 -u /usr/bin/pxdhcpmon $PXDHCPMON_OPTS
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartPreventExitStatus=255
+TasksMax=infinity
+
+[Install]
+WantedBy=multi-user.target

@@ -140,6 +140,7 @@ setup(name = 'phoenix',
                    ('/etc/phoenix/templates', []),
                    ('/var/opt/phoenix/data', []),
                    ('/etc/clustershell/groups.conf.d', ['contrib/clustershell/phoenix.conf']),
-                   ('/usr/lib/systemd/system', ['contrib/pxbootfile.service'])
+                   ('/usr/lib/systemd/system', ['contrib/pxbootfile.service', 'contrib/pxdhcpmon.service']),
+                   ('/etc/sysconfig', ['contrib/sysconfig/pxdhcpmon'])
                  ],
     )
