@@ -55,7 +55,7 @@ class Recipe(object):
         result.append("InitPkgs:     %s" % ",".join(self.initpackages))
         result.append("Repos:")
         for key in self.repos:
-            result.append("  %s" % key)
+            result.append("  %s: %s" % (key, self.repos[key]))
         result.append("Steps:")
         for key in self.steps:
             result.append("  %s: %s" % (key.name, key))
@@ -133,7 +133,8 @@ class Recipe(object):
                 else:
                     self.initpackages.append(value)
             elif key == "repos":
-                self.repos.update(value)
+                for reponame, repodesc in value.items():
+                    self.repos[reponame] = Repo(reponame, repodesc)
             elif key == "steps":
                 for step in value:
                     for steptype in step:
@@ -183,47 +184,17 @@ class Recipe(object):
     def setuprepos(self):
         # Probably best to have a Builder class that is subclassed...
         # but that's what refactors are for, right?
-        for repo in self.repos:
-            if type(self.repos[repo]) == dict:
-                try:
-                    repourl = self.repos[repo]['url']
-                except:
-                    pass
-            else:
-                repourl = self.repos[repo]
-            if repourl[0:4] != "http":
-                logging.error("Only http(s) repos are supported at this time")
-                raise RuntimeError
-                return
-            if self.packagemanager == "zypper":
-                logging.info("Adding repo %s at %s", repo, repourl)
-                command = ["zypper",
-                           "--root", self.root,
-                           "addrepo",
-                           "-G",
-                           "--name", repo,
-                           "--enable",
-                           repourl,
-                           repo
-                           ]
-                rc = runcmd(command)
-                if rc:
-                    logging.error("Could not add repo %s at %s", repo, repourl)
-                    raise RuntimeError
-            elif self.packagemanager in ['yum', 'dnf']:
-                yumdir = Path(self.root) / 'etc' / 'yum.repos.d'
-                yumdir.mkdir(parents=True, exist_ok=True)
-                #with open('%s/etc/yum.repos.d/%s.repo' % (self.root, repo), 'w') as f:
-                with (yumdir / repo).with_suffix(".repo").open('w') as f:
-                    f.write("[%s]\n" % repo)
-                    f.write("name = %s\n" % repo)
-                    f.write("baseurl = %s\n" % repourl)
-                    f.write("enabled = 1\n")
-                    f.write("gpgcheck = 0\n")
-            else:
-                logging.error("Unsupported package manager")
-                raise RuntimeError
-                return
+        if self.packagemanager == "zypper":
+            for repo in self.repos.values():
+                repo.addzypper(self.root)
+        elif self.packagemanager in ['yum', 'dnf']:
+            yumdir = Path(self.root) / 'etc' / 'yum.repos.d'
+            yumdir.mkdir(parents=True, exist_ok=True)
+            for repo in self.repos.values():
+                repo.writeyumrepo(yumdir)
+        else:
+            logging.error("Unsupported package manager")
+            raise RuntimeError
 
     def installinitpackages(self):
         if len(self.initpackages) == 0:
@@ -348,6 +319,101 @@ def guesspackagemanager(distro):
         else:
             return "dnf"
     raise RuntimeError("Unknown package manager - please manually set")
+
+class Repo(object):
+    """ A package repository to enable in an image.
+
+        A repo is defined either as a bare url string or as a mapping with a
+        url key plus any number of options.
+
+        dnf/yum options are passed through to the
+        package manager unvalidated, so anything the underlying tool
+        understands (excludepkgs, gpgkey, priority, ...) may be used.
+
+        Zypper options are limited to enabled, gpgcheck, and priority.
+    """
+
+    # Defaults applied unless the recipe overrides them
+    defaults = {'enabled': 1, 'gpgcheck': 0}
+
+    # Options zypper can express on the addrepo command line
+    zypperoptions = ('enabled', 'gpgcheck', 'priority')
+
+    def __init__(self, name, desc):
+        self.name = name
+        self.opts = dict()
+        if type(desc) is dict:
+            if 'url' not in desc:
+                logging.error("Repo %s does not define a url", name)
+                raise RuntimeError
+            self.url = desc['url']
+            self.opts = {key: value for key, value in desc.items() if key != 'url'}
+        else:
+            self.url = desc
+
+        if str(self.url)[0:4] != "http":
+            logging.error("Only http(s) repos are supported at this time")
+            raise RuntimeError
+
+    def __str__(self):
+        if len(self.opts) == 0:
+            return self.url
+        opts = ", ".join(["%s=%s" % (key, self._format(self.opts[key]))
+                          for key in sorted(self.opts)])
+        return "%s (%s)" % (self.url, opts)
+
+    @staticmethod
+    def _format(value):
+        """ Render an option value using dnf repo file syntax """
+        if type(value) is bool:
+            return "1" if value else "0"
+        if type(value) is list:
+            return " ".join([str(item) for item in value])
+        return str(value)
+
+    def writeyumrepo(self, yumdir):
+        """ Write a yum/dnf repo file for this repo into yumdir """
+        logging.info("Adding repo %s at %s", self.name, self.url)
+        settings = dict(self.defaults)
+        settings.update(self.opts)
+        with (Path(yumdir) / self.name).with_suffix(".repo").open('w') as f:
+            f.write("[%s]\n" % self.name)
+            f.write("name = %s\n" % self.name)
+            f.write("baseurl = %s\n" % self.url)
+            for key in sorted(settings):
+                f.write("%s = %s\n" % (key, self._format(settings[key])))
+
+    def _enabled(self, key, default):
+        """ Render an option as a zypper on/off flag. Values are compared
+            after _format, so yaml booleans and 0/1 work; other spellings
+            dnf would accept are treated as on.
+        """
+        if key not in self.opts:
+            return default
+        return self._format(self.opts[key]) != "0"
+
+    def addzypper(self, root):
+        """ Register this repo with zypper against the image at root """
+        logging.info("Adding repo %s at %s", self.name, self.url)
+        command = ["zypper",
+                   "--root", root,
+                   "addrepo",
+                   "-g" if self._enabled('gpgcheck', False) else "-G",
+                   "--name", self.name,
+                   ]
+        if 'priority' in self.opts:
+            command.extend(["--priority", str(self.opts['priority'])])
+        command.append("--enable" if self._enabled('enabled', True) else "--disable")
+        command.extend([self.url, self.name])
+
+        for key in self.opts:
+            if key not in self.zypperoptions:
+                logging.warning("Repo %s option %s is not supported by zypper", self.name, key)
+
+        rc = runcmd(command)
+        if rc:
+            logging.error("Could not add repo %s at %s", self.name, self.url)
+            raise RuntimeError
 
 class Step(object):
     pass
