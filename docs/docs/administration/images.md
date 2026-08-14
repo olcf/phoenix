@@ -12,9 +12,32 @@ The following parameters can be used to define a recipe:
 | packagemanager | Specifies what command should be called to install packages to the image. Supported options are currently `zypper`, `yum`, and `dnf`. If unset, this is assumed from the `distro` setting. |
 | initfrom       | The base image that `buildah` should use to build the recipe. The special value `scratch` means that an empty image will be used (and `initpackages` should be specified). Otherwise specify an image that `buildah` can access, such as `ubi` or a custom image that has been pushed to a configured registry. |
 | initpackages   | A list of packages to install **outside** of the chroot, useful when creating an image from `scratch`. |
-| repos          | A map of `repo_name: url` repo entries to enable in the image. |
+| repos          | A map of repo entries to enable in the image. See below for the supported forms |
 | steps          | An ordered list of actions to take to build the image. See below for supportes steps types |
 | artifacts      | An ordered list of artifacts to capture from the image. See below for supported artifact types |
+
+### Repos
+
+Each entry in the `repos` map is keyed by the repo name and is either a bare url
+string or a mapping with a `url` key plus any number of options.
+
+Default `enabled = 1` and `gpgcheck = 0` unless the entry overrides them.
+
+Yum/dnf options are not validated; any option the package manager understands
+(`excludepkgs`,`includepkgs`, `gpgkey`, `priority`, ...) may be used.
+Yaml booleans are written as `1`/`0` and yaml lists are joined with spaces, matching
+the glob list syntax used by options such as `excludepkgs`.
+
+Zypper only supports `enabled`, `gpgcheck`, and `priority`. Other options are ignored with
+a warning.
+
+```yaml
+repos:
+  rocky9: https://download.rockylinux.org/pub/rocky/9/BaseOS/x86_64/os/
+  epel:
+    url: https://download.fedoraproject.org/pub/epel/9/Everything/x86_64/
+    excludepkgs: slurm* pmix*
+```
 
 ### Step Types
 
@@ -48,6 +71,9 @@ initpackages:
 - bash
 repos:
   rocky9: https://download.rockylinux.org/pub/rocky/9/BaseOS/x86_64/os/
+  epel:
+    url: https://download.fedoraproject.org/pub/epel/9/Everything/x86_64/
+    excludepkgs: slurm* pmix*
 steps:
   - recipe: rocky-base
   - package:
