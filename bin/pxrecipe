@@ -17,6 +17,7 @@ def get_parser():
     parser_show = subparsers.add_parser('show', help='show help')
     parser_show.add_argument('name', nargs='+', help='Image name')
     parser_show.add_argument('--define', '-d', nargs=2, action='append', dest='variables', help='Variables to substitute')
+    parser_show.add_argument('--tag', '-t', type=str, default=None, help='Build Tag (default: <datetime>[-<githash>[-dirty]])')
 
     parser_list = subparsers.add_parser('list', help='list help')
 
@@ -45,12 +46,12 @@ if __name__ == '__main__':
             print("\n".join(recipes))
     elif args.action == 'show':
         for name in args.name:
-            recipe = Recipe(name, args.variables)
+            recipe = Recipe(name, args.variables, tag=args.tag)
             print(recipe)
     elif args.action == 'build':
-        recipe = Recipe(args.name, args.variables)
+        recipe = Recipe(args.name, args.variables, tag=args.tag)
         try:
-            recipe.build(args.tag, keep=args.keep)
+            recipe.build(keep=args.keep)
         except RuntimeError:
             rc = 1
 

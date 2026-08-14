@@ -16,6 +16,24 @@ The following parameters can be used to define a recipe:
 | steps          | An ordered list of actions to take to build the image. See below for supportes steps types |
 | artifacts      | An ordered list of artifacts to capture from the image. See below for supported artifact types |
 
+### Variables
+
+Recipes are rendered as Jinja templates before they are parsed, so any value
+may reference a variable defined with `--define`.
+
+The build tag is always available as `{{tag}}`. It is resolved before the
+recipe is rendered, so it can be used anywhere in a recipe, including artifact
+filenames and push tags. It defaults to `<datetime>[-<githash>[-dirty]]` and
+can be set with `--tag`, or with `--define tag <value>` which takes precedence.
+
+<!-- {% raw %} -->
+```yaml
+artifacts:
+  - squashfs:
+      output: rootdir-{{tag}}.squashfs
+```
+<!-- {% endraw %} -->
+
 ### Repos
 
 Each entry in the `repos` map is keyed by the repo name and is either a bare url
@@ -57,6 +75,16 @@ repos:
 | file      | A path or list of paths to copy                    |
 | initramfs | Creates a gzip'ed cpio of the image root (boolean) |
 | squashfs  | Creates a squashfs of the image root. Optionally specify `output` to control the generated filename or `include` to limit what paths are included |
+| push      | Commits the image and pushes it to a container registry with `buildah push`. A string specifies the registry. A mapping accepts `registry` (required), `image` to override the repository name (defaults to the recipe name), `tag` to override the destination tag (defaults to the build tag), and `format` to select the manifest type (`oci`, `docker`, `v2s2`, or `v2s1`) |
+
+Setting `tag` replaces the build tag rather than adding to it. It may be a
+single tag or a list of tags; use `{{tag}}` in the list where the build tag is
+wanted. `buildah push` accepts only one destination, so each tag is a separate
+push; layers already in the repository are not resent, so the additional
+pushes only upload a manifest.
+
+Buildah must already be logged into the registry used by the `push` artifact;
+Phoenix does not run `buildah login`.
 
 ### Example Recipe
 
@@ -92,6 +120,14 @@ artifacts:
       include:
         - /opt/rocm-{{version}}
         - /etc/OpenCL/vendors
+  - push: registry.example.com/myorg
+  - push:
+      registry: registry.example.com/myorg
+      image: rocky9-compute
+      tag:
+        - "{{tag}}"
+        - latest
+      format: oci
 ```
 <!-- {% endraw %} -->
 
@@ -107,7 +143,7 @@ rocky-9-bootable
 ```
 
 ## Showing a Recipe
-The `pxrecipe show recipe_name` command will show the parsed contents of a recipe. If the recipe (or any of its sub-recipe steps) makes use of variables, they must be specified on the command line with `--define variable_name variable_value`.
+The `pxrecipe show recipe_name` command will show the parsed contents of a recipe. If the recipe (or any of its sub-recipe steps) makes use of variables, they must be specified on the command line with `--define variable_name variable_value`. Pass `--tag` to see how a specific build tag renders, otherwise the default tag for the current time is used.
 
 ## Building a Recipe
-The `pxrecipe build [options] recipe_name` command builds a recipe from its steps and generates the requested artifacts. If the recipe (or any of its sub-recipe steps) makes use of variables, they must be specified on the command line with `--define variable_name variable_value`. An optional `tag` can be specified with `--tag`, otherwise the current date and time is used for the tag. By default, the `buildah` image is removed after the artifacts are successfully generated, but it can be retained with the `--keep` flag for additional debugging. Failed builds and builds retained with `--keep` need to be cleaned up from Buildah manually.
+The `pxrecipe build [options] recipe_name` command builds a recipe from its steps and generates the requested artifacts. If the recipe (or any of its sub-recipe steps) makes use of variables, they must be specified on the command line with `--define variable_name variable_value`. An optional `tag` can be specified with `--tag`, otherwise a tag of `<datetime>[-<githash>[-dirty]]` is used. By default, the `buildah` image is removed after the artifacts are successfully generated, but it can be retained with the `--keep` flag for additional debugging. Failed builds and builds retained with `--keep` need to be cleaned up from Buildah manually. A `push` artifact also commits the working container to a local `<recipe>:<tag>` image, which is left in Buildah storage.
