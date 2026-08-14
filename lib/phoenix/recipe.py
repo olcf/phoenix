@@ -173,12 +173,17 @@ class Recipe(object):
 
     def createroot(self, tag):
         name = "%s-%s" % (self.name, tag)
-        # FIXME add more error handling here
+        # buildah writes progress to stderr and the name/path we want to
+        # stdout, so the streams must be kept apart
         try:
-            self.container = subprocess.check_output(["buildah", "from", "--name", name, "--arch", self.architecture, self.initfrom], stderr=subprocess.STDOUT).decode().rstrip()
-            self.root = Path(subprocess.check_output(["buildah", "mount", self.container], stderr=subprocess.STDOUT).decode().rstrip())
+            self.container = subprocess.run(["buildah", "from", "--name", name, "--arch", self.architecture, self.initfrom],
+                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                            check=True).stdout.decode().rstrip()
+            self.root = Path(subprocess.run(["buildah", "mount", self.container],
+                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                            check=True).stdout.decode().rstrip())
         except subprocess.CalledProcessError as cpe:
-            logging.error("Command failed: %s", cpe.output)
+            logging.error("Command failed: %s", cpe.stderr.decode().rstrip())
             raise RuntimeError
         logging.info("Recipe %s with container %s mounted at %s", self.name, self.container, self.root)
 
