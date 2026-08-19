@@ -37,6 +37,35 @@ ip: '{{ipadd("example_network_name", nodeindex, rack=racknum)}}'
 ```
 <!-- {% endraw %} -->
 
+## Bonded Interfaces
+A node interface can be described as a bond by adding `bondmembers` to it. When the iPXE bootloader generates a boot script for such an interface, it emits a dracut `bond=` kernel argument so that the initramfs brings the bond up before mounting the root filesystem.
+
+```yaml
+'@compute':
+  interfaces:
+    bond0:
+      network: example_network_name
+      ip: '{{ipadd("example_network_name", nodeindex)}}'
+      dhcp: true
+      bondmembers: [eth0, eth1]
+      bondoptions: mode=802.3ad,miimon=100
+```
+
+The interface key (or `interfacename`, if set) becomes the bond name, and the `ip=` argument references the bond rather than any member.
+
+| Attribute | Description |
+| --- | --- |
+| `bondmembers` | The physical interfaces to add to the bond. Accepts a YAML list or a comma-separated string. Required to mark the interface as a bond. |
+| `bondoptions` | Bonding options passed through to dracut. Defaults to `mode=802.3ad,miimon=100`. |
+
+The `mtu` of the referenced network, if set, is applied to the bond through the `bond=` argument instead of `ip=`.
+
+Because a colon separates the fields of `bond=`, neither `bondmembers` nor `bondoptions` may contain one. Multi-valued options such as `arp_ip_target` must therefore be separated with semicolons, which dracut converts back to commas:
+
+```yaml
+bondoptions: mode=active-backup,arp_interval=100,arp_ip_target=10.0.0.1;10.0.0.2
+```
+
 ## AutoInterfaces
 
 {: .notice--danger}
