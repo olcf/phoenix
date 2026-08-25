@@ -1,0 +1,28 @@
+testnet:
+  network: 10.1.0.0
+  netmask: 255.255.255.0
+  gateway: 10.1.0.1
+testnet_jumbo:
+  network: 10.2.0.0
+  netmask: 255.255.255.0
+  gateway: 10.2.0.1
+  mtu: 9000
+testnet_nogateway:
+  network: 10.3.0.0
+  netmask: 255.255.255.0
+testnet_vlan:
+  network: 10.4.0.0
+  netmask: 255.255.255.0
+  gateway: 10.4.0.1
+  vlan: 5
+testnet6:
+  network6: '2001:db8:1::'
+  prefix6: 64
+  gateway6: '2001:db8:1::1'
+testnet_dual:
+  network: 10.5.0.0
+  netmask: 255.255.255.0
+  gateway: 10.5.0.1
+  network6: '2001:db8:5::'
+  prefix6: 64
+  gateway6: '2001:db8:5::1'
