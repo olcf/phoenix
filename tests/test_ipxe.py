@@ -211,6 +211,39 @@ netargcases = [
          'ip=10.1.0.20::10.1.0.1:255.255.255.0:${hostname}:eth1:none',
          'bootdev=eth0'],
     ), (
+        # Lets the node boot from one interface and route through another.
+        'an empty gateway leaves the field blank',
+        '''
+        n1:
+          interfaces:
+            eth0: {network: testnet, ip: 10.1.0.25, gateway: '', dhcp: true}
+            eth1: {network: testnet, ip: 10.3.0.25, neednet: true}
+        ''',
+        'eth0',
+        ['ip=10.1.0.25:::255.255.255.0:${hostname}:eth0:none',
+         'ip=10.3.0.25::10.1.0.1:255.255.255.0:${hostname}:eth1:none',
+         'bootdev=eth0'],
+    ), (
+        'a false gateway leaves the field blank',
+        '''
+        n1:
+          interfaces:
+            eth0: {network: testnet, ip: 10.1.0.26, gateway: false, dhcp: true}
+        ''',
+        'eth0',
+        ['BOOTIF=${mac}',
+         'ip=10.1.0.26:::255.255.255.0:${hostname}:eth0:none'],
+    ), (
+        'an interface gateway overrides the network',
+        '''
+        n1:
+          interfaces:
+            eth0: {network: testnet, ip: 10.1.0.27, gateway: 10.1.0.254, dhcp: true}
+        ''',
+        'eth0',
+        ['BOOTIF=${mac}',
+         'ip=10.1.0.27::10.1.0.254:255.255.255.0:${hostname}:eth0:none'],
+    ), (
         # dracut needs ipv6 bracketed, and takes a prefix rather than a netmask.
         'ipv6 address and gateway are bracketed',
         '''
@@ -235,6 +268,22 @@ netargcases = [
         'eth0',
         ['ip=10.5.0.11::10.5.0.1:255.255.255.0:${hostname}:eth0:none',
          'ip=[2001:db8:5::11]::[2001:db8:5::1]:64:${hostname}:eth0:none',
+         'bootdev=eth0'],
+    ), (
+        'suppressing the ipv6 gateway leaves the ipv4 one alone',
+        '''
+        n1:
+          interfaces:
+            eth0:
+              network: testnet_dual
+              ip: 10.5.0.13
+              ip6: '2001:db8:5::13'
+              gateway6: false
+              dhcp: true
+        ''',
+        'eth0',
+        ['ip=10.5.0.13::10.5.0.1:255.255.255.0:${hostname}:eth0:none',
+         'ip=[2001:db8:5::13]:::64:${hostname}:eth0:none',
          'bootdev=eth0'],
     ),
 ]

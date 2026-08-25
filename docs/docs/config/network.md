@@ -12,6 +12,8 @@ another_network:
   netmask: 255.255.255.0
 ```
 
+A node interface takes the `gateway` (and `gateway6`) of the network it references. Either can be overridden on the interface itself, and setting one to an empty string or `false` means no default route is added through that interface. This allows a node to boot from one interface while routing through another. The two families are independent.
+
 ## The ipadd Function
 Configuration files that support Jinja2 can use the `ipadd` function to ease IP address calculation.
 
