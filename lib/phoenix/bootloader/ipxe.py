@@ -157,7 +157,7 @@ class IpxeBootloader(Bootloader):
             if 'netmask' not in network:
                 raise BootloaderConfigError("Network '%s' (used by node '%s' interface '%s') is missing 'netmask' in networks.yaml" % (iface['network'], node['name'], interface))
             iplines.append("%s::%s:%s:${hostname}:%s:none" % (iface['ip'],
-                                                              network.get('gateway', ''),
+                                                              cls._gateway(iface, network, 'gateway'),
                                                               network['netmask'],
                                                               devicename))
 
@@ -167,7 +167,7 @@ class IpxeBootloader(Bootloader):
             if 'prefix6' not in network:
                 raise BootloaderConfigError("Network '%s' (used by node '%s' interface '%s') is missing an ipv6 prefix in networks.yaml" % (iface['network'], node['name'], interface))
             iplines.append("%s::%s:%s:${hostname}:%s:none" % (cls._bracket(iface['ip6']),
-                                                              cls._bracket(network.get('gateway6', '')),
+                                                              cls._bracket(cls._gateway(iface, network, 'gateway6')),
                                                               network['prefix6'],
                                                               devicename))
 
@@ -175,6 +175,19 @@ class IpxeBootloader(Bootloader):
             raise BootloaderConfigError("Node '%s' interface '%s' is missing 'ip' (or 'ip6')" % (node['name'], interface))
 
         return iplines
+
+    @classmethod
+    def _gateway(cls, iface, network, key):
+        """The gateway for an interface, which defaults to the one on its
+           network. Setting it to an empty string or false on the interface
+           leaves the field empty, so that dracut adds no default route
+           through it. This is how a node boots from one interface while
+           routing through another.
+        """
+        gateway = iface[key] if key in iface else network.get(key, '')
+        if gateway is False or gateway is None:
+            return ''
+        return str(gateway).strip()
 
     @classmethod
     def _bracket(cls, address):
