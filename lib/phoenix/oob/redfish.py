@@ -6,6 +6,7 @@ import logging
 import requests
 import json
 import re
+import argparse
 
 from phoenix.oob import OOBTimeoutError
 from phoenix.command import CommandTimeout
@@ -291,12 +292,14 @@ class Redfish(Oob):
     @classmethod
     def _bios(cls, node, args):
         systempath = cls._redfish_path_system(node)
-        if len(args) == 0:
-            return (True, 'Summary is not currently supported')
-        if args[1] == "get":
+        if not isinstance(args, argparse.Namespace):
+            return (False, 'Called with incompatible client')
+        if args.action is None:
+            return (False, "No action specified")
+        if args.action == "get":
             path = '%s/Bios' % (systempath)
-            if args[2]:
-                rc, data = cls._get_redfish_attribute(node, path, "Attributes.%s" % args[2])
+            if args.parameter:
+                rc, data = cls._get_redfish_attribute(node, path, "Attributes.%s" % args.parameter)
             else:
                 rc, data = cls._get_redfish_attribute(node, path, "Attributes")
             try:
@@ -305,21 +308,21 @@ class Redfish(Oob):
             except Exception as e:
                 pass
             return rc, data
-        elif args[1] == "set":
-            if len(args) < 3 or args[2] is None or args[3] is None:
+        elif args.action == "set":
+            if 'parameter' not in args or 'value' not in args:
                 return(False, "Must specify a key and value (got %s)" % str(args))
-            value = args[3]
+            value = args.value
             if value.lower() == "false":
                 value = False
             elif value.lower() == "true":
                 value = True
             path = '%s/Bios/Settings' % (systempath)
-            data = {"Attributes": { args[2]: value }}
+            data = {"Attributes": { args.parameter: value }}
             (rc, msg) = cls._post_redfish(node, path, data, status_codes=[200, 202, 204], method='patch')
             if rc:
                 msg = "Ok"
             return (rc, msg)
-        elif args[1] == "check":
+        elif args.action == "check":
             if 'biossettings' not in node:
                 return(False, "Expected bios settings is not set on node %s" % node.name)
             msg = list()
@@ -336,7 +339,7 @@ class Redfish(Oob):
             if rc == 0:
                 return True, "Ok"
             return False, "\n".join(sorted(msg))
-        elif args[1] == "sync":
+        elif args.action == "sync":
             if 'biossettings' not in node:
                 return(False, "Expected bios settings is not set on node %s" % node.name)
             path = '%s/Bios/Settings' % (systempath)
@@ -345,7 +348,7 @@ class Redfish(Oob):
             if rc:
                 msg = "Ok"
             return (rc, msg)
-        elif args[1] == 'bootorder':
+        elif args.action == 'bootorder':
             (rc, order) = cls._get_redfish_attribute(node, systempath, "Boot.BootOrder")
             path = '%s/BootOptions?$expand=*' % systempath
             (rc, details) = cls._get_redfish_attribute(node, path, 'Members')
@@ -353,13 +356,13 @@ class Redfish(Oob):
             bootmap = dict()
             for device in details:
                 bootmap[device['Name']] = "%s - %s - %s" % (device['Name'], device['DisplayName'], device['UefiDevicePath'])
-            if args[2] is None:
+            if args.value is None:
                 for device in order:
                     output.append(bootmap[device])
                 return (rc, '\n'.join(output))
             else:
                 target = None
-                request = args[2]
+                request = args.value
                 if request in order:
                     target = request
                 else:

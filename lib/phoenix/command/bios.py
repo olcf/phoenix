@@ -18,9 +18,16 @@ class BiosCommand(Command):
     def get_parser(cls):
         parser = argparse.ArgumentParser(description="Control the BIOS settings of Phoenix nodes")
         parser.add_argument('nodes', default=None, type=str, help='Nodes to list')
-        parser.add_argument('action', default='get', nargs='?', type=str, help='Action')
-        parser.add_argument('subject', default=None, nargs='?', type=str, help='Subject')
-        parser.add_argument('value', default=None, nargs='?', type=str, help='Value to set')
+        subparsers = parser.add_subparsers(help='sub-command help', dest='action')
+        parser_get = subparsers.add_parser('get', help='get a bios parameter')
+        parser_get.add_argument('parameter', type=str, help='Parameter to get')
+        parser_set = subparsers.add_parser('set', help='set a bios parameter')
+        parser_set.add_argument('parameter', type=str, help='Parameter to set')
+        parser_set.add_argument('value', type=str, help='Value to set')
+        parser_check = subparsers.add_parser('check', help='Check bios parameters against configured')
+        parser_sync = subparsers.add_parser('sync', help='Sync all bios parameters as configured')
+        parser_bootorder = subparsers.add_parser('bootorder', help='Manage the bootorder')
+        parser_bootorder.add_argument('value', default=None, nargs='?', type=str, help='Regex of a device to set as first boot device')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
         return parser
@@ -35,7 +42,7 @@ class BiosCommand(Command):
 
         nodes = NodeSet(args.nodes)
         (task, handler) = phoenix.parallel.setup(nodes, args)
-        cmd = ["bios", args.action, args.subject, args.value]
+        cmd = ["bios", args]
         logging.debug("Submitting shell command %s", cmd)
         try:
             task.shell(cmd, nodes=nodes, handler=handler, autoclose=False, stdin=False, tree=True, remote=False)
@@ -43,12 +50,16 @@ class BiosCommand(Command):
         except KeyboardInterrupt as kbe:
             print()
             phoenix.parallel.print_remaining(task, nodes, handler)
+        except:
+            logging.debug('CLI failed')
+            raise
         rc = 0
         return rc
 
     @classmethod
     def run(cls, client):
-        action = client.command[1]
+        args = client.command[1]
+        action = args.action
         oobkind = "bmc"
         try:
             oobtype = client.node['bmctype']
@@ -58,13 +69,14 @@ class BiosCommand(Command):
             client.mark_command_complete(rc=1)
             return 1
         try:
-            rc = oobcls.bios(client.node, client, client.command)
+            rc = oobcls.bios(client.node, client, args)
             return rc
         except OOBTimeoutError:
             client.output("Timeout", stderr=True)
             return 1
         except Exception as e:
-            client.output("Error running command: %s - %s" % (str(e), e.args), stderr=True)
+            client.output("Error running bios command: %s - %s" % (str(e), e.args), stderr=True)
+            raise
             return 1
 
 if __name__ == '__main__':
