@@ -381,6 +381,8 @@ class Redfish(Oob):
                     return(rc, 'Set %s as first boot device' % target)
                 else:
                     return(rc, msg)
+        else:
+            return(False, "Unknown bios action '%s' for a redfish bmc" % args.action)
 
 class RedfishBmc(Redfish):
     oobtype = "bmc"
