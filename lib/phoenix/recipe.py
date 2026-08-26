@@ -3,7 +3,7 @@
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
 import logging
-from yaml import load, dump
+from yaml import load, dump, YAMLError
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -26,7 +26,29 @@ import jinja2
 from jinja2 import Template
 from pathlib import Path
 
+class SoftUndefined(jinja2.ChainableUndefined):
+    """ An undefined that also tolerates being indexed and called, so that
+        reading the vars map from an unrendered recipe is not defeated by
+        expressions like {{ somevar.split(',') }} elsewhere in the file.
+
+        Only used for that pre-pass. The recipe itself is rendered with
+        StrictUndefined so an undefined name is still an error.
+    """
+    def __call__(self, *args, **kwargs):
+        return self
+
 class Recipe(object):
+    # Keys describing the image as a whole, as opposed to the accumulating
+    # keys such as steps, artifacts, initpackages, and repos, which collect
+    # the contributions of every recipe that is merged.
+    #
+    # Any recipe may set these and the first definition wins, so settings
+    # shared by several images can live in a common base recipe rather than
+    # being repeated in each of them. They are read from an unrendered pass of
+    # the recipe, so they cannot themselves be templated.
+    metadata = ('architecture', 'imagetype', 'distro', 'packagemanager',
+                'initfrom')
+
     def __init__(self, name=None, variables=None, tag=None):
         self.name = name
         self.architecture = platform.machine()
@@ -41,6 +63,7 @@ class Recipe(object):
         self.steps = list()
         self.artifacts = list()
         self.variables = dict()
+        self.metadataset = dict()
         if variables is not None:
             self.variables = dict(variables)
 
@@ -98,9 +121,88 @@ class Recipe(object):
         #raise IOError
         return None
         
-    def load_recipe(self, name):
+    @staticmethod
+    def prerender(recipestr):
+        """ Parse a recipe with undefined names rendered empty so the values
+            needed before the real render can be read. Those values must be
+            literals. Returns the parsed recipe, or an empty dict if it only
+            parses once rendered.
+        """
+        try:
+            return load(Template(recipestr, undefined=SoftUndefined).render(),
+                        Loader=Loader) or {}
+        except (jinja2.exceptions.TemplateError, YAMLError):
+            return dict()
+
+    def metadatavalues(self, recipestr, filename):
+        """ Read the metadata keys and vars map from an unrendered pass of a
+            recipe. Those values must be literals. Returns (metadata, vars).
+        """
+        recipedata = self.prerender(recipestr)
+
+        metadata = {key: recipedata[key] for key in self.metadata
+                    if recipedata.get(key) is not None}
+
+        variables = recipedata.get('vars')
+        if variables is None:
+            variables = dict()
+        elif type(variables) is not dict:
+            logging.error("Recipe %s 'vars' must be a mapping", filename)
+            raise RuntimeError
+
+        return metadata, variables
+
+    def applymetadata(self, metadata, name):
+        """ Apply the metadata keys a recipe sets. These describe the image as
+            a whole, so they may be set by any recipe and the first definition
+            wins. Repeating the same value is allowed, which lets a recipe be
+            built on its own as well as merged; a conflicting value is an
+            error.
+        """
+        for key in self.metadata:
+            if key not in metadata:
+                continue
+            value = metadata[key]
+            if key in self.metadataset:
+                if self.metadataset[key][0] != value:
+                    logging.error("Recipe %s sets %s to '%s' but recipe %s "
+                                  "already set it to '%s'", name, key, value,
+                                  self.metadataset[key][1],
+                                  self.metadataset[key][0])
+                    raise RuntimeError
+                continue
+            self.metadataset[key] = (value, name)
+            setattr(self, key, value)
+
+        # Infer the package manager as soon as a distro is known so that it is
+        # available for templating. An explicit setting always wins.
+        if 'packagemanager' not in self.metadataset and self.distro is not None:
+            self.packagemanager = guesspackagemanager(self.distro)
+
+    def rendercontext(self, variables):
+        """ The Jinja context a recipe is rendered with. A recipe sees its
+            own vars, overridden by those of the recipes that merged it and
+            finally by --define.
+
+            A metadata key that nothing has set yet is left out rather than
+            passed as None, so referencing it is an undefined name error and
+            'is defined' and the default filter behave as expected.
+        """
+        context = {'name': self.name}
+        for key in self.metadata:
+            value = getattr(self, key)
+            if value is not None:
+                context[key] = value
+        context.update(variables)
+        context.update(self.variables)
+        return context
+
+    def load_recipe(self, name, inherited=None):
         """ Reads and processes a recipe.  Adds all the steps
             to this recipe.
+
+            inherited holds the vars of the recipes that merged this one,
+            which take precedence over the vars it defines itself.
         """
 
         filename = Recipe.find_recipe(name)
@@ -112,10 +214,21 @@ class Recipe(object):
         logging.info("Loading recipe file '%s'", filename)
         recipestr = filename.read_text()
 
+        # Metadata and vars are read before rendering so they can be used as
+        # template values
+        if inherited is None:
+            inherited = dict()
+
+        metadata, variables = self.metadatavalues(recipestr, filename)
+        self.applymetadata(metadata, name)
+
+        # Own vars are defaults, overridden by whatever was inherited
+        variables.update(inherited)
+
         # Process any variables
         template = Template(recipestr, undefined=jinja2.StrictUndefined)
         try:
-            recipestr = template.render(**self.variables)
+            recipestr = template.render(**self.rendercontext(variables))
         except jinja2.exceptions.UndefinedError as e:
             print("Error: %s - use --define on the command line" % e)
             sys.exit(1)
@@ -125,16 +238,9 @@ class Recipe(object):
 
         # Load the data into the recipe structure
         for key, value in recipedata.items():
-            if key == "imagetype":
-                self.imagetype = value
-            elif key == "architecture":
-                self.architecture = value
-            elif key == "initfrom":
-                self.initfrom = value
-            elif key == "distro":
-                self.distro = value
-                if self.packagemanager is None:
-                    self.packagemanager = guesspackagemanager(value)
+            if key == "vars" or key in self.metadata:
+                # Consumed before rendering
+                continue
             elif key == "initpackages":
                 if type(value) == list:
                     self.initpackages.extend(value)
@@ -147,7 +253,7 @@ class Recipe(object):
                 for step in value:
                     for steptype in step:
                         if steptype == 'recipe':
-                            self.load_recipe(step[steptype])
+                            self.load_recipe(step[steptype], variables)
                         elif steptype == 'command':
                             if type(step['command']) is list:
                                 for cmd in step['command']:
