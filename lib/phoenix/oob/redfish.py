@@ -381,6 +381,32 @@ class Redfish(Oob):
                     return(rc, 'Set %s as first boot device' % target)
                 else:
                     return(rc, msg)
+        elif args.action == 'password':
+            if 'user' in args:
+                user = args.user
+            elif 'bmcuser' in node:
+                user = node['bmcuser']
+            else:
+                user = 'root'
+            if 'originalpassword' in args and args.originalpassword is not None:
+                original = args.originalpassword
+            elif 'bmcdefaultpassword' in node:
+                original = node['bmcdefaultpassword']
+            else:
+                return(False, 'Original password unknown')
+            if 'newpassword' in args and args.newpassword is not None:
+                new = args.newpassword
+            elif 'bmcpassword' in node:
+                new = node['bmcpassword']
+            else:
+                return(False, 'New password unknown')
+            payload = { 'Password': new }
+            path = 'AccountService/Accounts/%s' % user
+            (rc, msg) = cls._post_redfish(node, path, payload, status_codes=[200, 202, 204], method='patch', auth=(user, original))
+            if rc:
+                return(rc, 'Ok')
+            else:
+                return (rc, msg)
         else:
             return(False, "Unknown bios action '%s' for a redfish bmc" % args.action)
 

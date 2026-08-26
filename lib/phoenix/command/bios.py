@@ -28,6 +28,9 @@ class BiosCommand(Command):
         parser_sync = subparsers.add_parser('sync', help='Sync all bios parameters as configured')
         parser_bootorder = subparsers.add_parser('bootorder', help='Manage the bootorder')
         parser_bootorder.add_argument('value', default=None, nargs='?', type=str, help='Regex of a device to set as first boot device')
+        parser_password = subparsers.add_parser('password', help='Set the BMC password')
+        parser_password.add_argument('-o', '--original', dest='originalpassword', default=None, type=str, help='Original/old/current/factory password')
+        parser_password.add_argument('-p', '--password', dest='newpassword', default=None, type=str, help='New password')
         parser.add_argument('-v', '--verbose', action='count', default=0)
         phoenix.parallel.parser_add_arguments_parallel(parser)
         return parser
