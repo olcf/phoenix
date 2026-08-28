@@ -557,7 +557,7 @@ class Node(object):
         if 'option82' not in self:
             raise KeyError("%s does not have 'option82' set" % self.name)
         if isinstance(self['option82'], str):
-            return('string', self['option82'], self['option82'])
+            return('string', self['option82'], self['option82'].encode())
         elif not isinstance(self['option82'], dict) and not isinstance(self['option82'], NodeLayerMap):
             raise KeyError("%s 'option82' should be a string or a dict, got %s" % (self.name, type(self['option82'])))
         if 'remoteid' in self['option82']:
@@ -569,7 +569,7 @@ class Node(object):
         else:
             remoteid_format = 'string'
         if remoteid_format == 'string':
-            remoteid_machine = remoteid_human
+            remoteid_machine = remoteid_human.encode()
         elif remoteid_format == 'ipbytes':
             remoteid_machine = ipaddress.ip_address(remoteid_human).packed
         elif remoteid_format == 'ipbytes_reverse':

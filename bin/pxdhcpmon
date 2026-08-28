@@ -99,8 +99,7 @@ def load_switches():
                 switchname_to_circuitid_m2h_function[nodename] = from_big_bytes
             else:
                 switchname_to_circuitid_m2h_function[nodename] = str
-        except exception as e:
-            print("!!! %s" % e)
+        except Exception as e:
             switchname_to_circuitid_m2h_function[nodename] = str
         
 def from_little_bytes(val):
