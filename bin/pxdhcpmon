@@ -54,7 +54,7 @@ def main():
 
     print("Starting DHCP Discover sniffer...")
     try:
-        sniff(filter="udp and (port 67 or port 68)", prn=packet_handler, store=0)
+        sniff(iface=get_working_ifaces(), filter="udp and (port 67 or port 68)", prn=packet_handler, store=0)
     except Exception as e:
         traceback.print_exc()
         sys.exit(1)
@@ -194,7 +194,7 @@ def decode_opt82(raw_option82):
         if sub_opt_code == 1:
             circuitid = sub_opt_val
         elif sub_opt_code == 2:
-            remoteid = sub_opt_val[::-1]
+            remoteid = sub_opt_val
             
         i += sub_opt_len + 2 # Move to the next sub-option
 
