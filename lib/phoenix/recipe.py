@@ -27,11 +27,11 @@ from jinja2 import Template
 from pathlib import Path
 
 class Recipe(object):
-    def __init__(self, name=None, variables=None):
+    def __init__(self, name=None, variables=None, tag=None):
         self.name = name
         self.architecture = platform.machine()
         self.root = None
-        self.tag = None
+        self.image = None
         self.imagetype = None
         self.initfrom = None
         self.distro = None
@@ -43,6 +43,14 @@ class Recipe(object):
         self.variables = dict()
         if variables is not None:
             self.variables = dict(variables)
+
+        # Resolve the tag before rendering so recipes can use {{tag}}.
+        # An explicit --define tag wins over --tag.
+        if tag is None:
+            tag = default_tag()
+        self.variables.setdefault('tag', tag)
+        self.tag = self.variables['tag']
+
         if name is not None:
             self.load_recipe(name)
 
@@ -151,7 +159,7 @@ class Recipe(object):
                         elif steptype == 'file':
                             self.steps.append(StepFile(step['file']))
                         elif steptype == 'osrelease':
-                            self.steps.append(StepOsRelease(step['osrelease']))
+                            self.steps.append(StepOsRelease(step['osrelease'], self))
                         else:
                             self.steps.append(step)
             elif key == "artifacts":
@@ -167,6 +175,8 @@ class Recipe(object):
                             self.artifacts.append(ArtifactInitramfs())
                         elif artifacttype == 'squashfs':
                             self.artifacts.append(ArtifactSquashfs(artifact['squashfs']))
+                        elif artifacttype == 'push':
+                            self.artifacts.append(ArtifactPush(artifact['push'], self))
                         else:
                             logging.warning('Unknown artifact type %s', artifacttype)
             else:
@@ -255,6 +265,21 @@ class Recipe(object):
             raise RuntimeError
             return
 
+    def commit(self):
+        """ Commit the working container to a local image.
+        """
+        if self.image is not None:
+            return self.image
+
+        image = "%s:%s" % (self.name, self.tag)
+        logging.info("Committing container %s to image %s", self.container, image)
+        rc = runcmd(["buildah", "commit", self.container, image])
+        if rc:
+            logging.error("Could not commit container %s to image %s", self.container, image)
+            raise RuntimeError
+        self.image = image
+        return image
+
     def taglatest(self):
         latestlink = Path(phoenix.artifact_path) / 'images' / self.name / 'latest'
         if latestlink.is_symlink():
@@ -272,21 +297,14 @@ class Recipe(object):
             logging.error("Command failed: %s", cpe.output)
             raise RuntimeError
 
-    def build(self, tag=None, keep=False):
+    def build(self, keep=False):
         if self.initfrom == "scratch" and len(self.initpackages) == 0:
             logging.error("You must specify initpackages when building from scratch")
             return
-        if tag == None:
-            tag = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-            gittag = git_tag(Path(phoenix.conf_path) / "recipes")
-            if gittag:
-                tag = "%s-%s" % (tag, gittag)
-        self.tag = tag
-        self.variables['tag'] = tag
-        logging.info("Building recipe %s with tag %s", self.name, tag)
+        logging.info("Building recipe %s with tag %s", self.name, self.tag)
 
         with ConfirmKeyboardInterrupt():
-            self.createroot(tag)
+            self.createroot(self.tag)
             self.setuprepos()
             self.installinitpackages()
             for step in self.steps:
@@ -317,6 +335,22 @@ class ConfirmKeyboardInterrupt(object):
 
     def __exit__(self, type, value, traceback):
         signal.signal(signal.SIGINT, self.saved_handler)
+
+_default_tag = None
+
+def default_tag():
+    """ The default build tag, '<datetime>[-<githash>[-dirty]]'.
+
+        Cached so that recipes merged with the recipe step and repeated
+        Recipe instantiations share a tag and only shell out to git once.
+    """
+    global _default_tag
+    if _default_tag is None:
+        _default_tag = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+        gittag = git_tag(Path(phoenix.conf_path) / "recipes")
+        if gittag:
+            _default_tag = "%s-%s" % (_default_tag, gittag)
+    return _default_tag
 
 def git_tag(path):
     """ If path is inside a git repo, return a tag component of the form
@@ -588,27 +622,23 @@ class StepFile(Step):
 class StepOsRelease(Step):
     name = 'OsRelease'
 
-    def __init__(self, params):
-        # Optional mapping of additional os-release fields to set. IMAGE_ID
-        # and IMAGE_VERSION are always set from the recipe name and tag.
-        self.extra = dict()
+    def __init__(self, params, recipe):
+        # IMAGE_ID and IMAGE_VERSION always come from the recipe name and
+        # tag. A mapping may set any number of additional fields.
+        self.fields = {'IMAGE_ID': recipe.name, 'IMAGE_VERSION': recipe.tag}
         if type(params) is dict:
-            self.extra = dict(params)
+            for key, value in params.items():
+                if key in ('IMAGE_ID', 'IMAGE_VERSION'):
+                    logging.warning("os-release %s is set from the recipe, ignoring override", key)
+                    continue
+                self.fields[key] = value
 
     def __str__(self):
-        result = "IMAGE_ID=<name> IMAGE_VERSION=<tag>"
-        if self.extra:
-            result += " " + " ".join("%s=%s" % (k, v) for k, v in self.extra.items())
-        return result
+        return " ".join("%s=%s" % (k, v) for k, v in self.fields.items())
 
     def run(self, recipe):
         osrelease = Path(recipe.root) / 'etc' / 'os-release'
-        fields = dict(self.extra)
-        fields['IMAGE_ID'] = recipe.name
-        fields['IMAGE_VERSION'] = recipe.tag
-        logging.info("Setting %s in %s",
-                     " ".join("%s=%s" % (k, v) for k, v in fields.items()),
-                     osrelease)
+        logging.info("Setting %s in %s", self, osrelease)
 
         lines = []
         if osrelease.is_file():
@@ -616,9 +646,9 @@ class StepOsRelease(Step):
 
         # Drop any pre-existing lines for the fields we are about to set
         lines = [l for l in lines
-                 if not any(l.startswith("%s=" % key) for key in fields)]
+                 if not any(l.startswith("%s=" % key) for key in self.fields)]
 
-        for key, value in fields.items():
+        for key, value in self.fields.items():
             lines.append('%s="%s"' % (key, value))
 
         try:
@@ -728,6 +758,82 @@ class ArtifactSquashfs(Artifact):
             raise RuntimeError
         else:
             logging.info("Created %s/%s", outputdir, self.output)
+
+class ArtifactPush(Artifact):
+    """ Push the built image to a container registry with buildah push.
+
+        Defined either as a bare registry string or as a mapping:
+
+          registry: the destination registry, required. May include a
+                    path, e.g. registry.example.com/myorg
+          image:    the repository name, defaults to the recipe name
+          tag:      a tag or list of tags, defaults to the build tag
+          format:   the manifest type to push, passed to buildah --format
+
+        buildah push takes a single destination, so each tag is pushed
+        separately. Layers already present in the repository are not
+        resent, so the extra pushes only upload a manifest.
+
+        Assumes buildah is already logged into the registry.
+    """
+    name = 'Push'
+
+    formats = ('oci', 'docker', 'v2s2', 'v2s1')
+
+    def __init__(self, params, recipe):
+        self.image = recipe.name
+        self.tags = [recipe.tag]
+        self.format = None
+        if type(params) is dict:
+            if 'registry' not in params:
+                logging.error("Push artifact does not define a registry")
+                raise RuntimeError
+            self.registry = params['registry']
+            self.image = params.get('image', self.image)
+            self.format = params.get('format')
+            if 'tag' in params:
+                tag = params['tag']
+                self.tags = tag if type(tag) is list else [tag]
+        else:
+            self.registry = params
+
+        if len(self.tags) == 0:
+            logging.error("Push artifact to %s has an empty tag list", self.registry)
+            raise RuntimeError
+
+        for value, what in [(self.registry, 'registry'), (self.image, 'image')] + \
+                           [(tag, 'tag') for tag in self.tags]:
+            if not isinstance(value, str) or value == '':
+                logging.error("Push %s must be a non-empty string, got %r", what, value)
+                raise RuntimeError
+
+        if self.format is not None and self.format not in self.formats:
+            logging.error("Push format %s is not one of %s", self.format,
+                          ", ".join(self.formats))
+            raise RuntimeError
+
+    def __str__(self):
+        return ", ".join(self.destinations())
+
+    def destinations(self):
+        registry = self.registry.rstrip('/')
+        return ["%s/%s:%s" % (registry, self.image, tag) for tag in self.tags]
+
+    def run(self, recipe):
+        source = recipe.commit()
+
+        for destination in self.destinations():
+            logging.info("Pushing %s to %s", source, destination)
+            command = ["buildah", "push"]
+            if self.format is not None:
+                command.extend(["--format", self.format])
+            command.extend([source, destination])
+
+            rc = runcmd(command)
+            if rc:
+                logging.error("Could not push %s to %s", source, destination)
+                raise RuntimeError
+            logging.info("Pushed %s", destination)
 
 def runcmd(command, cwd=None):
     logging.debug("Running command %s", command)
