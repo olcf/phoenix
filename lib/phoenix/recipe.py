@@ -486,6 +486,7 @@ class StepCommand(Step):
         rc = runcmd(command)
         if rc:
             logging.error("Return code %d from command %s", rc, self.command)
+            raise RuntimeError
 
 class StepPackage(Step):
     name = 'Package'
