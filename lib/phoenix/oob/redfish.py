@@ -30,8 +30,13 @@ class RedfishError(Exception):
 
 class Redfish(Oob):
     @classmethod
-    def _do_redfish_req(cls, host, path, request_type, auth=('admin', 'password'), data={}, headers={}, timeout=(5,30)):
+    def _do_redfish_req(cls, host, path, request_type, auth=('admin', 'password'), data={}, headers={}, timeout=(5,30), expand=False):
         """A simple redfish request - returns a requests response"""
+        if expand:
+            if '?' in path:
+                path = path + '&$expand=.'
+            else:
+                path = path + '?$expand=.'
         url = "https://%s/redfish/v1/%s" % (host, path)
         logging.debug("Making %s request to %s", request_type, url)
         logging.debug("Data is %s", data)
@@ -58,7 +63,7 @@ class Redfish(Oob):
         return response
 
     @classmethod
-    def _get_redfish_attribute(cls, node, path, attr, status_codes=None, request_type="get", auth=None):
+    def _get_redfish_attribute(cls, node, path, attr, status_codes=None, request_type="get", auth=None, expand=False):
         """A simple redfish request - returns a string with the requested attribute
            attr can be an array of nested paths, or a dot-separated path
            status_codes is an array of acceptable status codes
@@ -69,7 +74,11 @@ class Redfish(Oob):
             return (False, "Parameter %s not set on node" % cls.oobtype)
         if auth is None:
             auth = cls._get_auth(node)
-        response = cls._do_redfish_req(node[cls.oobtype], path, request_type, auth)
+        if expand:
+            if 'redfishexpand' in node and not node['redfishexpand']:
+                # TODO: emulate expand by looping through links
+                raise NotImplementedError("BMC does not support expand")
+        response = cls._do_redfish_req(node[cls.oobtype], path, request_type, auth, expand=expand)
         if status_codes is not None and response.status_code not in status_codes:
             return (False, "Redfish response returned status %d" % response.status_code)
         if len(response.content) == 0:
@@ -350,8 +359,8 @@ class Redfish(Oob):
             return (rc, msg)
         elif args.action == 'bootorder':
             (rc, order) = cls._get_redfish_attribute(node, systempath, "Boot.BootOrder")
-            path = '%s/BootOptions?$expand=*' % systempath
-            (rc, details) = cls._get_redfish_attribute(node, path, 'Members')
+            path = '%s/BootOptions' % systempath
+            (rc, details) = cls._get_redfish_attribute(node, path, 'Members', expand=True)
             output = list()
             bootmap = dict()
             for device in details:
