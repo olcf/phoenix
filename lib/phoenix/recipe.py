@@ -131,7 +131,15 @@ class Recipe(object):
         try:
             return load(Template(recipestr, undefined=SoftUndefined).render(),
                         Loader=Loader) or {}
-        except (jinja2.exceptions.TemplateError, YAMLError):
+        except jinja2.exceptions.TemplateError:
+            # The recipe could not be rendered even with undefined names
+            # tolerated, which an unusable variable name causes. Fall back to
+            # the raw yaml so the vars map can still be checked and reported.
+            try:
+                return load(recipestr, Loader=Loader) or {}
+            except YAMLError:
+                return dict()
+        except YAMLError:
             return dict()
 
     def metadatavalues(self, recipestr, filename):
@@ -149,6 +157,8 @@ class Recipe(object):
         elif type(variables) is not dict:
             logging.error("Recipe %s 'vars' must be a mapping", filename)
             raise RuntimeError
+        else:
+            checkvarnames(variables, filename)
 
         return metadata, variables
 
@@ -492,6 +502,38 @@ def git_tag(path):
     dirty = bool(status.stdout.strip())
 
     return "%s-dirty" % githash if dirty else githash
+
+# Names Jinja resolves as literals or cannot parse as a bare name, so a
+# variable using one is either silently shadowed or a syntax error
+jinjareserved = frozenset(['true', 'false', 'none', 'True', 'False', 'None',
+                           'not'])
+
+def checkvarnames(variables, filename):
+    """ Check that every name in a vars map can be referenced from a template.
+
+        Jinja names follow the Python identifier rules, so a name containing
+        a hyphen parses as a subtraction and one containing a space or
+        starting with a digit is a syntax error. Catch that here rather than
+        letting it surface later as a confusing undefined name.
+    """
+    for key in variables:
+        if type(key) is not str:
+            # yaml turns bare true/false and numbers into non-string keys
+            logging.error("Recipe %s variable '%s' must be a name, quote it "
+                          "if it was meant as one", filename, key)
+            raise RuntimeError
+        if not key.isidentifier():
+            hint = ""
+            if '-' in key:
+                # A hyphen parses as subtraction, which is easy to miss
+                hint = ", use underscores rather than hyphens"
+            logging.error("Recipe %s variable '%s' is not a valid name%s",
+                          filename, key, hint)
+            raise RuntimeError
+        if key in jinjareserved:
+            logging.error("Recipe %s variable '%s' is reserved by Jinja and "
+                          "could not be referenced", filename, key)
+            raise RuntimeError
 
 def guesspackagemanager(distro):
     if distro[0:3] == "sle":

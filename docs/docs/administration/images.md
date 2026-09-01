@@ -87,6 +87,11 @@ Because `vars` and the values in the table above are read before the recipe is
 rendered, they must be literals and cannot themselves be templated. Referencing
 a variable that is not defined anywhere is an error.
 
+Variable names follow the same rules as Python identifiers: letters, digits,
+and underscores, not starting with a digit. A hyphen is the subtraction
+operator in Jinja, so `{{ my-var }}` reads as `my - var` rather than a name;
+use `my_var` instead. Names are checked when the recipe is read.
+
 Variables are ordinary Jinja values, so the usual filters and methods work on
 them, including on values defined in the same recipe:
 
