@@ -129,7 +129,8 @@ class Recipe(object):
             parses once rendered.
         """
         try:
-            return load(Template(recipestr, undefined=SoftUndefined).render(),
+            return load(Template(recipestr, undefined=SoftUndefined,
+                                 keep_trailing_newline=True).render(),
                         Loader=Loader) or {}
         except jinja2.exceptions.TemplateError:
             # The recipe could not be rendered even with undefined names
@@ -235,8 +236,11 @@ class Recipe(object):
         # Own vars are defaults, overridden by whatever was inherited
         variables.update(inherited)
 
-        # Process any variables
-        template = Template(recipestr, undefined=jinja2.StrictUndefined)
+        # Process any variables. The trailing newline is kept so that a block
+        # scalar at the end of the recipe, such as a file step's content, is
+        # chomped by yaml rather than by the template engine.
+        template = Template(recipestr, undefined=jinja2.StrictUndefined,
+                            keep_trailing_newline=True)
         try:
             recipestr = template.render(**self.rendercontext(variables))
         except jinja2.exceptions.UndefinedError as e:
