@@ -9,6 +9,9 @@ from phoenix.node import Node
 import os
 from pathlib import Path
 
+class BootloaderConfigError(Exception):
+    """Raised when node or network configuration cannot produce a bootfile"""
+
 def get_bootloader_script(node, interface=None, provider=None):
     loader_class = _find_class(node, provider)
     return loader_class.script(node, interface=interface)
@@ -28,6 +31,9 @@ def write_bootloader_scripts():
                 try:
                     provider = _find_provider(node)
                     script = get_bootloader_script(node, interface=ifacename, provider=provider)
+                except BootloaderConfigError as e:
+                    logging.warning("Skipping %s %s: %s", node['name'], ifacename, e)
+                    continue
                 except Exception as e:
                     logging.debug("Skipping %s %s because a script was not generated (%s)", node['name'], ifacename, e)
                     continue
