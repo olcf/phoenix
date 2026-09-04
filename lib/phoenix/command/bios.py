@@ -20,7 +20,7 @@ class BiosCommand(Command):
         parser.add_argument('nodes', default=None, type=str, help='Nodes to list')
         subparsers = parser.add_subparsers(help='sub-command help', dest='action')
         parser_get = subparsers.add_parser('get', help='get a bios parameter')
-        parser_get.add_argument('parameter', type=str, help='Parameter to get')
+        parser_get.add_argument('parameter', default=None, nargs='?', type=str, help='Parameter to get')
         parser_set = subparsers.add_parser('set', help='set a bios parameter')
         parser_set.add_argument('parameter', type=str, help='Parameter to set')
         parser_set.add_argument('value', type=str, help='Value to set')
