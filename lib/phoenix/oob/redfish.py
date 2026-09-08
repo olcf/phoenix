@@ -207,8 +207,28 @@ class Redfish(Oob):
         return cls._redfish_reset(node, 'Off', auth)
 
     @classmethod
+    def _power_forceon(cls, node, auth=None):
+        return cls._redfish_reset(node, 'ForceOn', auth)
+
+    @classmethod
     def _power_forceoff(cls, node, auth=None):
         return cls._redfish_reset(node, 'ForceOff', auth)
+
+    @classmethod
+    def _power_gracefulshutdown(cls, node, auth=None):
+        return cls._redfish_reset(node, 'GracefulShutdown', auth)
+
+    @classmethod
+    def _power_reset(cls, node, auth=None):
+        return cls._redfish_reset(node, 'ForceRestart', auth)
+
+    @classmethod
+    def _power_gracefulrestart(cls, node, auth=None):
+        return cls._redfish_reset(node, 'GracefulRestart', auth)
+
+    @classmethod
+    def _power_powercycle(cls, node, auth=None):
+        return cls._redfish_reset(node, 'PowerCycle', auth)
 
     @classmethod
     def _redfish_path_firmware(cls, node, fwtype=None):

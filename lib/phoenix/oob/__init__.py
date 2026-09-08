@@ -11,6 +11,27 @@ class OOBTimeoutError(Exception):
 class Oob(object):
     oobtype = "unknown"
 
+    # Accepted command line words mapped to canonical power actions
+    POWER_ALIASES = {
+        'stat': 'state',
+        'state': 'state',
+        'status': 'state',
+        'query': 'state',
+        'on': 'on',
+        'forceon': 'forceon',
+        'off': 'off',
+        'forceoff': 'forceoff',
+        'gracefulshutdown': 'gracefulshutdown',
+        'reset': 'reset',
+        'restart': 'reset',
+        'forcerestart': 'reset',
+        'gracefulrestart': 'gracefulrestart',
+        'powercycle': 'powercycle',
+    }
+
+    # Actions that can be emulated with off/on when unsupported natively
+    POWER_RESTART_ACTIONS = ('reset', 'gracefulrestart', 'powercycle')
+
     @classmethod
     def _get_auth(cls, node):
         try:
@@ -32,44 +53,29 @@ class Oob(object):
         #logging.debug("Type is %s", oobtype)
 
         try:
-            if command in ['stat', 'state', 'status', 'query']:
-                (ok, state) = cls._power_state(node, auth=cls._get_auth(node))
+            action = cls.POWER_ALIASES[command]
+        except KeyError:
+            client.output("Invalid requested node state command (%s). Valid commands: %s" %
+                          (command, ', '.join(sorted(cls.POWER_ALIASES))), stderr=True)
+            return -1
+
+        try:
+            method = getattr(cls, '_power_%s' % action)
+            try:
+                (ok, state) = method(node, cls._get_auth(node))
                 client.set_state(state)
                 client.output(state, stderr=not ok)
                 return 0 if ok else 1
-            elif command in ['on']:
-                (ok,state) = cls._power_on(node, cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['off']:
-                (ok, state) = cls._power_off(node, cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['forceoff']:
-                (ok, state) = cls._power_forceoff(node, cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['reset', 'restart']:
-                try:
-                    (ok, state) = cls._power_reset(node, cls._get_auth(node))
-                    client.set_state(state)
-                    client.output(state, stderr=not ok)
-                    return 0 if ok else 1
-                except NotImplementedError:
-                    # Fix to use off '--wait' instead of an arbitrary sleep
-                    cls._power_off(node, cls._get_auth(node))
-                    time.sleep(60)
-                    cls._power_on(node, cls._get_auth(node))
-                    client.output("Ok")
-                    client.set_state("Ok")
-                    return 1
-            else:
-                state = 'Error'
-                client.output("Invalid requested node state command (%s)" % command, stderr=True)
-                return -1
+            except NotImplementedError:
+                if action not in cls.POWER_RESTART_ACTIONS:
+                    raise
+                # Fix to use off '--wait' instead of an arbitrary sleep
+                cls._power_off(node, cls._get_auth(node))
+                time.sleep(60)
+                cls._power_on(node, cls._get_auth(node))
+                client.output("Ok")
+                client.set_state("Ok")
+                return 1
         except OOBTimeoutError as e:
             client.output("Connection timeout", stderr=True)
         except Exception as e:
@@ -89,11 +95,27 @@ class Oob(object):
         raise NotImplementedError
 
     @classmethod
+    def _power_forceon(cls, node, auth=None):
+        raise NotImplementedError
+
+    @classmethod
     def _power_forceoff(cls, node, auth=None):
         raise NotImplementedError
 
     @classmethod
+    def _power_gracefulshutdown(cls, node, auth=None):
+        raise NotImplementedError
+
+    @classmethod
     def _power_reset(cls, node, auth=None):
+        raise NotImplementedError
+
+    @classmethod
+    def _power_gracefulrestart(cls, node, auth=None):
+        raise NotImplementedError
+
+    @classmethod
+    def _power_powercycle(cls, node, auth=None):
         raise NotImplementedError
 
     @classmethod

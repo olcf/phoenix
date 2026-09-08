@@ -18,14 +18,15 @@ import phoenix
 import phoenix.parallel
 from phoenix.system import System
 from phoenix.command import Command
-from phoenix.oob import OOBTimeoutError
+from phoenix.oob import Oob, OOBTimeoutError
 
 class PowerCommand(Command):
     @classmethod
     def get_parser(cls):
         parser = argparse.ArgumentParser(description="Control the power of Phoenix nodes")
         parser.add_argument('nodes', default=None, type=str, help='Nodes to list')
-        parser.add_argument('action', default='stat', nargs='?', type=str, help='Action')
+        parser.add_argument('action', default='stat', nargs='?', type=str,
+                            help='Action: %s' % ', '.join(sorted(Oob.POWER_ALIASES)))
         parser.add_argument('--pdu', default=False, action='store_true', help='Target the PDU')
         parser.add_argument('--wait', default=False, action='store_true', help='Wait on the desired state')
         parser.add_argument('-v', '--verbose', action='count', default=0)
