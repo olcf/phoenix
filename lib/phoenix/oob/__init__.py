@@ -2,7 +2,7 @@
 """Generic Out-Of-Band Functions"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
-import time # for sleep in reset - eventually remove
+import time
 import logging
 
 class OOBTimeoutError(Exception):
@@ -31,6 +31,16 @@ class Oob(object):
 
     # Actions that can be emulated with off/on when unsupported natively
     POWER_RESTART_ACTIONS = ('reset', 'gracefulrestart', 'powercycle')
+
+    # Terminal power state each action settles into, for --wait. Restart
+    # actions are omitted since they end in the same state they started.
+    POWER_WAIT_STATES = {
+        'on': 'on',
+        'forceon': 'on',
+        'off': 'off',
+        'forceoff': 'off',
+        'gracefulshutdown': 'off',
+    }
 
     @classmethod
     def _get_auth(cls, node):
@@ -63,24 +73,60 @@ class Oob(object):
             method = getattr(cls, '_power_%s' % action)
             try:
                 (ok, state) = method(node, cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
             except NotImplementedError:
                 if action not in cls.POWER_RESTART_ACTIONS:
                     raise
-                # Fix to use off '--wait' instead of an arbitrary sleep
-                cls._power_off(node, cls._get_auth(node))
-                time.sleep(60)
-                cls._power_on(node, cls._get_auth(node))
-                client.output("Ok")
-                client.set_state("Ok")
-                return 1
+                # No native restart action; emulate it by powering off,
+                # waiting for the node to reach Off, then powering on. Confirm
+                # both halves exist first so we never strand a node powered off.
+                if not cls._can_emulate_restart():
+                    client.output("%s is not supported by %s and cannot be emulated" %
+                                  (command, cls.__name__), stderr=True)
+                    return 1
+                (ok, state) = cls._power_off(node, cls._get_auth(node))
+                if not ok:
+                    client.set_state(state)
+                    client.output(state, stderr=True)
+                    return 1
+                if not cls._wait_for_power_state(node, client, 'off'):
+                    client.output("Timed out waiting for Off", stderr=True)
+                    return 1
+                (ok, state) = cls._power_on(node, cls._get_auth(node))
+            client.set_state(state)
+            client.output(state, stderr=not ok)
+            return 0 if ok else 1
         except OOBTimeoutError as e:
             client.output("Connection timeout", stderr=True)
         except Exception as e:
             client.output("Power request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
             raise
+
+    @classmethod
+    def _can_emulate_restart(cls):
+        """True if off/on/state are all implemented, so a restart can be
+           emulated without risk of leaving the node powered off."""
+        for name in ('_power_off', '_power_on', '_power_state'):
+            if getattr(cls, name).__func__ is getattr(Oob, name).__func__:
+                return False
+        return True
+
+    # Seconds to wait for a node to reach a requested power state
+    power_wait_timeout = 180
+
+    @classmethod
+    def _wait_for_power_state(cls, node, client, desired, timeout=None):
+        """Poll the power state until it matches desired or timeout expires.
+           Each poll refreshes client state so --wait output stays live.
+           Returns True if the state was reached."""
+        if timeout is None:
+            timeout = cls.power_wait_timeout
+        desired = desired.lower()
+        for _ in range(timeout):
+            time.sleep(1)
+            cls.power(node, client, ['stat'])
+            if client.state is not None and str(client.state).lower() == desired:
+                return True
+        return False
 
     @classmethod
     def _power_state(cls, node, auth=None):
