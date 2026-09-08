@@ -77,19 +77,23 @@ class Oob(object):
             raise
 
     @classmethod
-    def _power_state(cls, node):
+    def _power_state(cls, node, auth=None):
         raise NotImplementedError
 
     @classmethod
-    def _power_on(cls, node):
+    def _power_on(cls, node, auth=None):
         raise NotImplementedError
 
     @classmethod
-    def _power_off(cls, node):
+    def _power_off(cls, node, auth=None):
         raise NotImplementedError
 
     @classmethod
-    def _power_reset(cls, node):
+    def _power_forceoff(cls, node, auth=None):
+        raise NotImplementedError
+
+    @classmethod
+    def _power_reset(cls, node, auth=None):
         raise NotImplementedError
 
     @classmethod
