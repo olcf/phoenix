@@ -7,6 +7,7 @@ The following parameters can be used to define a recipe:
 
 | Parameter      | Description                                             |
 | :--------------| :-------------------------------------------------------|
+| vars           | A map of variable names to values made available to Jinja templating in the recipe. See below |
 | architecture   | The target architecture for the image. Defaults to the same architecture where the command is running, but it's useful for cross-building. |
 | distro         | Mostly informational. If the `packagemanager` option is unset, the `distro` will be parsed to attempt to guess the correct package manager. |
 | packagemanager | Specifies what command should be called to install packages to the image. Supported options are currently `zypper`, `yum`, and `dnf`. If unset, this is assumed from the `distro` setting. |
@@ -16,21 +17,97 @@ The following parameters can be used to define a recipe:
 | steps          | An ordered list of actions to take to build the image. See below for supportes steps types |
 | artifacts      | An ordered list of artifacts to capture from the image. See below for supported artifact types |
 
+`architecture`, `imagetype`, `distro`, `packagemanager`, and `initfrom`
+describe the image as a whole rather than accumulating, so any recipe may set
+them and the first definition wins. This lets settings shared by several
+images live in a common base recipe instead of being repeated in each of them.
+A recipe may set one of them again to the same value, so that it can still be
+built on its own as well as merged, but setting it to a different value is an
+error.
+
+`initpackages`, `repos`, `steps`, and `artifacts` collect the contributions of
+every recipe that is merged.
+
 ### Variables
 
-Recipes are rendered as Jinja templates before they are parsed, so any value
-may reference a variable defined with `--define`.
+Recipes are rendered with Jinja before they are parsed, so `{{name}}` style
+references may be used anywhere in the file, including in keys, values, and
+`{% if %}` blocks.
 
-The build tag is always available as `{{tag}}`. It is resolved before the
-recipe is rendered, so it can be used anywhere in a recipe, including artifact
-filenames and push tags. It defaults to `<datetime>[-<githash>[-dirty]]` and
-can be set with `--tag`, or with `--define tag <value>` which takes precedence.
+The `vars` map defines variables in the recipe itself:
+
+<!-- {% raw %} -->
+```yaml
+vars:
+  rocmver: "6.4.1"
+steps:
+  - command: ls /opt/rocm-{{rocmver}}
+```
+<!-- {% endraw %} -->
+
+These values describing the recipe and the build are also available:
+
+| Variable       | Description                                        |
+| :--------------| :--------------------------------------------------|
+| tag            | The build tag. See below                           |
+| name           | The recipe name                                    |
+| architecture   | The target architecture, defaulting to the host    |
+| imagetype      | The `imagetype` setting, if set                    |
+| distro         | The `distro` setting, if set                       |
+| packagemanager | The package manager, either set or guessed from `distro` |
+| initfrom       | The `initfrom` setting, if set                     |
+
+A recipe is rendered before the recipes it merges are read, so it only sees
+the metadata that it or an earlier recipe set. Referencing one that nothing
+has set yet is an undefined name error; use `{{distro|default('')}}` or
+`{% if distro is defined %}` where that is expected.
+
+The build tag is resolved before the recipe is rendered, so `{{tag}}` can be
+used anywhere in a recipe, including artifact filenames and push tags. It
+defaults to `<datetime>[-<githash>[-dirty]]` and can be set with `--tag`.
 
 <!-- {% raw %} -->
 ```yaml
 artifacts:
   - squashfs:
       output: rootdir-{{tag}}.squashfs
+```
+<!-- {% endraw %} -->
+
+A variable given with `--define` overrides the `vars` entry of the same name,
+and also overrides `tag` from `--tag`, so a recipe can define defaults that are
+overridden on the command line.
+
+A recipe merged with the `recipe` step sees the variables of the recipe that
+merged it, which take precedence over the ones it defines itself. This lets a
+shared recipe define defaults that the recipes using it can override. Merged
+recipes do not see each other's variables.
+
+Because `vars` and the values in the table above are read before the recipe is
+rendered, they must be literals and cannot themselves be templated. Referencing
+a variable that is not defined anywhere is an error.
+
+Variable names follow the same rules as Python identifiers: letters, digits,
+and underscores, not starting with a digit. A hyphen is the subtraction
+operator in Jinja, so `{{ my-var }}` reads as `my - var` rather than a name;
+use `my_var` instead. Names are checked when the recipe is read.
+
+Variables are ordinary Jinja values, so the usual filters and methods work on
+them, including on values defined in the same recipe:
+
+<!-- {% raw %} -->
+```yaml
+vars:
+  groups:
+    - systems
+    - users
+steps:
+  - file:
+      dst: /etc/security/access.conf
+      content: |
+        {%- for group in groups %}
+        + : {{group}} : ALL
+        {%- endfor %}
 ```
 <!-- {% endraw %} -->
 
@@ -90,6 +167,8 @@ Phoenix does not run `buildah login`.
 
 <!-- {% raw %} -->
 ```yaml
+vars:
+  version: "6.4.1"
 architecture: x86_64
 distro: rhel9
 packagemanager: dnf

@@ -46,11 +46,13 @@ if __name__ == '__main__':
             print("\n".join(recipes))
     elif args.action == 'show':
         for name in args.name:
-            recipe = Recipe(name, args.variables, tag=args.tag)
-            print(recipe)
+            try:
+                print(Recipe(name, args.variables, tag=args.tag))
+            except RuntimeError:
+                rc = 1
     elif args.action == 'build':
-        recipe = Recipe(args.name, args.variables, tag=args.tag)
         try:
+            recipe = Recipe(args.name, args.variables, tag=args.tag)
             recipe.build(keep=args.keep)
         except RuntimeError:
             rc = 1
