@@ -60,7 +60,7 @@ These values describing the recipe and the build are also available:
 A recipe is rendered before the recipes it merges are read, so it only sees
 the metadata that it or an earlier recipe set. Referencing one that nothing
 has set yet is an undefined name error; use `{{distro|default('')}}` or
-`{% if distro is defined %}` where that is expected.
+`{% raw %}{% if distro is defined %}{% endraw %}` where that is expected.
 
 The build tag is resolved before the recipe is rendered, so `{{tag}}` can be
 used anywhere in a recipe, including artifact filenames and push tags. It
