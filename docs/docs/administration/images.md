@@ -32,7 +32,7 @@ every recipe that is merged.
 
 Recipes are rendered with Jinja before they are parsed, so `{{name}}` style
 references may be used anywhere in the file, including in keys, values, and
-`{% if %}` blocks.
+`{% raw %}{% if %}{% endraw %}` blocks.
 
 The `vars` map defines variables in the recipe itself:
 
