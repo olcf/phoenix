@@ -103,7 +103,7 @@ class Oob(object):
             fwtype = args[0]
             url = args[1]
         elif len(args) == 1:
-            if args[0].startswith('http'):
+            if args[0].startswith('http') or command in ['up', 'update', 'upgrade']:
                 url = args[0]
             else:
                 fwtype = args[0]
