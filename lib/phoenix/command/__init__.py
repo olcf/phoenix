@@ -5,6 +5,7 @@
 import sys
 import logging
 import os
+import traceback
 
 from ClusterShell.NodeSet import NodeSet
 import phoenix
@@ -43,6 +44,7 @@ class Command(object):
             client._engine.remove(client, did_timeout=True)
         except Exception as e:
             client.output("Error running command: %s - %s" % (str(e), e.args), stderr=True)
+            logging.debug(traceback.format_exc())
             client.mark_command_complete(rc=1)
         logging.debug("command.run complete")
         return True
