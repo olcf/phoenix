@@ -9,6 +9,7 @@ from ClusterShell.NodeSet import NodeSet
 import phoenix
 from phoenix.node import Node
 import phoenix.bootloader
+import phoenix.filesync
 import socket
 import fcntl
 import os
@@ -99,6 +100,8 @@ class PhoenixBootfileHandler(BaseHTTPRequestHandler):
             self._do_bootloader(node)
         elif self.path == "/ztp":
             self._do_ztp(node)
+        elif self.path == "/filesync":
+            self._do_filesync(node)
         else:
             self.returnhttp(404, "Unknown path '%s'\n" % self.path)
 
@@ -112,6 +115,14 @@ class PhoenixBootfileHandler(BaseHTTPRequestHandler):
             self.returnhttp(200, script)
         except:
             self.returnhttp(404, "No ZTP script generated for %s\n" % node['name'])
+
+    def _do_filesync(self, node):
+        filesyncclass = phoenix.get_component("filesync", phoenix.filesync.find_provider(node))
+        rc = filesyncclass.queue_node_sync(node, None, None)
+        if rc == 0:
+            self.returnhttp(200, "Ok")
+        else:
+            self.returnhttp(500, "filesync failed")
 
 if __name__ == '__main__':
     parser = get_parser()

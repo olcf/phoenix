@@ -92,7 +92,8 @@ class Filesync(object):
                 fileobjectlist.append(FileObject(src=entry))
 
         ok, message = cls.node_sync(nodename, fileobjectlist, task=None)
-        client.output(message)
+        if client:
+            client.output(message)
         return 0 if ok else 1
 
     @classmethod
