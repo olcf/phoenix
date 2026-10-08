@@ -218,6 +218,7 @@ class ConfCommand(Command):
         Node.load_nodes(nodeset=nodes)
         write_bootloader_scripts()
         write_ztp_scripts()
+        write_cloud_init_scripts()
         return 0
 
     @classmethod
@@ -304,6 +305,38 @@ def write_ztp_scripts():
 
             outputpath = ztpdir / iface['ip']
             logging.debug("Writing ztpscript to %s", outputpath)
+            with open (outputpath, 'w') as ofile:
+                ofile.write(script)
+
+def write_cloud_init_scripts():
+    cloud_initdir = Path(phoenix.artifact_path) / 'bootfiles' / 'cloud-init'
+    if not cloud_initdir.is_dir():
+        cloud_initdir.mkdir()
+
+    scripttypes = ['meta-data', 'user-data', 'vendor-data', 'network-config']
+
+    for scripttype in scripttypes:
+        if not (cloud_initdir / scripttype).is_dir():
+            (cloud_initdir / scripttype).mkdir()
+
+    for nodename,node in sorted(Node.nodes.items()):
+        if 'cloud-init' not in node:
+            logging.debug("'cloud-init' not defined for %s", nodename)
+            continue
+
+        try:
+            node_ip = node.get_ip()
+        except KeyError:
+            logging.debug("Unable to determine node %s's main IP", nodename)
+            continue
+
+        for scripttype in scripttypes:
+            try:
+                script = node.cloudinitscript(scripttype)
+            except Exception as e:
+                logging.error("Failed to render a cloud-init %s script for %s (%s)", scripttype, nodename, e)
+                continue
+            outputpath = cloud_initdir / scripttype / str(node_ip)
             with open (outputpath, 'w') as ofile:
                 ofile.write(script)
 

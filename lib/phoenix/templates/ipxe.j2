@@ -1,9 +1,12 @@
 {%- set server = 'http://' + http_server | default('${dhcp-server}') + ':' + http_server_port | default('8000')  -%}
+{%- if 'cloud-init' in node %}
+{%- set cloudinit = 'ds=nocloud;s=' + node['cloud-init']['url'] | default('http://' + http_server | default('${dhcp-server}') + ':' + http_server_port | default('8000') + '/cloud-init/') %}
+{%- endif -%}
 {%- if kcmdline is iterable and kcmdline is not string %}
 {%- set kcmdline = kcmdline | join(" ") -%}
 {%- endif -%}
 #!ipxe
-kernel {{server}}/images/{{image}}/vmlinuz initrd=initramfs.img root=live:{{server}}/images/{{image}}/rootdir.squashfs {{netargs}} console={{console|default('ttyS0,115200n8')}} {{kcmdline}} || goto failed
+kernel {{server}}/images/{{image}}/vmlinuz initrd=initramfs.img root=live:{{server}}/images/{{image}}/rootdir.squashfs {{netargs}} console={{console|default('ttyS0,115200n8')}} {{cloudinit}} {{kcmdline}} || goto failed
 initrd {{server}}/images/{{image}}/initramfs.img || goto failed
 boot || goto failed
 

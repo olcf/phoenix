@@ -466,6 +466,7 @@ class Node(object):
         cls.environment.globals['NodeSet'] = NodeSet
         cls.environment.globals['racklist'] = System.racklist
         cls.environment.globals['rackindex'] = System.rackindex
+        cls.environment.filters['to_yaml'] = lambda data: yaml.dump(data, default_flow_style=False)
         cls.loaded_functions = True
 
     @classmethod
@@ -509,15 +510,21 @@ class Node(object):
     def ztpscript(self):
         if 'ztptemplate' not in self:
             raise KeyError("No ZTP template defined for node")
+        return self.rendertemplate(self['ztptemplate'])
 
-        template = self.environment.get_template(self['ztptemplate'])
-        output = template.render({
+    def cloudinitscript(self, scripttype):
+        if 'cloud-init' not in self:
+            raise KeyError("cloud-init not defined for node")
+        templatename = self['cloud-init'].get(scripttype + '-template', 'cloud-init-' + scripttype + '.j2')
+        return self.rendertemplate(templatename)
+
+    def rendertemplate(self, template):
+        template = self.environment.get_template(template)
+        return template.render({
             'node': self,
             'System': System.config,
             'Network': Network.config,
             })
-
-        return output
 
     def get_ip(self, interface=None):
         # For simple devices like switches, support putting an IP at the top level

@@ -100,6 +100,8 @@ class PhoenixBootfileHandler(BaseHTTPRequestHandler):
             self._do_bootloader(node)
         elif self.path == "/ztp":
             self._do_ztp(node)
+        elif self.path.startswith("/cloud-init/"):
+            self._do_cloudinit(node)
         elif self.path == "/filesync":
             self._do_filesync(node)
         else:
@@ -114,7 +116,18 @@ class PhoenixBootfileHandler(BaseHTTPRequestHandler):
             script = node.ztpscript()
             self.returnhttp(200, script)
         except:
-            self.returnhttp(404, "No ZTP script generated for %s\n" % node['name'])
+            self.returnhttp(404, f"No ZTP script generated for {node['name']}\n")
+
+    def _do_cloudinit(self, node):
+        scripttype = self.path[12:]
+        if scripttype not in ['meta-data', 'user-data', 'vendor-data', 'network-config']:
+            self.returnhttp(404, f"clout-init {scripttype} script not recognized")
+            return
+        try:
+            script = node.cloudinitscript(scripttype)
+            self.returnhttp(200, script)
+        except:
+            self.returnhttp(404, f"No clout-init {scripttype} script generated for {node['name']}\n")
 
     def _do_filesync(self, node):
         filesyncclass = phoenix.get_component("filesync", phoenix.filesync.find_provider(node))
