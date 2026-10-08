@@ -9,7 +9,6 @@ import argparse
 from ClusterShell.NodeSet import NodeSet
 from jinja2 import Template
 from jinja2 import Environment
-import time
 import re
 import copy
 import importlib
@@ -18,14 +17,15 @@ import phoenix
 import phoenix.parallel
 from phoenix.system import System
 from phoenix.command import Command
-from phoenix.oob import OOBTimeoutError
+from phoenix.oob import Oob, OOBTimeoutError
 
 class PowerCommand(Command):
     @classmethod
     def get_parser(cls):
         parser = argparse.ArgumentParser(description="Control the power of Phoenix nodes")
         parser.add_argument('nodes', default=None, type=str, help='Nodes to list')
-        parser.add_argument('action', default='stat', nargs='?', type=str, help='Action')
+        parser.add_argument('action', default='stat', nargs='?', type=str,
+                            help='Action: %s' % ', '.join(sorted(Oob.POWER_ALIASES)))
         parser.add_argument('--pdu', default=False, action='store_true', help='Target the PDU')
         parser.add_argument('--wait', default=False, action='store_true', help='Wait on the desired state')
         parser.add_argument('-v', '--verbose', action='count', default=0)
@@ -79,15 +79,11 @@ class PowerCommand(Command):
                 client.mark_command_complete(rc=1)
                 return 1
         try:
-            if 'wait' in client.command and (action == "on" or action == "off"):
+            desired = Oob.POWER_WAIT_STATES.get(Oob.POWER_ALIASES.get(action.lower()))
+            if 'wait' in client.command and desired is not None:
                 rc = oobcls.power(client.node, client, [action])
                 if rc == 0:
-                    for i in range(0, 180):
-                        time.sleep(1)
-                        rc = oobcls.power(client.node, client, ['stat'])
-                        if client.state.lower() == action.lower():
-                            return rc
-                    rc = 1
+                    rc = 0 if oobcls._wait_for_power_state(client.node, client, desired) else 1
             else:
                 rc = oobcls.power(client.node, client, [action])
             return rc

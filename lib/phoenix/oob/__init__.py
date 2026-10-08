@@ -2,7 +2,7 @@
 """Generic Out-Of-Band Functions"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
-import time # for sleep in reset - eventually remove
+import time
 import logging
 
 class OOBTimeoutError(Exception):
@@ -10,6 +10,37 @@ class OOBTimeoutError(Exception):
 
 class Oob(object):
     oobtype = "unknown"
+
+    # Accepted command line words mapped to canonical power actions
+    POWER_ALIASES = {
+        'stat': 'state',
+        'state': 'state',
+        'status': 'state',
+        'query': 'state',
+        'on': 'on',
+        'forceon': 'forceon',
+        'off': 'off',
+        'forceoff': 'forceoff',
+        'gracefulshutdown': 'gracefulshutdown',
+        'reset': 'reset',
+        'restart': 'reset',
+        'forcerestart': 'reset',
+        'gracefulrestart': 'gracefulrestart',
+        'powercycle': 'powercycle',
+    }
+
+    # Actions that can be emulated with off/on when unsupported natively
+    POWER_RESTART_ACTIONS = ('reset', 'gracefulrestart', 'powercycle')
+
+    # Terminal power state each action settles into, for --wait. Restart
+    # actions are omitted since they end in the same state they started.
+    POWER_WAIT_STATES = {
+        'on': 'on',
+        'forceon': 'on',
+        'off': 'off',
+        'forceoff': 'off',
+        'gracefulshutdown': 'off',
+    }
 
     @classmethod
     def _get_auth(cls, node):
@@ -32,44 +63,38 @@ class Oob(object):
         #logging.debug("Type is %s", oobtype)
 
         try:
-            if command in ['stat', 'state', 'status', 'query']:
-                (ok, state) = cls._power_state(node, auth=cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['on']:
-                (ok,state) = cls._power_on(node, cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['off']:
-                (ok, state) = cls._power_off(node, cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['forceoff']:
-                (ok, state) = cls._power_forceoff(node, cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['reset', 'restart']:
-                try:
-                    (ok, state) = cls._power_reset(node, cls._get_auth(node))
-                    client.set_state(state)
-                    client.output(state, stderr=not ok)
-                    return 0 if ok else 1
-                except NotImplementedError:
-                    # Fix to use off '--wait' instead of an arbitrary sleep
-                    cls._power_off(node, cls._get_auth(node))
-                    time.sleep(60)
-                    cls._power_on(node, cls._get_auth(node))
-                    client.output("Ok")
-                    client.set_state("Ok")
+            action = cls.POWER_ALIASES[command]
+        except KeyError:
+            client.output("Invalid requested node state command (%s). Valid commands: %s" %
+                          (command, ', '.join(sorted(cls.POWER_ALIASES))), stderr=True)
+            return -1
+
+        try:
+            method = getattr(cls, '_power_%s' % action)
+            try:
+                (ok, state) = method(node, cls._get_auth(node))
+            except NotImplementedError:
+                if action not in cls.POWER_RESTART_ACTIONS:
+                    raise
+                # No native restart action; emulate it by powering off,
+                # waiting for the node to reach Off, then powering on. Confirm
+                # both halves exist first so we never strand a node powered off.
+                if not cls._can_emulate_restart():
+                    client.output("%s is not supported by %s and cannot be emulated" %
+                                  (command, cls.__name__), stderr=True)
                     return 1
-            else:
-                state = 'Error'
-                client.output("Invalid requested node state command (%s)" % command, stderr=True)
-                return -1
+                (ok, state) = cls._power_off(node, cls._get_auth(node))
+                if not ok:
+                    client.set_state(state)
+                    client.output(state, stderr=True)
+                    return 1
+                if not cls._wait_for_power_state(node, client, 'off'):
+                    client.output("Timed out waiting for Off", stderr=True)
+                    return 1
+                (ok, state) = cls._power_on(node, cls._get_auth(node))
+            client.set_state(state)
+            client.output(state, stderr=not ok)
+            return 0 if ok else 1
         except OOBTimeoutError as e:
             client.output("Connection timeout", stderr=True)
         except Exception as e:
@@ -77,19 +102,66 @@ class Oob(object):
             raise
 
     @classmethod
-    def _power_state(cls, node):
+    def _can_emulate_restart(cls):
+        """True if off/on/state are all implemented, so a restart can be
+           emulated without risk of leaving the node powered off."""
+        for name in ('_power_off', '_power_on', '_power_state'):
+            if getattr(cls, name).__func__ is getattr(Oob, name).__func__:
+                return False
+        return True
+
+    # Seconds to wait for a node to reach a requested power state
+    power_wait_timeout = 180
+
+    @classmethod
+    def _wait_for_power_state(cls, node, client, desired, timeout=None):
+        """Poll the power state until it matches desired or timeout expires.
+           Each poll refreshes client state so --wait output stays live.
+           Returns True if the state was reached."""
+        if timeout is None:
+            timeout = cls.power_wait_timeout
+        desired = desired.lower()
+        for _ in range(timeout):
+            time.sleep(1)
+            cls.power(node, client, ['stat'])
+            if client.state is not None and str(client.state).lower() == desired:
+                return True
+        return False
+
+    @classmethod
+    def _power_state(cls, node, auth=None):
         raise NotImplementedError
 
     @classmethod
-    def _power_on(cls, node):
+    def _power_on(cls, node, auth=None):
         raise NotImplementedError
 
     @classmethod
-    def _power_off(cls, node):
+    def _power_off(cls, node, auth=None):
         raise NotImplementedError
 
     @classmethod
-    def _power_reset(cls, node):
+    def _power_forceon(cls, node, auth=None):
+        raise NotImplementedError
+
+    @classmethod
+    def _power_forceoff(cls, node, auth=None):
+        raise NotImplementedError
+
+    @classmethod
+    def _power_gracefulshutdown(cls, node, auth=None):
+        raise NotImplementedError
+
+    @classmethod
+    def _power_reset(cls, node, auth=None):
+        raise NotImplementedError
+
+    @classmethod
+    def _power_gracefulrestart(cls, node, auth=None):
+        raise NotImplementedError
+
+    @classmethod
+    def _power_powercycle(cls, node, auth=None):
         raise NotImplementedError
 
     @classmethod
