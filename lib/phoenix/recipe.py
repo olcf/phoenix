@@ -843,8 +843,9 @@ class ArtifactFile(Artifact):
         paths = glob.glob(str(recipe.root) + '/' + self.pattern)
         copied = 0
         for path in paths:
-            logging.debug("Copying %s to %s", path, outputpath)
-            created = shutil.copy2(path, outputpath)
+            target = outputpath / os.path.basename(path) if outputpath.is_dir() else outputpath
+            logging.debug("Copying %s to %s", path, target)
+            created = shutil.copyfile(path, target)
             os.chmod(created, 0o644)
             copied = copied + 1
         if copied == 0:
