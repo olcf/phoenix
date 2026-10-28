@@ -26,7 +26,17 @@ import jinja2
 from jinja2 import Template
 from pathlib import Path
 
-class SoftUndefined(jinja2.ChainableUndefined):
+try:
+    from jinja2 import ChainableUndefined
+except ImportError:
+    # Jinja2 introduced this in 2.11.0, newer than SLES 15 SP7
+    class ChainableUndefined(jinja2.Undefined):
+        def __getattr__(self, name):
+            return self
+        def __getitem__(self, key):
+            return self
+
+class SoftUndefined(ChainableUndefined):
     """ An undefined that also tolerates being indexed and called, so that
         reading the vars map from an unrendered recipe is not defeated by
         expressions like {{ somevar.split(',') }} elsewhere in the file.
