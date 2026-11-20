@@ -2,7 +2,7 @@
 """Generic Out-Of-Band Functions"""
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
-import time # for sleep in reset - eventually remove
+import time
 import logging
 
 class OOBTimeoutError(Exception):
@@ -10,6 +10,11 @@ class OOBTimeoutError(Exception):
 
 class Oob(object):
     oobtype = "unknown"
+
+    POWER_STATE_COMMANDS = ('stat', 'state', 'status', 'query')
+
+    # Seconds to wait for a node to reach a requested power state
+    power_wait_timeout = 180
 
     @classmethod
     def _get_auth(cls, node):
@@ -19,77 +24,63 @@ class Oob(object):
             return ('admin', 'password')
 
     @classmethod
-    def power(cls, node, client, args):
-        # Normalize the requested command
-        command = args[0].lower()
-        logging.debug("inside power command: {0}".format(command))
-
-        #if command[0:3] == "pdu":
-        #    command = command[3:]
-        #    oobtype = "pdu"
-        #else:
-        #    oobtype = "bmc"
-        #logging.debug("Type is %s", oobtype)
+    def power(cls, node, client, args, target=None, force=False, as_yaml=False):
+        """Run a power command. args[0] is a state query, 'actions', or an
+           action, followed by any action parameters. target selects what
+           to act on: None for the node itself, 'manager', 'chassis', or an
+           explicit resource path. as_yaml prints 'actions' as node
+           attributes."""
+        command = args[0]
+        params = list(args[1:])
+        logging.debug("inside power command: %s (target=%s, force=%s)", command, target, force)
 
         try:
-            if command in ['stat', 'state', 'status', 'query']:
-                (ok, state) = cls._power_state(node, auth=cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['on']:
-                (ok,state) = cls._power_on(node, cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['off']:
-                (ok, state) = cls._power_off(node, cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['forceoff']:
-                (ok, state) = cls._power_forceoff(node, cls._get_auth(node))
-                client.set_state(state)
-                client.output(state, stderr=not ok)
-                return 0 if ok else 1
-            elif command in ['reset', 'restart']:
-                try:
-                    (ok, state) = cls._power_reset(node, cls._get_auth(node))
-                    client.set_state(state)
-                    client.output(state, stderr=not ok)
-                    return 0 if ok else 1
-                except NotImplementedError:
-                    # Fix to use off '--wait' instead of an arbitrary sleep
-                    cls._power_off(node, cls._get_auth(node))
-                    time.sleep(60)
-                    cls._power_on(node, cls._get_auth(node))
-                    client.output("Ok")
-                    client.set_state("Ok")
-                    return 1
+            auth = cls._get_auth(node)
+            if command.lower() in cls.POWER_STATE_COMMANDS:
+                (ok, state) = cls._power_state(node, auth=auth, target=target)
+            elif command.lower() == 'actions':
+                (ok, state) = cls._power_actions(node, auth=auth, target=target, as_yaml=as_yaml)
             else:
-                state = 'Error'
-                client.output("Invalid requested node state command (%s)" % command, stderr=True)
-                return -1
+                (ok, state) = cls._power_action(node, command, params, auth=auth, target=target, force=force)
+            client.set_state(state)
+            client.output(state, stderr=not ok)
+            return 0 if ok else 1
         except OOBTimeoutError as e:
             client.output("Connection timeout", stderr=True)
+            return 1
         except Exception as e:
             client.output("Power request failed: %s (%s)" % (type(e).__name__, e), stderr=True)
             raise
 
     @classmethod
-    def _power_state(cls, node):
+    def _wait_for_power_state(cls, node, client, desired, target=None, timeout=None):
+        """Poll the power state until it matches desired or timeout expires.
+           Returns True if the state was reached."""
+        if timeout is None:
+            timeout = cls.power_wait_timeout
+        desired = desired.lower()
+        for _ in range(timeout):
+            time.sleep(1)
+            cls.power(node, client, ['stat'], target=target)
+            if client.state is not None and str(client.state).lower() == desired:
+                return True
+        return False
+
+    @classmethod
+    def _power_state(cls, node, auth=None, target=None):
         raise NotImplementedError
 
     @classmethod
-    def _power_on(cls, node):
+    def _power_actions(cls, node, auth=None, target=None, as_yaml=False):
+        """Returns (ok, message) listing the actions the target accepts, or
+           with as_yaml, the node attributes that configure them"""
         raise NotImplementedError
 
     @classmethod
-    def _power_off(cls, node):
-        raise NotImplementedError
-
-    @classmethod
-    def _power_reset(cls, node):
+    def _power_action(cls, node, action, params=None, auth=None, target=None, force=False):
+        """Sends action, with optional parameters, to the target. Unless force
+           is set, the action must match (case-insensitively) one the target
+           accepts."""
         raise NotImplementedError
 
     @classmethod

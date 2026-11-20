@@ -232,7 +232,7 @@ def setup(nodes, args):
     if 'wait' in args and args.wait:
         logging.debug("Using wait handler")
         handler=PopulationOutputHandler(display)
-    elif len(nodes) > 10:
+    elif len(nodes) > 10 or getattr(args, 'yaml', False):
         handler=GatherOutputHandler(display)
     else:
         handler=DirectProgressOutputHandler(display)
